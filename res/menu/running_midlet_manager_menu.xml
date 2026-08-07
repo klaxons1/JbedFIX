@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <group android:id="@+id/item_menu">
+        <item
+            android:icon="@drawable/task_show"
+            android:id="@+id/bring_midlet_foreground_item"
+            android:title="@string/AMS_TASK_SHOW_COMMAND"/>
+        <item
+            android:icon="@drawable/task_close"
+            android:id="@+id/stop_midlet_item"
+            android:title="@string/AMS_TASK_STOP_COMMAND"/>
+    </group>
+    <group android:id="@+id/screen_menu">
+        <item
+            android:icon="@drawable/task_home"
+            android:id="@+id/back_to_ams_item"
+            android:title="@string/AMS_TASK_AMS_COMMAND"/>
+    </group>
+</menu>

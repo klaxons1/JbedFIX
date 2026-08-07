@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical"
+    android:id="@+id/frameParent"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+    <com.esmertec.android.jbed.app.JbedView
+        android:id="@+id/jbedView"
+        android:focusable="true"
+        android:visibility="visible"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_weight="1">
+        <requestFocus/>
+    </com.esmertec.android.jbed.app.JbedView>
+    <AbsoluteLayout
+        android:id="@+id/videoParent"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+        <AbsoluteLayout
+            android:id="@+id/videoRegionView"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+            <com.esmertec.android.jbed.jsr.JbedVideoView
+                android:id="@+id/jbedVideoView"
+                android:focusable="true"
+                android:visibility="visible"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"/>
+        </AbsoluteLayout>
+    </AbsoluteLayout>
+    <AbsoluteLayout
+        android:id="@+id/nativeWidgetView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"/>
+</FrameLayout>

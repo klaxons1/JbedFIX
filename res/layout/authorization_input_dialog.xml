@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_weight="1">
+    <TextView
+        android:id="@+id/textboxName"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/AMS_ENTER_USERID"
+        style="?android:attr/textAppearanceSmall"/>
+    <EditText
+        android:textSize="10sp"
+        android:id="@+id/edtName"
+        android:layout_width="match_parent"
+        android:layout_height="40sp"
+        android:maxLines="1"
+        android:singleLine="true"
+        android:layout_weight="1"/>
+    <TextView
+        android:id="@+id/textboxPwd"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/AMS_PASSWORD"
+        style="?android:attr/textAppearanceSmall"/>
+    <EditText
+        android:textSize="10sp"
+        android:id="@+id/edtPwd"
+        android:layout_width="match_parent"
+        android:layout_height="40sp"
+        android:maxLines="1"
+        android:singleLine="true"
+        android:layout_weight="1"
+        android:inputType="textPassword"/>
+</LinearLayout>

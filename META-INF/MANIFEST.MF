@@ -1,0 +1,276 @@
+Manifest-Version: 1.0
+Created-By: 1.0 (Android SignApk)
+
+Name: res/drawable/menu_internet.png
+SHA1-Digest: /xxFCs2hjkmrekqOTOqYyPUmpaU=
+
+Name: res/drawable-hdpi/task_close.png
+SHA1-Digest: k6KIYB3NRpeTTwaqN4LD8xpSNpg=
+
+Name: res/layout/list_content.xml
+SHA1-Digest: oUfEYJZxAgtz8wwm0cFuxNCN+gU=
+
+Name: assets/certs/DEV_ITPDomainRoot.cer
+SHA1-Digest: Xex+3T5pu0ogTCs//tUEBXQx20M=
+
+Name: res/drawable/ic_lock_open.png
+SHA1-Digest: XTyXdls6HCxIS+ITQxoLl/GG/dg=
+
+Name: res/drawable/ic_pending_lock.png
+SHA1-Digest: tRg3KJngvlWEL9aG/txgN6e56nI=
+
+Name: res/drawable-hdpi/menu_running.png
+SHA1-Digest: 9j+dgvAmDLr6EgNLdp3Xw9vACuo=
+
+Name: res/drawable-hdpi/menu_delete.png
+SHA1-Digest: K6s1ElCqWMizmKN86eqeKk4pKwk=
+
+Name: res/layout/simple_apn_item.xml
+SHA1-Digest: XZw4sjxi9kGJAJfV+tH8divinQU=
+
+Name: assets/certs/rootcert.cer
+SHA1-Digest: YAVGOFCKgrd0o9BUi152G37pRDQ=
+
+Name: res/menu/running_midlet_manager_menu.xml
+SHA1-Digest: oBXJipJS8YBe4ENuG41CD11608U=
+
+Name: res/drawable/java_icon_drm_lock.png
+SHA1-Digest: +bSNfBfFQJCRBKl5iRu/1rxUbXc=
+
+Name: res/drawable-hdpi/menu_launch.png
+SHA1-Digest: qURvQ/qSxEsftiRNuxSZClz2x34=
+
+Name: res/drawable-hdpi/menu_local.png
+SHA1-Digest: O93vRtMKAhSQmD/4fyRZAt3ExQ4=
+
+Name: assets/certs/Vodafone_OperatorDomain_CA.cer
+SHA1-Digest: n+N8j3L7v9GDOkWlsnBi72stxcI=
+
+Name: res/drawable/ic_menu_move.png
+SHA1-Digest: MJOePHU6f0v5Gu+cALxB9vGOzsM=
+
+Name: assets/Installed/t0_.jar
+SHA1-Digest: lcgFY57OmULYPzL5gu7M1l/EinA=
+
+Name: assets/certs/Thawte_Premium_Server_CA.cer
+SHA1-Digest: Yn+NeCdlY5nSfX+QRMn+s/M++po=
+
+Name: res/layout/text_box.xml
+SHA1-Digest: 0ZC66FCu+9RJ4/BTyKioIvfHMSU=
+
+Name: res/layout/permission_item.xml
+SHA1-Digest: tBhpARHEpDYwm6fgERBbF384lBU=
+
+Name: res/drawable-hdpi/default_midlet.png
+SHA1-Digest: 4VGtsKsuYZFsEePz5dsPd5boR54=
+
+Name: res/drawable-hdpi/ic_menu_rename.png
+SHA1-Digest: bJUrFMaYoc1QT0+5UsesMqKCjr4=
+
+Name: res/layout/textbox_command_list_item.xml
+SHA1-Digest: 7t4yBctMiAuPtjKtygi9d/DOWyY=
+
+Name: res/drawable/menu_local.png
+SHA1-Digest: m+7Cj/d3JHXAlPH6INlFv2RFFoA=
+
+Name: res/drawable/ic_lock_lock.png
+SHA1-Digest: fyBps+ALN+Y0C9Xc7PzafUONII8=
+
+Name: res/drawable/menu_launch.png
+SHA1-Digest: /xxFCs2hjkmrekqOTOqYyPUmpaU=
+
+Name: res/drawable-hdpi/task_home.png
+SHA1-Digest: 7+BhOasHW8D9NG4RFiRitHgV7kg=
+
+Name: res/layout/simple_gallery_item.xml
+SHA1-Digest: z9v77LcFM6h3XPHGazTXLtoenQg=
+
+Name: res/drawable-hdpi/task_show.png
+SHA1-Digest: HDjkk07YxInFAPivgK6TchrYNog=
+
+Name: res/drawable-hdpi/ic_menu_move.png
+SHA1-Digest: AykTGjpBeGGM4tYB/3bLHui9JyY=
+
+Name: assets/Installed/dommap_bravotelstra.utf
+SHA1-Digest: 8Y829Jh/Oko67gQeZNZvuceSY5Y=
+
+Name: assets/Installed/policy.utf
+SHA1-Digest: 3QATxzFTb0jd6+X/CPPZRWaLmTg=
+
+Name: assets/build.properties
+SHA1-Digest: nPlXSSp44xf5Ab1Lj/120wXenPM=
+
+Name: res/drawable/common_icon_info.png
+SHA1-Digest: fFwn2N1KXHLFCpWGmYaNOyjFTlc=
+
+Name: res/drawable/launcher_java.png
+SHA1-Digest: Dq4Fy2J6dr1GePHSrjsN34XZOww=
+
+Name: res/drawable-hdpi/ic_lock_open.png
+SHA1-Digest: umjMZqMF1HpJyYXyZ/7PMFiuZYI=
+
+Name: res/drawable/folder.png
+SHA1-Digest: 5bIJIBiAobkbRYWFDexdxFoUk+Q=
+
+Name: assets/certs/Class_3_Public_Primary_Certification_Authority.cer
+SHA1-Digest: odtjk5FvF+QYVQlABBXHAkCwrms=
+
+Name: assets/config.properties
+SHA1-Digest: UGNuYCexmOijLRR7cw/NM03udSM=
+
+Name: res/layout/jbed_progress_dialog.xml
+SHA1-Digest: aCwjua0f4jUV/mF/+IBr+Dx/0qA=
+
+Name: res/layout/textview.xml
+SHA1-Digest: gOLffKi8DUZjLcqKw2U1BsmZzH8=
+
+Name: assets/Installed/dommap.utf
+SHA1-Digest: 3vT9zf4yf+wRKBuY2H0oNyY0UDA=
+
+Name: res/drawable/menu_delete.png
+SHA1-Digest: 0gOBnY8amvKnkvod3u0miSpqBWs=
+
+Name: res/drawable/java_icon_sdcard.png
+SHA1-Digest: sMdkEzGEcpW/8llfVQllwRRa9/0=
+
+Name: res/layout/task_manager_view.xml
+SHA1-Digest: f5Qf56sDIFdETO9wr13AybsU2UU=
+
+Name: res/layout/progress_dialog.xml
+SHA1-Digest: 8E1R6b35ubeDAFq4SFJ2WmGdyYo=
+
+Name: res/drawable-hdpi/launcher_java.png
+SHA1-Digest: bAZgXJrc1R2TFEtnMn3i9cjG39E=
+
+Name: res/drawable/menu_up.png
+SHA1-Digest: YRPZT6bIiEo1jHVjS4m9AS/3YVU=
+
+Name: assets/certs/DEV_2048bitODRoot.cer
+SHA1-Digest: WlGqcM/3HoZTd+ylRxtWmfX9lVk=
+
+Name: res/drawable/default_midlet.png
+SHA1-Digest: 7xizMYuoK0G55atqZU5G+9iBNGs=
+
+Name: assets/Installed/java_splash.png
+SHA1-Digest: M4wF+awKD/h4HaQpqo6GhmlJISo=
+
+Name: resources.arsc
+SHA1-Digest: wwSpcJBiBlxrvAczowO+WiktD60=
+
+Name: res/drawable-hdpi/ic_lock_lock.png
+SHA1-Digest: c4WDTWFFTDOTlelfIYekzgh+kGI=
+
+Name: res/drawable/ic_menu_rename.png
+SHA1-Digest: Hwepk/F27GrD2hN8qGu8ukC4Gqc=
+
+Name: res/color/ams_selector_color.xml
+SHA1-Digest: WijGZgXOBU+gZc0kofM2Th+/SKk=
+
+Name: assets/certs/DEV_2048bitELITPCA.cer
+SHA1-Digest: qPO+tqw0DZu8/vkj4oeD1loEP+0=
+
+Name: AndroidManifest.xml
+SHA1-Digest: TftPDAxbFGnPpRrLvg+XKf8pMFM=
+
+Name: res/layout/simple_spinner_dropdown_item.xml
+SHA1-Digest: aQqLmf2yeUTsYORqiRSFrTmucAQ=
+
+Name: lib/armeabi/libjbedvm.so
+SHA1-Digest: D10bKVGE8ewhv6YrDJmsjAKCJkw=
+
+Name: res/drawable-hdpi/folder.png
+SHA1-Digest: AxKF8Vs63xjmefPvRHxh295hL0E=
+
+Name: res/layout/name_input_dialog.xml
+SHA1-Digest: uCzbGVej1kfbwHsX3vUe3PelAAA=
+
+Name: res/drawable/task_show.png
+SHA1-Digest: u7iuxZYOnjlUTm7iZjsrUCrcStM=
+
+Name: res/layout/text_box_command_list.xml
+SHA1-Digest: vEZ5OzBE+Z3cC7g89ICfvim5QVs=
+
+Name: assets/Installed/start_logo_8.png
+SHA1-Digest: vDa89bWGgfWuSVfsndmuxm6xEl4=
+
+Name: res/layout/stop_confirm_dialog.xml
+SHA1-Digest: 47u53SPtDwGeFS2SRlEdAKMx7PI=
+
+Name: res/layout/authorization_input_dialog.xml
+SHA1-Digest: IM1bXk65YJX17STmyxLixY/97xw=
+
+Name: res/drawable-hdpi/menu_internet.png
+SHA1-Digest: qURvQ/qSxEsftiRNuxSZClz2x34=
+
+Name: res/drawable/download_icon.png
+SHA1-Digest: M493VH2E8i8AT/mepYuKkoSFoyc=
+
+Name: res/layout/request_permission_dialog.xml
+SHA1-Digest: siwambGNQWfkyIhB1N8VfS4ntPM=
+
+Name: assets/certs/Vodafone_TopLevel_CA.cer
+SHA1-Digest: wK9ndTskt/xUHNlsEnQ/w0VI0TQ=
+
+Name: res/drawable-hdpi/menu_up.png
+SHA1-Digest: 2K82JZVGI4CsFQTeul4QB9kJk3Y=
+
+Name: res/layout/list_selector_item.xml
+SHA1-Digest: 1YMSJ33rzXwWt/A8QGgCnqrFBwo=
+
+Name: res/drawable/general_info_folder.png
+SHA1-Digest: Cu3yquQfHipiWctiqJiKdttobOo=
+
+Name: res/drawable/task_close.png
+SHA1-Digest: DeQKTCoWBoCsWbAJntS5yOrZRbg=
+
+Name: res/drawable/java_icon_drm.png
+SHA1-Digest: TgZi7Z05Q1+caRkwRXQ9w8uuzUM=
+
+Name: res/drawable/menu_running.png
+SHA1-Digest: Jp9MSYBdfRNpQHKGo3IREL5G+iI=
+
+Name: classes.dex
+SHA1-Digest: RNeqrzWzOAZ19fExiY7eE1rWghw=
+
+Name: res/menu/ams_menu.xml
+SHA1-Digest: 3LJTkNJiV/8KvyP4/kXfttarOkc=
+
+Name: res/layout/ams_list.xml
+SHA1-Digest: VVkJBmZkboJaxDqJEBO5+2oS1ik=
+
+Name: assets/Installed/themes.utf
+SHA1-Digest: kQXEh8wrscJjShWETYxdTNm/XFk=
+
+Name: res/drawable/menu_info.png
+SHA1-Digest: zw/qW/m5LeYUSWZO1tyOxd1+auU=
+
+Name: assets/certs/DEV_2048bitELCA.cer
+SHA1-Digest: +iDB1FTBRbXhd2+N5ySHVGGShcA=
+
+Name: res/drawable-hdpi/menu_info.png
+SHA1-Digest: 7zNMQc9sg4phqoMR0Orm2lCw3UU=
+
+Name: res/layout/input_dialog.xml
+SHA1-Digest: tmGMR306ecijyGSRlxGeMbty8so=
+
+Name: assets/certs/GeoTrust_CA_for_UTI.cer
+SHA1-Digest: PqxVacHPfljYUyvKyEPLV0bD0WA=
+
+Name: res/drawable/menu_remove_all.png
+SHA1-Digest: InIYu6pskAlRdNABJcoSqsNUE/w=
+
+Name: res/layout/simple_spinner_item.xml
+SHA1-Digest: Mv9Cw//WpcbpW7TUrhVAGV+nIcY=
+
+Name: assets/Installed/start_8.png
+SHA1-Digest: joSLSi3sh40ZP8qbSB0jaUjs/oI=
+
+Name: res/menu/sdcard_file_menu.xml
+SHA1-Digest: 6LeWdIrgtTV2K6/H2qFbT2OPAJY=
+
+Name: res/layout/jbed.xml
+SHA1-Digest: 4GcgX1wQLCJqXeJTUrE+C1Wp2+4=
+
+Name: res/drawable/task_home.png
+SHA1-Digest: nMnYRAzOIFrenyu/DK54Rj4kZ/k=
+

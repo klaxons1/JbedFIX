@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.esmertec.android.jbed">
+    <uses-permission android:name="android.permission.RECEIVE_SMS"/>
+    <uses-permission android:name="android.permission.READ_CONTACTS"/>
+    <uses-permission android:name="android.permission.WRITE_CONTACTS"/>
+    <uses-permission android:name="android.permission.ACCESS_SURFACE_FLINGER"/>
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS"/>
+    <uses-permission android:name="android.permission.CALL_PHONE"/>
+    <uses-permission android:name="android.permission.VIBRATE"/>
+    <uses-permission android:name="android.permission.RECORD_AUDIO"/>
+    <uses-permission android:name="android.permission.ACCESS_DOWNLOAD_MANAGER"/>
+    <uses-permission android:name="android.permission.ACCESS_DOWNLOAD_DATA"/>
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.READ_SMS"/>
+    <uses-permission android:name="android.permission.WRITE_SMS"/>
+    <uses-permission android:name="android.permission.SEND_SMS"/>
+    <uses-permission android:name="android.permission.CHANGE_NETWORK_STATE"/>
+    <uses-permission android:name="android.permission.READ_CALENDAR"/>
+    <uses-permission android:name="android.permission.WRITE_CALENDAR"/>
+    <uses-permission android:name="android.permission.ACCESS_DRM"/>
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
+    <uses-permission android:name="android.permission.GET_TASKS"/>
+    <uses-permission android:name="android.permission.CAMERA"/>
+    <uses-permission android:name="android.permission.READ_PHONE_STATE"/>
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
+    <uses-permission android:name="android.permission.ACCESS_LGDRM"/>
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
+    <application
+        android:label="@string/AMS_MAIN_SCREEN_TITLE"
+        android:icon="@drawable/launcher_java"
+        android:name="JbedApp"
+        allowSkinChange="true">
+        <uses-library android:name="android.test.runner"/>
+        <provider
+            android:name="JbedProvider"
+            android:authorities="jbed"/>
+        <activity
+            android:label="@string/AMS_MAIN_SCREEN_TITLE"
+            android:name="com.esmertec.android.jbed.app.JbedAppActivity"
+            android:launchMode="singleTop"
+            android:configChanges="orientation|keyboardHidden">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+            </intent-filter>
+        </activity>
+        <activity
+            android:label="@string/AMS_TASKS_COMMAND"
+            android:name="com.esmertec.android.jbed.ams.RunningMidletManagerActivity"/>
+        <activity
+            android:label="@string/AMS_MAIN_SCREEN_TITLE"
+            android:name="com.esmertec.android.jbed.ams.AmsActivity"
+            android:screenOrientation="portrait"
+            android:configChanges="orientation|keyboardHidden"
+            android:alwaysRetainTaskState="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.lge.lgdrm.GAME_CATEGORY"/>
+                <data android:mimeType="text/vnd.sun.j2me.app-descriptor"/>
+                <data android:mimeType="application/java-archive"/>
+                <data android:mimeType="application/vnd.oma.drm.message"/>
+                <data android:mimeType="application/vnd.oma.drm.content"/>
+                <data android:mimeType="application/vnd.oma.drm.dcf"/>
+            </intent-filter>
+        </activity>
+        <service
+            android:name="com.esmertec.android.jbed.service.JbedService"
+            android:exported="true"
+            android:process=":remote"
+            android:configChanges="locale"/>
+        <receiver android:name="com.esmertec.android.jbed.BootCompleteReceiver">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED"/>
+            </intent-filter>
+        </receiver>
+        <receiver android:name="com.esmertec.android.jbed.PushSmsReceiver">
+            <intent-filter>
+                <action android:name="android.intent.action.DATA_SMS_RECEIVED"/>
+                <data android:scheme="sms"/>
+            </intent-filter>
+        </receiver>
+        <receiver android:name="com.esmertec.android.jbed.PushJbedAlarmManager">
+            <intent-filter>
+                <action android:name="com.esmertec.android.jbed.action.PUSHALARM"/>
+            </intent-filter>
+        </receiver>
+        <receiver android:name="com.esmertec.android.jbed.SdcardChangedReceiver">
+            <intent-filter>
+                <action android:name="android.intent.action.MEDIA_MOUNTED"/>
+                <action android:name="android.intent.action.MEDIA_UNMOUNTED"/>
+                <action android:name="android.intent.action.MEDIA_REMOVED"/>
+                <action android:name="android.intent.action.MEDIA_BAD_REMOVAL"/>
+                <data android:scheme="file"/>
+            </intent-filter>
+        </receiver>
+    </application>
+</manifest>
