@@ -1,6 +1,7 @@
 package com.esmertec.android.jbed;
 
 import android.content.Context;
+import android.content.ContentValues;
 import android.database.Cursor;
 import android.text.TextUtils;
 import android.util.Log;
@@ -294,64 +295,29 @@ public class JbedSettings {
     }
 
     public void updateTckInfo(String tckUrl, boolean isRunTck) {
-        Cursor cursor = this.mContext.getContentResolver().query(JbedProvider.Settings.CONTENT_URI, null, null, null, null);
-        if (cursor == null) {
-            new IllegalStateException(JbedProvider.Settings.CONTENT_URI + " is invalid");
-        }
-        try {
-            if (cursor.moveToFirst()) {
-                if (!TextUtils.isEmpty(tckUrl)) {
-                    cursor.updateString(cursor.getColumnIndexOrThrow("tck_url"), tckUrl);
-                }
-                cursor.updateInt(cursor.getColumnIndexOrThrow("is_runtck"), isRunTck ? 1 : 0);
-                cursor.commitUpdates();
-            }
-            cursor.close();
-            loadSettinData();
-        } catch (Throwable th) {
-            cursor.close();
-            throw th;
-        }
+        ContentValues values = new ContentValues();
+        if (!TextUtils.isEmpty(tckUrl)) values.put(JbedProvider.Settings.TCK_URL_COLUMN, tckUrl);
+        values.put(JbedProvider.Settings.IS_RUNTCK_COLUMN, isRunTck ? 1 : 0);
+        this.mContext.getContentResolver().update(JbedProvider.Settings.CONTENT_URI, values, null, null);
+        loadSettinData();
     }
 
     public void updateSyncCertsInfo(long certsFileSize, long certsFileDate) {
-        Cursor cursor = this.mContext.getContentResolver().query(JbedProvider.Settings.CONTENT_URI, null, null, null, null);
-        if (cursor == null) {
-            new IllegalStateException(JbedProvider.Settings.CONTENT_URI + " is invalid");
-        }
-        try {
-            if (cursor.moveToFirst()) {
-                cursor.updateLong(cursor.getColumnIndexOrThrow(JbedProvider.Settings.SYNC_CERTS_SIZE_COLUMN), certsFileSize);
-                cursor.updateLong(cursor.getColumnIndexOrThrow(JbedProvider.Settings.SYNC_CERTS_DATE_COLUMN), certsFileDate);
-                cursor.commitUpdates();
-            }
-            cursor.close();
-            loadSettinData();
-        } catch (Throwable th) {
-            cursor.close();
-            throw th;
-        }
+        ContentValues values = new ContentValues();
+        values.put(JbedProvider.Settings.SYNC_CERTS_SIZE_COLUMN, certsFileSize);
+        values.put(JbedProvider.Settings.SYNC_CERTS_DATE_COLUMN, certsFileDate);
+        this.mContext.getContentResolver().update(JbedProvider.Settings.CONTENT_URI, values, null, null);
+        loadSettinData();
     }
 
     public void updateDirsInfo(String rootDir, String baseDir, String localInstallDir, String certsRootDir) {
-        Cursor cursor = this.mContext.getContentResolver().query(JbedProvider.Settings.CONTENT_URI, null, null, null, null);
-        if (cursor == null) {
-            new IllegalStateException(JbedProvider.Settings.CONTENT_URI + " is invalid");
-        }
-        try {
-            if (cursor.moveToFirst()) {
-                cursor.updateString(cursor.getColumnIndexOrThrow(JbedProvider.Settings.ROOT_DIR_COLUMN), rootDir);
-                cursor.updateString(cursor.getColumnIndexOrThrow(JbedProvider.Settings.BASE_DIR_COLUMN), baseDir);
-                cursor.updateString(cursor.getColumnIndexOrThrow(JbedProvider.Settings.LOCALINSTALL_DIR_COLUMN), localInstallDir);
-                cursor.updateString(cursor.getColumnIndexOrThrow(JbedProvider.Settings.CERTS_ROOT_DIR_COLUMN), certsRootDir);
-                cursor.commitUpdates();
-            }
-            cursor.close();
-            loadSettinData();
-        } catch (Throwable th) {
-            cursor.close();
-            throw th;
-        }
+        ContentValues values = new ContentValues();
+        values.put(JbedProvider.Settings.ROOT_DIR_COLUMN, rootDir);
+        values.put(JbedProvider.Settings.BASE_DIR_COLUMN, baseDir);
+        values.put(JbedProvider.Settings.LOCALINSTALL_DIR_COLUMN, localInstallDir);
+        values.put(JbedProvider.Settings.CERTS_ROOT_DIR_COLUMN, certsRootDir);
+        this.mContext.getContentResolver().update(JbedProvider.Settings.CONTENT_URI, values, null, null);
+        loadSettinData();
     }
 
     public String toString() {

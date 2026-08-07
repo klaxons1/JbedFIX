@@ -61,15 +61,9 @@ public class JbedFileManager implements JbedService.LifecycleListener {
                 if (JbedFileManager.this.mHandler != null) {
                     Message msg = JbedFileManager.this.mHandler.obtainMessage(3);
                     msg.obj = new Runnable() { // from class: com.esmertec.android.jbed.jsr.JbedFileManager.1.1
-                        static final /* synthetic */ boolean $assertionsDisabled;
-
-                        static {
-                            $assertionsDisabled = !JbedFileManager.class.desiredAssertionStatus();
-                        }
-
                         @Override // java.lang.Runnable
                         public void run() {
-                            if (!$assertionsDisabled && intent.getData() == null) {
+                            if (intent.getData() == null) {
                                 throw new AssertionError();
                             }
                             Uri uri = intent.getData();

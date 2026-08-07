@@ -103,12 +103,6 @@ public class JbedEngine implements JbedConstants {
     public JbedEngine(final Service s) {
         this.mContext = s;
         this.mHandler = new Handler() { // from class: com.esmertec.android.jbed.service.JbedEngine.1
-            static final /* synthetic */ boolean $assertionsDisabled;
-
-            static {
-                $assertionsDisabled = !JbedEngine.class.desiredAssertionStatus();
-            }
-
             @Override // android.os.Handler
             public void handleMessage(Message msg) {
                 switch (msg.what) {
@@ -133,7 +127,7 @@ public class JbedEngine implements JbedConstants {
                         }
                         return;
                     case 3:
-                        if (!$assertionsDisabled && msg.obj == null) {
+                        if (msg.obj == null) {
                             throw new AssertionError();
                         }
                         ((Runnable) msg.obj).run();
@@ -160,7 +154,7 @@ public class JbedEngine implements JbedConstants {
                         JbedEngine.this.requestVmState(2, msg.arg1);
                         return;
                     case 9:
-                        new ToastVmBlocker().run();
+                        new ToastVmBlocker(JbedEngine.this).run();
                         return;
                 }
             }

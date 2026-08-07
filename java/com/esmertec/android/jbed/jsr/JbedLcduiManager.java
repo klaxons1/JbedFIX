@@ -63,7 +63,7 @@ public class JbedLcduiManager implements JbedService.LifecycleListener, JbedCons
                 case 1:
                     int lcduiAction = keyAction == 1 ? 4 : 3;
                     Integer lcduiKeyObj = (Integer) JbedLcduiManager.JbedLcduiKeyMap.get(Integer.valueOf(keyCode));
-                    KeyCharacterMap kmap = KeyCharacterMap.load(event.getKeyboardDevice());
+                    KeyCharacterMap kmap = KeyCharacterMap.load(event.getDeviceId());
                     int lcduiKey = lcduiKeyObj == null ? kmap.get(keyCode, event.getMetaState()) : lcduiKeyObj.intValue();
                     sendRawEvent((lcduiKey << 4) | lcduiAction);
                     return true;

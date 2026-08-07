@@ -1159,7 +1159,7 @@ public class BasicEventHandler {
             dialog.show();
         }
 
-        class CertificatesItemAdapter extends ArrayAdapter<String> implements AdapterView.OnItemClickListener {
+        public class CertificatesItemAdapter extends ArrayAdapter<String> implements AdapterView.OnItemClickListener {
             public static final String DELIMITER = "\n";
 
             private CertificatesItemAdapter(List<String> subjects) {

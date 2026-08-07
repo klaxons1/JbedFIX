@@ -1,0 +1,2 @@
+package com.google.android.mms.pdu;
+public class RetrieveConf { private PduBody body = new PduBody(); public PduBody getBody(){return body;} public EncodedStringValue[] getCc(){return null;} public long getDate(){return 0;} public EncodedStringValue getFrom(){return null;} public int getPriority(){return 0;} public EncodedStringValue getSubject(){return null;} public EncodedStringValue[] getTo(){return null;} }

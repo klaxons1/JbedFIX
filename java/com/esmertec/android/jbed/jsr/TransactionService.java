@@ -2,7 +2,7 @@ package com.esmertec.android.jbed.jsr;
 
 /* JADX INFO: compiled from: JbedMmsManager.java */
 /* JADX INFO: loaded from: classes.dex */
-interface TransactionService {
+public interface TransactionService {
     public static final String APP_ID = "applicId";
     public static final String APP_PACKAGE_NAME = "com.android.mms";
     public static final String CLASS_NAME = "com.android.mms.transaction.TransactionService";

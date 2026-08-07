@@ -235,7 +235,12 @@ public class JbedProvider extends ContentProvider {
 
     @Override // android.content.ContentProvider
     public int update(Uri uri, ContentValues values, String selection, String[] selectionArgs) {
-        throw new UnsupportedOperationException();
+        if (sUrlMatcher.match(uri) != 1) {
+            throw new IllegalArgumentException(uri.toString());
+        }
+        int count = this.mDb.update(JbedSettings.SETTINGS_NAME, values, selection, selectionArgs);
+        if (count > 0) getContext().getContentResolver().notifyChange(uri, null);
+        return count;
     }
 
     @Override // android.content.ContentProvider

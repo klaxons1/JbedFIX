@@ -311,7 +311,7 @@ public class JbedSelectorData implements Parcelable {
             }
         } catch (IOException e5) {
         } catch (Throwable th2) {
-            th = th2;
+            // Preserve the original best-effort failure behavior.
         }
         return res;
     }
@@ -453,7 +453,7 @@ public class JbedSelectorData implements Parcelable {
             }
         } catch (IOException e5) {
         } catch (Throwable th2) {
-            th = th2;
+            // Preserve the original best-effort failure behavior.
         }
         return res;
     }
@@ -725,7 +725,7 @@ public class JbedSelectorData implements Parcelable {
                 e = e13;
             }
         } catch (Throwable th2) {
-            th = th2;
+            // Preserve the original best-effort failure behavior.
         }
     }
 
@@ -797,7 +797,7 @@ public class JbedSelectorData implements Parcelable {
                 e = e11;
             }
         } catch (Throwable th2) {
-            th = th2;
+            // Preserve the original best-effort failure behavior.
         }
     }
 
@@ -955,7 +955,7 @@ public class JbedSelectorData implements Parcelable {
                 e = e9;
             }
         } catch (Throwable th2) {
-            th = th2;
+            // Preserve the original best-effort failure behavior.
         }
     }
 }

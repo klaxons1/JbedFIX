@@ -366,7 +366,7 @@ public class JbedMediaManager implements JbedService.LifecycleListener {
             } catch (Exception e5) {
             }
         } catch (Throwable th2) {
-            th = th2;
+            // Preserve the original best-effort failure behavior.
         }
     }
 
@@ -412,7 +412,7 @@ public class JbedMediaManager implements JbedService.LifecycleListener {
                     throw th;
                 }
             } catch (Throwable th2) {
-                th = th2;
+                // Preserve the original best-effort failure behavior.
             }
         } catch (Exception e5) {
         }
