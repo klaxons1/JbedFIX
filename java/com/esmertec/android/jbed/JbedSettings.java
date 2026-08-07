@@ -141,6 +141,13 @@ public class JbedSettings {
 
     void syncCerts(String certDir) {
         String trustStoreName = System.getProperty("javax.net.ssl.trustStore");
+        // Android does not expose the JVM trust-store path used by the original
+        // Jbed build. File(String) rejects null, so treat this as an optional
+        // best-effort synchronization step rather than crashing the app.
+        if (TextUtils.isEmpty(trustStoreName)) {
+            LogTag.serviceDebug(TAG, "No javax.net.ssl.trustStore path; skipping legacy certificate sync");
+            return;
+        }
         File storeFile = new File(trustStoreName);
         if (!storeFile.exists()) {
             LogTag.serviceDebug(TAG, "WARNING: " + trustStoreName + " is not exit! do nothing! ");
