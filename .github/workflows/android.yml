@@ -19,21 +19,15 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      # Установка Android SDK через sdkmanager
+      # Установка Android SDK
       - name: Set up Android SDK
-        run: |
-          echo "Installing Android SDK..."
-          sudo apt-get update
-          sudo apt-get install -y android-sdk
-      
-          # Accept licenses
-          yes | sdkmanager --licenses > /dev/null 2>&1 || true
-      
-          # Install required components
-          sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"
-      
-          echo "ANDROID_HOME=$ANDROID_HOME" >> $GITHUB_ENV
-          echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT" >> $GITHUB_ENV
+        uses: android-sdk/setup-android-sdk@v1
+        with:
+          packages: |
+            platform-tools
+            platforms;android-34
+            build-tools;34.0.0
+            cmdline-tools;latest
 
       # Кэш Gradle
       - name: Cache Gradle
@@ -85,8 +79,7 @@ jobs:
       - name: Build with Gradle
         run: gradle assembleRelease --no-daemon
         env:
-          ANDROID_HOME: ${{ env.ANDROID_HOME }}
-          ANDROID_SDK_ROOT: ${{ env.ANDROID_SDK_ROOT }}
+          ANDROID_HOME: ${{ steps.setup-android-sdk.outputs.android-sdk-path }}
 
       # Поиск APK
       - name: Find APK file
