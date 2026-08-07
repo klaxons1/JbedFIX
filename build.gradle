@@ -2,6 +2,43 @@ plugins {
     id 'com.android.application' version '8.5.2'
 }
 
+def drmShimOutput = file('lib/armeabi/libdrm1.so')
+def ndkVersionForDrmShim = '26.3.11579264'
+
+tasks.register('buildDrmCompatibilityShim') {
+    group = 'build'
+    description = 'Builds the ARM32 libdrm1 compatibility shim needed by the legacy Jbed VM.'
+    outputs.file(drmShimOutput)
+
+    doLast {
+        if (drmShimOutput.exists()) {
+            logger.lifecycle("Using existing DRM compatibility shim: ${drmShimOutput}")
+            return
+        }
+
+        def sdkRoot = System.getenv('ANDROID_HOME') ?: System.getenv('ANDROID_SDK_ROOT')
+        if (sdkRoot == null) {
+            throw new GradleException('ANDROID_HOME or ANDROID_SDK_ROOT is required to build libdrm1.so')
+        }
+        def sdkManager = file("${sdkRoot}/cmdline-tools/latest/bin/sdkmanager")
+        if (!sdkManager.canExecute()) {
+            throw new GradleException("Android sdkmanager not found at ${sdkManager}; install Android command-line tools first")
+        }
+
+        exec {
+            commandLine 'bash', '-c', "yes | '${sdkManager.absolutePath}' --install 'ndk;${ndkVersionForDrmShim}'"
+        }
+        exec {
+            environment 'ANDROID_NDK_HOME', "${sdkRoot}/ndk/${ndkVersionForDrmShim}"
+            commandLine 'bash', 'native_compat/build-drm1-shim.sh'
+        }
+    }
+}
+
+tasks.named('preBuild').configure {
+    dependsOn(tasks.named('buildDrmCompatibilityShim'))
+}
+
 android {
     namespace 'com.esmertec.android.jbed'
     compileSdk 34
