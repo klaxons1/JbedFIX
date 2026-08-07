@@ -111,49 +111,18 @@ public class JbedSettings {
         return this.mIsAMSListLaunch;
     }
 
-    /* JADX WARN: Bottom block not found for handler: all -> 0x002d */
-    /*
-        Code decompiled incorrectly, please refer to instructions dump.
-        To view partially-correct code enable 'Show inconsistent code' option in preferences
-    */
-    private void extractAssetFile(java.lang.String r8, java.lang.String r9) {
-        /*
-            r7 = this;
-            r2 = 0
-            android.content.Context r5 = r7.mContext     // Catch: java.io.IOException -> L25 java.lang.Throwable -> L2d
-            android.content.res.AssetManager r5 = r5.getAssets()     // Catch: java.io.IOException -> L25 java.lang.Throwable -> L2d
-            java.io.InputStream r2 = r5.open(r8)     // Catch: java.io.IOException -> L25 java.lang.Throwable -> L2d
-            java.io.FileOutputStream r3 = new java.io.FileOutputStream     // Catch: java.io.IOException -> L25 java.lang.Throwable -> L2d
-            r3.<init>(r9)     // Catch: java.io.IOException -> L25 java.lang.Throwable -> L2d
-            int r4 = r2.available()     // Catch: java.io.IOException -> L25 java.lang.Throwable -> L2d
-            byte[] r0 = new byte[r4]     // Catch: java.io.IOException -> L25 java.lang.Throwable -> L2d
-            r2.read(r0)     // Catch: java.io.IOException -> L25 java.lang.Throwable -> L2d
-            r3.write(r0)     // Catch: java.io.IOException -> L25 java.lang.Throwable -> L2d
-            r3.close()     // Catch: java.io.IOException -> L25 java.lang.Throwable -> L2d
-            if (r2 == 0) goto L24
-            r2.close()     // Catch: java.io.IOException -> L34
-        L24:
-            return
-        L25:
-            r5 = move-exception
-            r1 = r5
-            java.lang.RuntimeException r5 = new java.lang.RuntimeException     // Catch: java.lang.Throwable -> L2d
-            r5.<init>(r1)     // Catch: java.lang.Throwable -> L2d
-            throw r5     // Catch: java.lang.Throwable -> L2d
-        L2d:
-            r5 = move-exception
-            if (r2 == 0) goto L33
-            r2.close()     // Catch: java.io.IOException -> L36
-        L33:
-            throw r5
-        L34:
-            r5 = move-exception
-            goto L24
-        L36:
-            r6 = move-exception
-            goto L33
-        */
-        throw new UnsupportedOperationException("Method not decompiled: com.esmertec.android.jbed.JbedSettings.extractAssetFile(java.lang.String, java.lang.String):void");
+    /** Copies one bundled asset exactly once during the initial Jbed setup. */
+    private void extractAssetFile(String srcFile, String destFile) {
+        try (java.io.InputStream in = this.mContext.getAssets().open(srcFile);
+             FileOutputStream out = new FileOutputStream(destFile)) {
+            byte[] buffer = new byte[8192];
+            int count;
+            while ((count = in.read(buffer)) != -1) {
+                out.write(buffer, 0, count);
+            }
+        } catch (IOException e) {
+            throw new RuntimeException("Unable to extract asset " + srcFile, e);
+        }
     }
 
     private void extractAssetFiles(String srcFolder, String destFolder) {
