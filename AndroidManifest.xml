@@ -30,7 +30,7 @@
     <application
         android:label="@string/AMS_MAIN_SCREEN_TITLE"
         android:icon="@drawable/launcher_java"
-        android:name="JbedApp"
+        android:name=".JbedApp"
         allowSkinChange="true">
         <uses-library android:name="android.test.runner"/>
         <provider

@@ -1,0 +1,50 @@
+plugins {
+    id 'com.android.application' version '8.1.1'
+}
+
+android {
+    namespace 'com.esmertec.android.jbed'
+    compileSdk 33
+
+    defaultConfig {
+        applicationId "com.esmertec.android.jbed"
+        minSdk 21
+        targetSdk 33
+        versionCode 1
+        versionName "1.0-FIX"
+
+        ndk {
+            abiFilters "armeabi-v7a"
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    sourceSets {
+        main {
+            manifest.srcFile 'AndroidManifest.xml'
+            java.srcDirs = ['java']
+            res.srcDirs = ['res']
+            assets.srcDirs = ['assets']
+            jniLibs.srcDirs = ['jniLibs']
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    // Compile-only framework stubs to avoid compilation errors with hidden/internal APIs
+    compileOnly project(':stubs')
+
+    // Minimal standard dependencies
+    implementation 'androidx.annotation:annotation:1.6.0'
+}
