@@ -1,0 +1,78 @@
+name: Build APK
+
+on:
+  push:
+    branches: ["main", "arena/019fcc77-mbwandroid"]
+  pull_request:
+    branches: ["main", "arena/019fcc77-mbwandroid"]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Sets up Java and enables built-in Gradle caching automatically
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: gradle
+
+      # Caches only the debug keystore to avoid recreating it every run
+      - name: Cache debug keystore
+        uses: actions/cache@v4
+        with:
+          path: debug.keystore
+          key: debug-keystore-v1
+
+      # Generates a new debug keystore if it wasn't restored from cache
+      - name: Generate debug keystore if not exists
+        run: |
+          if [ ! -f debug.keystore ]; then
+            keytool -genkey -v \
+              -keystore debug.keystore \
+              -alias androiddebugkey \
+              -keyalg RSA \
+              -keysize 2048 \
+              -validity 10000 \
+              -dname "CN=Android Debug,O=Android,C=US" \
+              -storepass android \
+              -keypass android
+          fi
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      # Builds the release APK using parallel execution and build cache features
+      - name: Build with Gradle
+        run: ./gradlew assembleRelease --parallel --build-cache --warning-mode all
+
+      # Dynamically locates the generated APK file across the whole workspace fast
+      - name: Find APK file
+        run: |
+          APK_FILE=$(find . -not -path '*/.*' -name "*.apk" -type f | head -n 1)
+          if [ -z "$APK_FILE" ]; then
+            echo "ERROR: No APK file found in the project!"
+            exit 1
+          fi
+          echo "Found APK: $APK_FILE"
+          echo "APK_PATH=$APK_FILE" >> $GITHUB_ENV
+
+      # Signs the APK using the pre-installed build-tools on the runner
+      - name: Sign APK with debug keystore
+        run: |
+          $ANDROID_HOME/build-tools/34.0.0/apksigner sign \
+            --ks debug.keystore \
+            --ks-pass pass:android \
+            --key-pass pass:android \
+            "${{ env.APK_PATH }}"
+
+      # Uploads the signed APK as a build artifact
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release
+          path: ${{ env.APK_PATH }}
+          if-no-files-found: warn
