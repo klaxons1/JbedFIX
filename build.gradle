@@ -1,0 +1,32 @@
+plugins {
+    id 'com.android.application' version '8.5.2'
+}
+
+android {
+    namespace 'com.esmertec.android.jbed'
+    compileSdk 34
+    buildToolsVersion '34.0.0'
+
+    defaultConfig {
+        minSdk 21
+        targetSdk 28
+        versionCode 1
+        versionName '1.0'
+    }
+
+    // The project keeps the original (decompiled) APK layout:
+    // sources in java/, resources in res/, assets in assets/, prebuilt native libs in lib/
+    sourceSets {
+        main {
+            manifest.srcFile 'AndroidManifest.xml'
+            java.srcDirs = ['java']
+            res.srcDirs = ['res']
+            assets.srcDirs = ['assets']
+            jniLibs.srcDirs = ['lib']
+        }
+    }
+
+    lint {
+        abortOnError false
+    }
+}

@@ -1,1083 +1,1083 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <public type="drawable" name="common_icon_info" id="0x7f020000" />
-    <public type="drawable" name="default_midlet" id="0x7f020001" />
-    <public type="drawable" name="download_icon" id="0x7f020002" />
-    <public type="drawable" name="folder" id="0x7f020003" />
-    <public type="drawable" name="general_info_folder" id="0x7f020004" />
-    <public type="drawable" name="ic_lock_lock" id="0x7f020005" />
-    <public type="drawable" name="ic_lock_open" id="0x7f020006" />
-    <public type="drawable" name="ic_menu_move" id="0x7f020007" />
-    <public type="drawable" name="ic_menu_rename" id="0x7f020008" />
-    <public type="drawable" name="ic_pending_lock" id="0x7f020009" />
-    <public type="drawable" name="java_icon_drm" id="0x7f02000a" />
-    <public type="drawable" name="java_icon_drm_lock" id="0x7f02000b" />
-    <public type="drawable" name="java_icon_sdcard" id="0x7f02000c" />
-    <public type="drawable" name="launcher_java" id="0x7f02000d" />
-    <public type="drawable" name="menu_delete" id="0x7f02000e" />
-    <public type="drawable" name="menu_info" id="0x7f02000f" />
-    <public type="drawable" name="menu_internet" id="0x7f020010" />
-    <public type="drawable" name="menu_launch" id="0x7f020011" />
-    <public type="drawable" name="menu_local" id="0x7f020012" />
-    <public type="drawable" name="menu_remove_all" id="0x7f020013" />
-    <public type="drawable" name="menu_running" id="0x7f020014" />
-    <public type="drawable" name="menu_up" id="0x7f020015" />
-    <public type="drawable" name="task_close" id="0x7f020016" />
-    <public type="drawable" name="task_home" id="0x7f020017" />
-    <public type="drawable" name="task_show" id="0x7f020018" />
-    <public type="layout" name="ams_list" id="0x7f030000" />
-    <public type="layout" name="authorization_input_dialog" id="0x7f030001" />
-    <public type="layout" name="input_dialog" id="0x7f030002" />
-    <public type="layout" name="jbed" id="0x7f030003" />
-    <public type="layout" name="jbed_progress_dialog" id="0x7f030004" />
-    <public type="layout" name="list_content" id="0x7f030005" />
-    <public type="layout" name="list_selector_item" id="0x7f030006" />
-    <public type="layout" name="name_input_dialog" id="0x7f030007" />
-    <public type="layout" name="permission_item" id="0x7f030008" />
-    <public type="layout" name="progress_dialog" id="0x7f030009" />
-    <public type="layout" name="request_permission_dialog" id="0x7f03000a" />
-    <public type="layout" name="simple_apn_item" id="0x7f03000b" />
-    <public type="layout" name="simple_gallery_item" id="0x7f03000c" />
-    <public type="layout" name="simple_spinner_dropdown_item" id="0x7f03000d" />
-    <public type="layout" name="simple_spinner_item" id="0x7f03000e" />
-    <public type="layout" name="stop_confirm_dialog" id="0x7f03000f" />
-    <public type="layout" name="task_manager_view" id="0x7f030010" />
-    <public type="layout" name="text_box" id="0x7f030011" />
-    <public type="layout" name="text_box_command_list" id="0x7f030012" />
-    <public type="layout" name="textbox_command_list_item" id="0x7f030013" />
-    <public type="layout" name="textview" id="0x7f030014" />
-    <public type="color" name="white" id="0x7f040000" />
-    <public type="color" name="black" id="0x7f040001" />
-    <public type="color" name="gray" id="0x7f040002" />
-    <public type="color" name="ams_selector_color" id="0x7f040003" />
-    <public type="string" name="MIDP_CMGR_MENU_COMMAND" id="0x7f050000" />
-    <public type="string" name="MIDP_CMGR_SELECT_COMMAND" id="0x7f050001" />
-    <public type="string" name="MIDP_CMGR_CANCEL_COMMAND" id="0x7f050002" />
-    <public type="string" name="MIDP_CMGR_MENU_TITLE" id="0x7f050003" />
-    <public type="string" name="MIDP_CMGR_MENU_LONG_COMMAND" id="0x7f050004" />
-    <public type="string" name="MIDP_CMGR_SELECT_LONG_COMMAND" id="0x7f050005" />
-    <public type="string" name="MIDP_CMGR_CANCEL_LONG_COMMAND" id="0x7f050006" />
-    <public type="string" name="MIDP_INSTALL_STATUS_DOWNLOADING" id="0x7f050007" />
-    <public type="string" name="MIDP_INSTALL_STATUS_INSTALLING" id="0x7f050008" />
-    <public type="string" name="MIDP_INSTALL_STATUS_PREPROCESSING_JAR" id="0x7f050009" />
-    <public type="string" name="MIDP_PROGRESS_DECODING_IMAGE" id="0x7f05000a" />
-    <public type="string" name="MIDP_DEEFAULT_INPUT_LABEL" id="0x7f05000b" />
-    <public type="string" name="MIDP_CMGR_BACK_COMMAND" id="0x7f05000c" />
-    <public type="string" name="MIDP2_FWD_OK_COMMAND" id="0x7f05000d" />
-    <public type="string" name="MIDP2_FWD_CANCEL_COMMAND" id="0x7f05000e" />
-    <public type="string" name="MIDP2_FWD_DONE_COMMAND" id="0x7f05000f" />
-    <public type="string" name="MIDP2_FORWARD_POPUP_COMMAND" id="0x7f050010" />
-    <public type="string" name="MIDP2_FORWARD_DATEFIELD_COMMAND" id="0x7f050011" />
-    <public type="string" name="MIDP2_SELECT_LISTITEM_COMMAND" id="0x7f050012" />
-    <public type="string" name="MIDP2_DISMISS_COMMAND" id="0x7f050013" />
-    <public type="string" name="MIDP2_7" id="0x7f050014" />
-    <public type="string" name="MIDP2_8" id="0x7f050015" />
-    <public type="string" name="MIDP2_9" id="0x7f050016" />
-    <public type="string" name="MIDP2_CLEAR_TEXTFIELD_COMMAND" id="0x7f050017" />
-    <public type="string" name="MIDP2_BACKSPACE_TEXTFIELD_COMMAND" id="0x7f050018" />
-    <public type="string" name="MIDP2_TOGGLECASE_TEXTFIELD_COMMAND" id="0x7f050019" />
-    <public type="string" name="MIDP2_SYMBOLS_TEXTFIELD_COMMAND" id="0x7f05001a" />
-    <public type="string" name="MIDP2_ADD_CHARACTER_TEXTFIELD_COMMAND" id="0x7f05001b" />
-    <public type="string" name="MIDP2_15" id="0x7f05001c" />
-    <public type="string" name="MIDP2_16" id="0x7f05001d" />
-    <public type="string" name="MIDP2_17" id="0x7f05001e" />
-    <public type="string" name="MIDP2_18" id="0x7f05001f" />
-    <public type="string" name="MIDP2_19" id="0x7f050020" />
-    <public type="string" name="MIDP2_HOUR_LABEL" id="0x7f050021" />
-    <public type="string" name="MIDP2_MINUTE_LABEL" id="0x7f050022" />
-    <public type="string" name="MIDP2_DAY_VERY_SHORT_SUN" id="0x7f050023" />
-    <public type="string" name="MIDP2_DAY_VERY_SHORT_MON" id="0x7f050024" />
-    <public type="string" name="MIDP2_DAY_VERY_SHORT_TUE" id="0x7f050025" />
-    <public type="string" name="MIDP2_DAY_VERY_SHORT_WED" id="0x7f050026" />
-    <public type="string" name="MIDP2_DAY_VERY_SHORT_THU" id="0x7f050027" />
-    <public type="string" name="MIDP2_DAY_VERY_SHORT_FRI" id="0x7f050028" />
-    <public type="string" name="MIDP2_DAY_VERY_SHORT_SAT" id="0x7f050029" />
-    <public type="string" name="MIDP2_29" id="0x7f05002a" />
-    <public type="string" name="MIDP2_MONTH_SHORT_JANUARY" id="0x7f05002b" />
-    <public type="string" name="MIDP2_MONTH_SHORT_FEBRUARY" id="0x7f05002c" />
-    <public type="string" name="MIDP2_MONTH_SHORT_MARCH" id="0x7f05002d" />
-    <public type="string" name="MIDP2_MONTH_SHORT_APRIL" id="0x7f05002e" />
-    <public type="string" name="MIDP2_MONTH_SHORT_MAY" id="0x7f05002f" />
-    <public type="string" name="MIDP2_MONTH_SHORT_JUNE" id="0x7f050030" />
-    <public type="string" name="MIDP2_MONTH_SHORT_JULY" id="0x7f050031" />
-    <public type="string" name="MIDP2_MONTH_SHORT_AUGUST" id="0x7f050032" />
-    <public type="string" name="MIDP2_MONTH_SHORT_SEPTEMBER" id="0x7f050033" />
-    <public type="string" name="MIDP2_MONTH_SHORT_OCTOBER" id="0x7f050034" />
-    <public type="string" name="MIDP2_MONTH_SHORT_NOVEMBER" id="0x7f050035" />
-    <public type="string" name="MIDP2_MONTH_SHORT_DECEMBER" id="0x7f050036" />
-    <public type="string" name="MIDP2_42" id="0x7f050037" />
-    <public type="string" name="MIDP2_DOMAIN_MIDP1" id="0x7f050038" />
-    <public type="string" name="MIDP2_DOMAIN_UNTRUSTED" id="0x7f050039" />
-    <public type="string" name="MIDP2_DOMAIN_TRUSTED_3RD_PARTY" id="0x7f05003a" />
-    <public type="string" name="MIDP2_DOMAIN_OPERATOR" id="0x7f05003b" />
-    <public type="string" name="MIDP2_DOMAIN_MANUFACTURER" id="0x7f05003c" />
-    <public type="string" name="AMS_MENU_COMMAND" id="0x7f05003d" />
-    <public type="string" name="AMS_SAVE_COMMAND" id="0x7f05003e" />
-    <public type="string" name="AMS_ABOUT_COMMAND" id="0x7f05003f" />
-    <public type="string" name="AMS_EXIT_COMMAND" id="0x7f050040" />
-    <public type="string" name="AMS_CANCEL_COMMAND" id="0x7f050041" />
-    <public type="string" name="AMS_BACK_COMMAND" id="0x7f050042" />
-    <public type="string" name="AMS_STOP_COMMAND" id="0x7f050043" />
-    <public type="string" name="AMS_NEXT_COMMAND" id="0x7f050044" />
-    <public type="string" name="AMS_GO_COMMAND" id="0x7f050045" />
-    <public type="string" name="AMS_OK_COMMAND" id="0x7f050046" />
-    <public type="string" name="AMS_DONE_COMMAND" id="0x7f050047" />
-    <public type="string" name="AMS_EDIT_COMMAND" id="0x7f050048" />
-    <public type="string" name="AMS_ADD_COMMAND" id="0x7f050049" />
-    <public type="string" name="AMS_YES_COMMAND" id="0x7f05004a" />
-    <public type="string" name="AMS_NO_COMMAND" id="0x7f05004b" />
-    <public type="string" name="AMS_CONTINUE_COMMAND" id="0x7f05004c" />
-    <public type="string" name="AMS_NONE_LABEL" id="0x7f05004d" />
-    <public type="string" name="AMS_LAUNCH_COMMAND" id="0x7f05004e" />
-    <public type="string" name="AMS_INSTALL_FORM_COMMAND" id="0x7f05004f" />
-    <public type="string" name="AMS_INSTALL_COMMAND" id="0x7f050050" />
-    <public type="string" name="AMS_SETTINGS_COMMAND" id="0x7f050051" />
-    <public type="string" name="AMS_INFO_COMMAND" id="0x7f050052" />
-    <public type="string" name="AMS_REMOVE_COMMAND" id="0x7f050053" />
-    <public type="string" name="AMS_UPDATE_COMMAND" id="0x7f050054" />
-    <public type="string" name="AMS_OPTIONS_COMMAND" id="0x7f050055" />
-    <public type="string" name="AMS_RENAME_COMMAND" id="0x7f050056" />
-    <public type="string" name="AMS_KILL_COMMAND" id="0x7f050057" />
-    <public type="string" name="AMS_PAUSE_COMMAND" id="0x7f050058" />
-    <public type="string" name="AMS_COPY_COMMAND" id="0x7f050059" />
-    <public type="string" name="AMS_WAIT_COMMAND" id="0x7f05005a" />
-    <public type="string" name="AMS_NEWFOLD_COMMAND" id="0x7f05005b" />
-    <public type="string" name="AMS_NEWFOLD_COMMAND_SHORT" id="0x7f05005c" />
-    <public type="string" name="AMS_UP_COMMAND" id="0x7f05005d" />
-    <public type="string" name="AMS_SELECT_MOVE_COMMAND" id="0x7f05005e" />
-    <public type="string" name="AMS_MOVE_COMMAND" id="0x7f05005f" />
-    <public type="string" name="AMS_CANT_REMOVE_NONEMPTY_FOLDER" id="0x7f050060" />
-    <public type="string" name="AMS_CANT_MOVE_MIDLET" id="0x7f050061" />
-    <public type="string" name="AMS_CANT_MOVE_SELF_INTO_CHILD" id="0x7f050062" />
-    <public type="string" name="AMS_CANT_REMOVE_FOLDER" id="0x7f050063" />
-    <public type="string" name="AMS_CANT_MOVE_FOLDER" id="0x7f050064" />
-    <public type="string" name="AMS_CANT_RENAME_FOLDER" id="0x7f050065" />
-    <public type="string" name="AMS_NEW_FOLDER_NAME" id="0x7f050066" />
-    <public type="string" name="AMS_42" id="0x7f050067" />
-    <public type="string" name="AMS_43" id="0x7f050068" />
-    <public type="string" name="AMS_44" id="0x7f050069" />
-    <public type="string" name="AMS_LOCAL_FILES_INSTALLED" id="0x7f05006a" />
-    <public type="string" name="AMS_BROWSE_COMMAND" id="0x7f05006b" />
-    <public type="string" name="AMS_47" id="0x7f05006c" />
-    <public type="string" name="AMS_WARNING" id="0x7f05006d" />
-    <public type="string" name="AMS_ERROR" id="0x7f05006e" />
-    <public type="string" name="AMS_INFO" id="0x7f05006f" />
-    <public type="string" name="AMS_SIZE" id="0x7f050070" />
-    <public type="string" name="AMS_VERSION" id="0x7f050071" />
-    <public type="string" name="AMS_VENDOR" id="0x7f050072" />
-    <public type="string" name="AMS_EXPIRY_TIME" id="0x7f050073" />
-    <public type="string" name="AMS_EXPIRY_COUNT" id="0x7f050074" />
-    <public type="string" name="AMS_CONTENTS" id="0x7f050075" />
-    <public type="string" name="AMS_WEBSITE" id="0x7f050076" />
-    <public type="string" name="AMS_CANCELLED" id="0x7f050077" />
-    <public type="string" name="AMS_DOMAIN" id="0x7f050078" />
-    <public type="string" name="AMS_SIGNED" id="0x7f050079" />
-    <public type="string" name="AMS_PUSHED_CONTENT" id="0x7f05007a" />
-    <public type="string" name="AMS_AMS_COPYRIGHT_SHORT" id="0x7f05007b" />
-    <public type="string" name="AMS_AMS_COPYRIGHT" id="0x7f05007c" />
-    <public type="string" name="AMS_MISSING_INFO" id="0x7f05007d" />
-    <public type="string" name="AMS_OPEN_COMMAND" id="0x7f05007e" />
-    <public type="string" name="AMS_66" id="0x7f05007f" />
-    <public type="string" name="AMS_INFO_MISMATCH" id="0x7f050080" />
-    <public type="string" name="AMS_UPDATE_NEWER_VERSION" id="0x7f050081" />
-    <public type="string" name="AMS_UPDATE_OLDER_VERSION" id="0x7f050082" />
-    <public type="string" name="AMS_UPDATE_SAME_VERSION" id="0x7f050083" />
-    <public type="string" name="AMS_FORBIDDEN_UPDATE" id="0x7f050084" />
-    <public type="string" name="AMS_JAD_NOT_FOUND" id="0x7f050085" />
-    <public type="string" name="AMS_JAR_NOT_FOUND" id="0x7f050086" />
-    <public type="string" name="AMS_INVALID_INFO" id="0x7f050087" />
-    <public type="string" name="AMS_INSUFFICIENT_STORAGE" id="0x7f050088" />
-    <public type="string" name="AMS_INVALID_JAR_TYPE" id="0x7f050089" />
-    <public type="string" name="AMS_INVALID_JAD_TYPE" id="0x7f05008a" />
-    <public type="string" name="AMS_CORRUPT_JAR" id="0x7f05008b" />
-    <public type="string" name="AMS_JAD_MOVED" id="0x7f05008c" />
-    <public type="string" name="AMS_UNSUPPORTED_AUTH" id="0x7f05008d" />
-    <public type="string" name="AMS_DEVICE_INCOMPATIBLE" id="0x7f05008e" />
-    <public type="string" name="AMS_INTERNAL_INSTALLER_ERROR" id="0x7f05008f" />
-    <public type="string" name="AMS_PUSH_DUP_FAILURE" id="0x7f050090" />
-    <public type="string" name="AMS_PUSH_PROTO_FAILURE" id="0x7f050091" />
-    <public type="string" name="AMS_PERMISSION_INSTALL_CONFIRM" id="0x7f050092" />
-    <public type="string" name="AMS_PERMISSION_MISSING" id="0x7f050093" />
-    <public type="string" name="AMS_PROVIDER_CERT_ERROR" id="0x7f050094" />
-    <public type="string" name="AMS_EXPIRED_CA_KEY" id="0x7f050095" />
-    <public type="string" name="AMS_UNKNOWN_CA" id="0x7f050096" />
-    <public type="string" name="AMS_SIGNATURE_ERROR" id="0x7f050097" />
-    <public type="string" name="AMS_FORMAT_INSTALL_CONFIRM" id="0x7f050098" />
-    <public type="string" name="AMS_MAIN_SCREEN_TITLE" id="0x7f050099" />
-    <public type="string" name="AMS_ABOUT_TITLE" id="0x7f05009a" />
-    <public type="string" name="AMS_94" id="0x7f05009b" />
-    <public type="string" name="AMS_SUITE_HAS_EXPIRED" id="0x7f05009c" />
-    <public type="string" name="AMS_LAUNCHING_TITLE" id="0x7f05009d" />
-    <public type="string" name="AMS_CANNOT_ACCESS_TITLE" id="0x7f05009e" />
-    <public type="string" name="AMS_LOG_TITLE" id="0x7f05009f" />
-    <public type="string" name="AMS_CONFIRM_REMOVE" id="0x7f0500a0" />
-    <public type="string" name="AMS_THIS_SUITE_CONTAINS" id="0x7f0500a1" />
-    <public type="string" name="AMS_REMOVING_WILL_ERASE_DATA" id="0x7f0500a2" />
-    <public type="string" name="AMS_SEE_JAD_CONTENT" id="0x7f0500a3" />
-    <public type="string" name="AMS_SELECT_TARGET" id="0x7f0500a4" />
-    <public type="string" name="AMS_BACK_TO_WAP" id="0x7f0500a5" />
-    <public type="string" name="AMS_LAUNCH_MIDLET" id="0x7f0500a6" />
-    <public type="string" name="AMS_UPDATE_CANCELLED" id="0x7f0500a7" />
-    <public type="string" name="AMS_FINISHING_UPDATE" id="0x7f0500a8" />
-    <public type="string" name="AMS_UPDATING_SUITE" id="0x7f0500a9" />
-    <public type="string" name="AMS_SUITE_SUCCESSFULLY_UPDATED" id="0x7f0500aa" />
-    <public type="string" name="AMS_INSTALLATION_CANCELLED" id="0x7f0500ab" />
-    <public type="string" name="AMS_FINISHING_INSTALLATION" id="0x7f0500ac" />
-    <public type="string" name="AMS_INSTALLING_SUITE" id="0x7f0500ad" />
-    <public type="string" name="AMS_SUITE_SUCCESSFULLY_INSTALLED" id="0x7f0500ae" />
-    <public type="string" name="AMS_ENTER_NEW_NAME" id="0x7f0500af" />
-    <public type="string" name="AMS_SELECT_WEBSITE" id="0x7f0500b0" />
-    <public type="string" name="AMS_ENTER_NAME" id="0x7f0500b1" />
-    <public type="string" name="AMS_ENTER_URL" id="0x7f0500b2" />
-    <public type="string" name="AMS_GETTING_INSTALL_LIST" id="0x7f0500b3" />
-    <public type="string" name="AMS_ENTER_USERID" id="0x7f0500b4" />
-    <public type="string" name="AMS_PASSWORD" id="0x7f0500b5" />
-    <public type="string" name="AMS_USERID_NOT_ENTERED" id="0x7f0500b6" />
-    <public type="string" name="AMS_PASSWORD_NOT_ENTERED" id="0x7f0500b7" />
-    <public type="string" name="AMS_SELECT_MIDLET_TITLE" id="0x7f0500b8" />
-    <public type="string" name="AMS_SELECT_FOLDER_TITLE" id="0x7f0500b9" />
-    <public type="string" name="AMS_UNSUPPORTED_CONTENT_ENCODING" id="0x7f0500ba" />
-    <public type="string" name="AMS_CONNECTION_DROPPED" id="0x7f0500bb" />
-    <public type="string" name="AMS_SELECT_ONE_TO_INSTALL" id="0x7f0500bc" />
-    <public type="string" name="AMS_NO_MIDLET_SUITES_FOUND" id="0x7f0500bd" />
-    <public type="string" name="AMS_CONNECTION_FAILED" id="0x7f0500be" />
-    <public type="string" name="AMS_TASK_MANAGER_TITLE" id="0x7f0500bf" />
-    <public type="string" name="AMS_131" id="0x7f0500c0" />
-    <public type="string" name="AMS_QUERY_ALWAYS" id="0x7f0500c1" />
-    <public type="string" name="AMS_QUERY_THIS_SESSION" id="0x7f0500c2" />
-    <public type="string" name="AMS_QUERY_NOT_THIS_SESSION" id="0x7f0500c3" />
-    <public type="string" name="AMS_QUERY_THIS_USE" id="0x7f0500c4" />
-    <public type="string" name="AMS_QUERY_NOT_THIS_USE" id="0x7f0500c5" />
-    <public type="string" name="AMS_QUERY_NEVER" id="0x7f0500c6" />
-    <public type="string" name="AMS_INCOMING_CALL_TITLE" id="0x7f0500c7" />
-    <public type="string" name="AMS_INCOMING_CALL_QUERY" id="0x7f0500c8" />
-    <public type="string" name="AMS_SUSPENDING_ALL_MIDLETS" id="0x7f0500c9" />
-    <public type="string" name="AMS_REMOTE_INSTALL_QUERY" id="0x7f0500ca" />
-    <public type="string" name="AMS_PUSH_HANDLER_QUERY" id="0x7f0500cb" />
-    <public type="string" name="AMS_PUSH_AUTHORIZATION_FAILURE" id="0x7f0500cc" />
-    <public type="string" name="AMS_LIFECYCLE_QUERY" id="0x7f0500cd" />
-    <public type="string" name="AMS_CANNOT_CREATE_MIDLET" id="0x7f0500ce" />
-    <public type="string" name="AMS_LIFECYCLE_EXCEPTION" id="0x7f0500cf" />
-    <public type="string" name="AMS_PERMISSION_COMMAND" id="0x7f0500d0" />
-    <public type="string" name="AMS_PERMISSION_SETTINGS" id="0x7f0500d1" />
-    <public type="string" name="AMS_PERMISSION_TYPE_MONEY" id="0x7f0500d2" />
-    <public type="string" name="AMS_PERMISSION_TYPE_CONNECTION" id="0x7f0500d3" />
-    <public type="string" name="AMS_PERMISSION_TYPE_PUSHREG" id="0x7f0500d4" />
-    <public type="string" name="AMS_UNKNOWN_SUITE" id="0x7f0500d5" />
-    <public type="string" name="AMS_PERMISSION_TYPE_MONEY_POPUP" id="0x7f0500d6" />
-    <public type="string" name="AMS_PERMISSION_TYPE_CONNECTION_POPUP" id="0x7f0500d7" />
-    <public type="string" name="AMS_PERMISSION_TYPE_PUSHREG_POPUP" id="0x7f0500d8" />
-    <public type="string" name="AMS_156" id="0x7f0500d9" />
-    <public type="string" name="AMS_157" id="0x7f0500da" />
-    <public type="string" name="AMS_NEVER" id="0x7f0500db" />
-    <public type="string" name="AMS_PROMPT" id="0x7f0500dc" />
-    <public type="string" name="AMS_ALWAYS" id="0x7f0500dd" />
-    <public type="string" name="AMS_ELLIPSIS" id="0x7f0500de" />
-    <public type="string" name="AMS_DATE_FIELD" id="0x7f0500df" />
-    <public type="string" name="AMS_TIME_FIELD" id="0x7f0500e0" />
-    <public type="string" name="AMS_DATE_TIME_FIELD" id="0x7f0500e1" />
-    <public type="string" name="AMS_PM" id="0x7f0500e2" />
-    <public type="string" name="AMS_AM" id="0x7f0500e3" />
-    <public type="string" name="AMS_MIDNIGHT" id="0x7f0500e4" />
-    <public type="string" name="AMS_NOON" id="0x7f0500e5" />
-    <public type="string" name="AMS_DAY_SHORT_SUN" id="0x7f0500e6" />
-    <public type="string" name="AMS_DAY_SHORT_MON" id="0x7f0500e7" />
-    <public type="string" name="AMS_DAY_SHORT_TUE" id="0x7f0500e8" />
-    <public type="string" name="AMS_DAY_SHORT_WED" id="0x7f0500e9" />
-    <public type="string" name="AMS_DAY_SHORT_THU" id="0x7f0500ea" />
-    <public type="string" name="AMS_DAY_SHORT_FRI" id="0x7f0500eb" />
-    <public type="string" name="AMS_DAY_SHORT_SAT" id="0x7f0500ec" />
-    <public type="string" name="AMS_MONTH_SHORT_JANUARY" id="0x7f0500ed" />
-    <public type="string" name="AMS_MONTH_SHORT_FEBRUARY" id="0x7f0500ee" />
-    <public type="string" name="AMS_MONTH_SHORT_MARCH" id="0x7f0500ef" />
-    <public type="string" name="AMS_MONTH_SHORT_APRIL" id="0x7f0500f0" />
-    <public type="string" name="AMS_MONTH_SHORT_MAY" id="0x7f0500f1" />
-    <public type="string" name="AMS_MONTH_SHORT_JUNE" id="0x7f0500f2" />
-    <public type="string" name="AMS_MONTH_SHORT_JULY" id="0x7f0500f3" />
-    <public type="string" name="AMS_MONTH_SHORT_AUGUST" id="0x7f0500f4" />
-    <public type="string" name="AMS_MONTH_SHORT_SEPTEMBER" id="0x7f0500f5" />
-    <public type="string" name="AMS_MONTH_SHORT_OCTOBER" id="0x7f0500f6" />
-    <public type="string" name="AMS_MONTH_SHORT_NOVEMBER" id="0x7f0500f7" />
-    <public type="string" name="AMS_MONTH_SHORT_DECEMBER" id="0x7f0500f8" />
-    <public type="string" name="AMS_MONTH_JANUARY" id="0x7f0500f9" />
-    <public type="string" name="AMS_MONTH_FEBRUARY" id="0x7f0500fa" />
-    <public type="string" name="AMS_MONTH_MARCH" id="0x7f0500fb" />
-    <public type="string" name="AMS_MONTH_APRIL" id="0x7f0500fc" />
-    <public type="string" name="AMS_MONTH_MAY" id="0x7f0500fd" />
-    <public type="string" name="AMS_MONTH_JUNE" id="0x7f0500fe" />
-    <public type="string" name="AMS_MONTH_JULY" id="0x7f0500ff" />
-    <public type="string" name="AMS_MONTH_AUGUST" id="0x7f050100" />
-    <public type="string" name="AMS_MONTH_SEPTEMBER" id="0x7f050101" />
-    <public type="string" name="AMS_MONTH_OCTOBER" id="0x7f050102" />
-    <public type="string" name="AMS_MONTH_NOVEMBER" id="0x7f050103" />
-    <public type="string" name="AMS_MONTH_DECEMBER" id="0x7f050104" />
-    <public type="string" name="AMS_CMGR_MENU_COMMAND" id="0x7f050105" />
-    <public type="string" name="AMS_CMGR_CANCEL_COMMAND" id="0x7f050106" />
-    <public type="string" name="AMS_CMGR_SELECT_COMMAND" id="0x7f050107" />
-    <public type="string" name="AMS_CMGR_MENU_TITLE" id="0x7f050108" />
-    <public type="string" name="AMS_FWD_DONE_COMMAND" id="0x7f050109" />
-    <public type="string" name="AMS_CLEAR_TEXTFIELD_COMMAND" id="0x7f05010a" />
-    <public type="string" name="AMS_BACKSPACE_TEXTFIELD_COMMAND" id="0x7f05010b" />
-    <public type="string" name="AMS_TOGGLECASE_TEXTFIELD_COMMAND" id="0x7f05010c" />
-    <public type="string" name="AMS_HOUR_LABEL" id="0x7f05010d" />
-    <public type="string" name="AMS_MINUTE_LABEL" id="0x7f05010e" />
-    <public type="string" name="AMS_DAY_VERY_SHORT_SUN" id="0x7f05010f" />
-    <public type="string" name="AMS_DAY_VERY_SHORT_MON" id="0x7f050110" />
-    <public type="string" name="AMS_DAY_VERY_SHORT_TUE" id="0x7f050111" />
-    <public type="string" name="AMS_DAY_VERY_SHORT_WED" id="0x7f050112" />
-    <public type="string" name="AMS_DAY_VERY_SHORT_THU" id="0x7f050113" />
-    <public type="string" name="AMS_DAY_VERY_SHORT_FRI" id="0x7f050114" />
-    <public type="string" name="AMS_DAY_VERY_SHORT_SAT" id="0x7f050115" />
-    <public type="string" name="AMS_BUSY_TITLE" id="0x7f050116" />
-    <public type="string" name="AMS_UP_COMMAND_SHORT" id="0x7f050117" />
-    <public type="string" name="AMS_SAVE_COMMAND_SHORT" id="0x7f050118" />
-    <public type="string" name="AMS_ABOUT_COMMAND_SHORT" id="0x7f050119" />
-    <public type="string" name="AMS_EXIT_COMMAND_SHORT" id="0x7f05011a" />
-    <public type="string" name="AMS_CANCEL_COMMAND_SHORT" id="0x7f05011b" />
-    <public type="string" name="AMS_BACK_COMMAND_SHORT" id="0x7f05011c" />
-    <public type="string" name="AMS_STOP_COMMAND_SHORT" id="0x7f05011d" />
-    <public type="string" name="AMS_NEXT_COMMAND_SHORT" id="0x7f05011e" />
-    <public type="string" name="AMS_GO_COMMAND_SHORT" id="0x7f05011f" />
-    <public type="string" name="AMS_OK_COMMAND_SHORT" id="0x7f050120" />
-    <public type="string" name="AMS_DONE_COMMAND_SHORT" id="0x7f050121" />
-    <public type="string" name="AMS_EDIT_COMMAND_SHORT" id="0x7f050122" />
-    <public type="string" name="AMS_ADD_COMMAND_SHORT" id="0x7f050123" />
-    <public type="string" name="AMS_YES_COMMAND_SHORT" id="0x7f050124" />
-    <public type="string" name="AMS_NO_COMMAND_SHORT" id="0x7f050125" />
-    <public type="string" name="AMS_CONTINUE_COMMAND_SHORT" id="0x7f050126" />
-    <public type="string" name="AMS_LAUNCH_COMMAND_SHORT" id="0x7f050127" />
-    <public type="string" name="AMS_INSTALL_FORM_COMMAND_SHORT" id="0x7f050128" />
-    <public type="string" name="AMS_INSTALL_COMMAND_SHORT" id="0x7f050129" />
-    <public type="string" name="AMS_SETTINGS_COMMAND_SHORT" id="0x7f05012a" />
-    <public type="string" name="AMS_INFO_COMMAND_SHORT" id="0x7f05012b" />
-    <public type="string" name="AMS_REMOVE_COMMAND_SHORT" id="0x7f05012c" />
-    <public type="string" name="AMS_UPDATE_COMMAND_SHORT" id="0x7f05012d" />
-    <public type="string" name="AMS_OPTIONS_COMMAND_SHORT" id="0x7f05012e" />
-    <public type="string" name="AMS_RENAME_COMMAND_SHORT" id="0x7f05012f" />
-    <public type="string" name="AMS_KILL_COMMAND_SHORT" id="0x7f050130" />
-    <public type="string" name="AMS_PAUSE_COMMAND_SHORT" id="0x7f050131" />
-    <public type="string" name="AMS_COPY_COMMAND_SHORT" id="0x7f050132" />
-    <public type="string" name="AMS_WAIT_COMMAND_SHORT" id="0x7f050133" />
-    <public type="string" name="AMS_SELECT_MOVE_COMMAND_SHORT" id="0x7f050134" />
-    <public type="string" name="AMS_MOVE_COMMAND_SHORT" id="0x7f050135" />
-    <public type="string" name="AMS_BROWSE_COMMAND_SHORT" id="0x7f050136" />
-    <public type="string" name="AMS_LOG_COMMAND_SHORT" id="0x7f050137" />
-    <public type="string" name="AMS_PERMISSION_COMMAND_SHORT" id="0x7f050138" />
-    <public type="string" name="AMS_252" id="0x7f050139" />
-    <public type="string" name="AMS_REMOVE_FOLDERS_AND_FILES" id="0x7f05013a" />
-    <public type="string" name="AMS_CANT_REMOVE_FACTORY_FILES" id="0x7f05013b" />
-    <public type="string" name="AMS_CONFIRM_REMOVE_ALL" id="0x7f05013c" />
-    <public type="string" name="AMS_REMOVE_ALL_COMMAND" id="0x7f05013d" />
-    <public type="string" name="AMS_REMOVE_ALL_FOLDERS_COMMAND" id="0x7f05013e" />
-    <public type="string" name="AMS_REMOVE_ALL_MIDLETS_COMMAND" id="0x7f05013f" />
-    <public type="string" name="AMS_REMOVE_ALL_COMMAND_SHORT" id="0x7f050140" />
-    <public type="string" name="AMS_ROOT_FOLDER_NAME" id="0x7f050141" />
-    <public type="string" name="AMS_NEWFOLD_TITLE" id="0x7f050142" />
-    <public type="string" name="AMS_MANAGE_GETNEW_COMMAND" id="0x7f050143" />
-    <public type="string" name="AMS_REMOVE_ALL_TITLE" id="0x7f050144" />
-    <public type="string" name="AMS_SUITE_NOT_FOUND" id="0x7f050145" />
-    <public type="string" name="AMS_COMPILATION_FAILED" id="0x7f050146" />
-    <public type="string" name="AMS_COMPILING" id="0x7f050147" />
-    <public type="string" name="AMS_OPTIMIZING_JAR_FILE" id="0x7f050148" />
-    <public type="string" name="AMS_QUESTION_DIALOG_TITLE" id="0x7f050149" />
-    <public type="string" name="AMS_THEMES_COMMAND" id="0x7f05014a" />
-    <public type="string" name="AMS_THEMES_TITLE" id="0x7f05014b" />
-    <public type="string" name="AMS_THEMES_COMMAND_SHORT" id="0x7f05014c" />
-    <public type="string" name="AMS_INVALID_FOLDER_NAME" id="0x7f05014d" />
-    <public type="string" name="AMS_DUPLICATE_FOLDER_NAME" id="0x7f05014e" />
-    <public type="string" name="AMS_FILES_INSTALLED" id="0x7f05014f" />
-    <public type="string" name="AMS_MIDLET_INSTALLED" id="0x7f050150" />
-    <public type="string" name="AMS_OK_NEWFOLD_COMMAND" id="0x7f050151" />
-    <public type="string" name="AMS_OK_NEWFOLD_COMMAND_SHORT" id="0x7f050152" />
-    <public type="string" name="AMS_UNSIGNED_MIDLET" id="0x7f050153" />
-    <public type="string" name="AMS_UNSIGNED_TITLE" id="0x7f050154" />
-    <public type="string" name="AMS_280" id="0x7f050155" />
-    <public type="string" name="AMS_NO_FILES_FOUND" id="0x7f050156" />
-    <public type="string" name="AMS_SUIT_NAME" id="0x7f050157" />
-    <public type="string" name="AMS_WAIT" id="0x7f050158" />
-    <public type="string" name="AMS_TRUSTED_DOMAIN" id="0x7f050159" />
-    <public type="string" name="AMS_UNTRUSTED_DOMAIN" id="0x7f05015a" />
-    <public type="string" name="AMS_NETACCESS_PERMISSION_GROUP" id="0x7f05015b" />
-    <public type="string" name="AMS_MESSAGING_PERMISSION_GROUP" id="0x7f05015c" />
-    <public type="string" name="AMS_APPAUTOINVOCATION_PERMISSION_GROUP" id="0x7f05015d" />
-    <public type="string" name="AMS_LOCALCONNECTIVITY_PERMISSION_GROUP" id="0x7f05015e" />
-    <public type="string" name="AMS_MULTIMEDIARECORDING_PERMISSION_GROUP" id="0x7f05015f" />
-    <public type="string" name="AMS_PERM_WARNUSER" id="0x7f050160" />
-    <public type="string" name="AMS_PERM_NOTALLOWED" id="0x7f050161" />
-    <public type="string" name="AMS_PERMISSION_TYPE_MMRECORD" id="0x7f050162" />
-    <public type="string" name="AMS_PERMISSION_TYPE_SMSSEND_MONEY_POPUP" id="0x7f050163" />
-    <public type="string" name="AMS_PERMISSION_TYPE_MMRECORD_POPUP" id="0x7f050164" />
-    <public type="string" name="AMS_PERM_CHANGE_QUERY" id="0x7f050165" />
-    <public type="string" name="AMS_FORBIDDEN_PERMISSION_GROUP" id="0x7f050166" />
-    <public type="string" name="AMS_LAF_TITLE" id="0x7f050167" />
-    <public type="string" name="AMS_LAF_COMMAND_SHORT" id="0x7f050168" />
-    <public type="string" name="AMS_CONFIRM_REMOVE_ALL_THEMES" id="0x7f050169" />
-    <public type="string" name="AMS_UPDATING_THEME" id="0x7f05016a" />
-    <public type="string" name="AMS_THEME_SUCCESSFULLY_UPDATED" id="0x7f05016b" />
-    <public type="string" name="AMS_INSTALLING_THEME" id="0x7f05016c" />
-    <public type="string" name="AMS_THEME_SUCCESSFULLY_INSTALLED" id="0x7f05016d" />
-    <public type="string" name="AMS_USE_THEME" id="0x7f05016e" />
-    <public type="string" name="AMS_LAF_COMMAND" id="0x7f05016f" />
-    <public type="string" name="AMS_UPDATE_THEME" id="0x7f050170" />
-    <public type="string" name="AMS_COMPILATION_INSUFFICIENT_MEMORY" id="0x7f050171" />
-    <public type="string" name="AMS_PLEASE_WAIT_DESTROYING_TITLE" id="0x7f050172" />
-    <public type="string" name="AMS_PLEASE_WAIT_DESTROYING" id="0x7f050173" />
-    <public type="string" name="AMS_SENDING_NOTIFICATIONS" id="0x7f050174" />
-    <public type="string" name="AMS_SIGNED_BY" id="0x7f050175" />
-    <public type="string" name="AMS_SERIAL_NUMBER" id="0x7f050176" />
-    <public type="string" name="AMS_ISSUED_BY" id="0x7f050177" />
-    <public type="string" name="AMS_AUTHENTICATED_BY" id="0x7f050178" />
-    <public type="string" name="AMS_SIGNED_MIDLET_INFO" id="0x7f050179" />
-    <public type="string" name="AMS_SIGNED_INFO_TITLE" id="0x7f05017a" />
-    <public type="string" name="AMS_MANAGE_CERTIFICATES_TITLE" id="0x7f05017b" />
-    <public type="string" name="AMS_TRUSTED_THIRDPARTY_CERTIFICATES_LIST" id="0x7f05017c" />
-    <public type="string" name="AMS_MANAGE_CERTIFICATES_COMMAND_SHORT" id="0x7f05017d" />
-    <public type="string" name="AMS_MANAGE_CERTIFICATES_COMMAND" id="0x7f05017e" />
-    <public type="string" name="AMS_SUITE_NOT_AUTHORISED" id="0x7f05017f" />
-    <public type="string" name="AMS_SUITE_DISABLED_CERT" id="0x7f050180" />
-    <public type="string" name="AMS_UNTRUSTED_POPUP_PREFIX" id="0x7f050181" />
-    <public type="string" name="AMS_TRUSTED_POPUP_PREFIX" id="0x7f050182" />
-    <public type="string" name="AMS_CERTMANAGER_APPS_ENABLED" id="0x7f050183" />
-    <public type="string" name="AMS_CERTMANAGER_APPS_DISABLED" id="0x7f050184" />
-    <public type="string" name="AMS_328" id="0x7f050185" />
-    <public type="string" name="AMS_WRITEUSERDATA_PERMISSION_GROUP" id="0x7f050186" />
-    <public type="string" name="AMS_PERMISSION_TYPE_WRITEUSERDATA" id="0x7f050187" />
-    <public type="string" name="AMS_PERMISSION_TYPE_WRITEUSERDATA_POPUP" id="0x7f050188" />
-    <public type="string" name="AMS_SATSA_PIN_CHANGE_TITLE" id="0x7f050189" />
-    <public type="string" name="AMS_SATSA_PIN_UNBLOCK_TITLE" id="0x7f05018a" />
-    <public type="string" name="AMS_SATSA_PIN_DISABLE_TITLE" id="0x7f05018b" />
-    <public type="string" name="AMS_SATSA_PIN_ENABLE_TITLE" id="0x7f05018c" />
-    <public type="string" name="AMS_SATSA_PIN_ENTER_TITLE" id="0x7f05018d" />
-    <public type="string" name="AMS_SATSA_PIN_UNBLOCK_CODE" id="0x7f05018e" />
-    <public type="string" name="AMS_SATSA_PIN_CHANGE_NEW" id="0x7f05018f" />
-    <public type="string" name="AMS_SATSA_ALERT_INVALID_TITLE" id="0x7f050190" />
-    <public type="string" name="AMS_SATSA_ALERT_INVALID_INPUT" id="0x7f050191" />
-    <public type="string" name="AMS_SATSA_LIST_TITLE" id="0x7f050192" />
-    <public type="string" name="AMS_SATSA_CONFIRMATION_TITLE" id="0x7f050193" />
-    <public type="string" name="AMS_SATSA_CONFIRMATION_USED" id="0x7f050194" />
-    <public type="string" name="AMS_SATSA_CONFIRMATION_ADDED" id="0x7f050195" />
-    <public type="string" name="AMS_SATSA_CONFIRMATION_REMOVED" id="0x7f050196" />
-    <public type="string" name="AMS_SATSA_CONFIRMATION_SIGN" id="0x7f050197" />
-    <public type="string" name="AMS_SATSA_CONFIRMATION_GENERATE" id="0x7f050198" />
-    <public type="string" name="AMS_SATSA_ACCEPT" id="0x7f050199" />
-    <public type="string" name="AMS_SATSA_REJECT" id="0x7f05019a" />
-    <public type="string" name="AMS_READUSERDATA_PERMISSION_GROUP" id="0x7f05019b" />
-    <public type="string" name="AMS_PERMISSION_TYPE_READUSERDATA" id="0x7f05019c" />
-    <public type="string" name="AMS_PERMISSION_TYPE_READUSERDATA_POPUP" id="0x7f05019d" />
-    <public type="string" name="AMS_OPERATORSMARTCARDCOMM_PERMISSION_GROUP" id="0x7f05019e" />
-    <public type="string" name="AMS_SMARTCARDCOMM_PERMISSION_GROUP" id="0x7f05019f" />
-    <public type="string" name="AMS_AUTHENTICATION_PERMISSION_GROUP" id="0x7f0501a0" />
-    <public type="string" name="AMS_PERMISSION_TYPE_OPERATORSMARTCARDCOMM_POPUP" id="0x7f0501a1" />
-    <public type="string" name="AMS_PERMISSION_TYPE_SMARTCARDCOMM_POPUP" id="0x7f0501a2" />
-    <public type="string" name="AMS_PERMISSION_TYPE_AUTHENTICATION_POPUP" id="0x7f0501a3" />
-    <public type="string" name="AMS_PERMISSION_TYPE_OPERATORSMARTCARDCOMM" id="0x7f0501a4" />
-    <public type="string" name="AMS_PERMISSION_TYPE_SMARTCARDCOMM" id="0x7f0501a5" />
-    <public type="string" name="AMS_PERMISSION_TYPE_AUTHENTICATION" id="0x7f0501a6" />
-    <public type="string" name="AMS_MANDATORYCERTS" id="0x7f0501a7" />
-    <public type="string" name="AMS_TASKS_COMMAND_SHORT" id="0x7f0501a8" />
-    <public type="string" name="AMS_TASKS_COMMAND" id="0x7f0501a9" />
-    <public type="string" name="AMS_TASKS_TITLE" id="0x7f0501aa" />
-    <public type="string" name="AMS_TASK_SHOW_COMMAND_SHORT" id="0x7f0501ab" />
-    <public type="string" name="AMS_TASK_SHOW_COMMAND" id="0x7f0501ac" />
-    <public type="string" name="AMS_TASK_PAUSE_COMMAND_SHORT" id="0x7f0501ad" />
-    <public type="string" name="AMS_TASK_PAUSE_COMMAND" id="0x7f0501ae" />
-    <public type="string" name="AMS_TASK_STOP_COMMAND_SHORT" id="0x7f0501af" />
-    <public type="string" name="AMS_TASK_STOP_COMMAND" id="0x7f0501b0" />
-    <public type="string" name="AMS_TASK_AMS_COMMAND_SHORT" id="0x7f0501b1" />
-    <public type="string" name="AMS_TASK_AMS_COMMAND" id="0x7f0501b2" />
-    <public type="string" name="AMS_TASKS_ERROR_TITLE" id="0x7f0501b3" />
-    <public type="string" name="AMS_TASKS_ERROR_EMPTY_MSG" id="0x7f0501b4" />
-    <public type="string" name="AMS_STARTING_MIDLET_TITLE" id="0x7f0501b5" />
-    <public type="string" name="AMS_STARTING_MIDLET_MSG" id="0x7f0501b6" />
-    <public type="string" name="AMS_378" id="0x7f0501b7" />
-    <public type="string" name="AMS_379" id="0x7f0501b8" />
-    <public type="string" name="AMS_380" id="0x7f0501b9" />
-    <public type="string" name="AMS_381" id="0x7f0501ba" />
-    <public type="string" name="AMS_382" id="0x7f0501bb" />
-    <public type="string" name="AMS_383" id="0x7f0501bc" />
-    <public type="string" name="AMS_384" id="0x7f0501bd" />
-    <public type="string" name="AMS_ASK_SUSPEND_ALL_MIDLETS" id="0x7f0501be" />
-    <public type="string" name="AMS_JAR_ONLY_NOT_ALLOWED" id="0x7f0501bf" />
-    <public type="string" name="AMS_CONTACT_OPERATOR" id="0x7f0501c0" />
-    <public type="string" name="AMS_CONTACT_CONTENT_PROVIDER" id="0x7f0501c1" />
-    <public type="string" name="AMS_RESET_COMMAND_SHORT" id="0x7f0501c2" />
-    <public type="string" name="AMS_RESET_COMMAND" id="0x7f0501c3" />
-    <public type="string" name="AMS_UNTRUSTED_PERM_COMMAND_SHORT" id="0x7f0501c4" />
-    <public type="string" name="AMS_UNTRUSTED_PERM_COMMAND" id="0x7f0501c5" />
-    <public type="string" name="AMS_TRUSTED_PERM_COMMAND_SHORT" id="0x7f0501c6" />
-    <public type="string" name="AMS_TRUSTED_PERM_COMMAND" id="0x7f0501c7" />
-    <public type="string" name="AMS_OPERATOR_PERM_COMMAND_SHORT" id="0x7f0501c8" />
-    <public type="string" name="AMS_OPERATOR_PERM_COMMAND" id="0x7f0501c9" />
-    <public type="string" name="AMS_MANUFACTURER_PERM_COMMAND_SHORT" id="0x7f0501ca" />
-    <public type="string" name="AMS_MANUFACTURER_PERM_COMMAND" id="0x7f0501cb" />
-    <public type="string" name="AMS_399" id="0x7f0501cc" />
-    <public type="string" name="AMS_ASK_KILL_MIDLET_TITLE" id="0x7f0501cd" />
-    <public type="string" name="AMS_ASK_KILL_MIDLET_BODY" id="0x7f0501ce" />
-    <public type="string" name="AMS_CANT_REMOVE_SUITE" id="0x7f0501cf" />
-    <public type="string" name="AMS_CANNOT_UPDATE" id="0x7f0501d0" />
-    <public type="string" name="AMS_LOCAL_JAD_NOT_FOUND" id="0x7f0501d1" />
-    <public type="string" name="AMS_LOCAL_JAR_NOT_FOUND" id="0x7f0501d2" />
-    <public type="string" name="AMS_ASK_PREINSTALL" id="0x7f0501d3" />
-    <public type="string" name="AMS_ASK_PREINSTALL_TITLE" id="0x7f0501d4" />
-    <public type="string" name="AMS_MSG_PREINSTALL_CANCEL" id="0x7f0501d5" />
-    <public type="string" name="AMS_CONFIRM_REMOVE_FOLDER" id="0x7f0501d6" />
-    <public type="string" name="AMS_NP_ACCOUNTS_TITLE" id="0x7f0501d7" />
-    <public type="string" name="AMS_NP_SETTINGS_TITLE" id="0x7f0501d8" />
-    <public type="string" name="AMS_NETWORKPARAMS_COMMAND" id="0x7f0501d9" />
-    <public type="string" name="AMS_NETWORKPARAMS_COMMAND_SHORT" id="0x7f0501da" />
-    <public type="string" name="AMS_NP_SAVE_CHANGES_TITLE" id="0x7f0501db" />
-    <public type="string" name="AMS_NP_SAVE_CHANGES" id="0x7f0501dc" />
-    <public type="string" name="AMS_TASKS_EXIT_MIDLETS_BEFORE_EXIT_AMS" id="0x7f0501dd" />
-    <public type="string" name="AMS_INSTALLATION_CANCELLED_TITLE" id="0x7f0501de" />
-    <public type="string" name="AMS_INSTALLATION_CANCELLING" id="0x7f0501df" />
-    <public type="string" name="AMS_LAPI_PERMISSION_GROUP" id="0x7f0501e0" />
-    <public type="string" name="AMS_PERMISSION_TYPE_LAPI" id="0x7f0501e1" />
-    <public type="string" name="AMS_PERMISSION_TYPE_LAPI_POPUP" id="0x7f0501e2" />
-    <public type="string" name="AMS_DEBUG_COMMAND" id="0x7f0501e3" />
-    <public type="string" name="AMS_DEBUG_COMMAND_SHORT" id="0x7f0501e4" />
-    <public type="string" name="AMS_SUCCESS" id="0x7f0501e5" />
-    <public type="string" name="AMS_REMOVE_SUCCESS" id="0x7f0501e6" />
-    <public type="string" name="AMS_REMOVE_ALL_SUCCESS" id="0x7f0501e7" />
-    <public type="string" name="AMS_INVALID_FILE_NAME" id="0x7f0501e8" />
-    <public type="string" name="AMS_PERM_TYPE_MONEY_POPUP_APP" id="0x7f0501e9" />
-    <public type="string" name="AMS_PERM_TYPE_MONEY_POPUP_WAP" id="0x7f0501ea" />
-    <public type="string" name="AMS_PERM_TYPE_MONEY_POPUP_NET" id="0x7f0501eb" />
-    <public type="string" name="AMS_ASK_TERMINATE_MIDLET_TITLE" id="0x7f0501ec" />
-    <public type="string" name="AMS_ASK_TERMINATE_MIDLET_BODY" id="0x7f0501ed" />
-    <public type="string" name="AMS_DOWNLOAD_UNTRUSTED_CONTENT" id="0x7f0501ee" />
-    <public type="string" name="AMS_CONTENT_HANDLER_INFO" id="0x7f0501ef" />
-    <public type="string" name="AMS_DIFFERENT_DOWNLOAD_DOMAIN" id="0x7f0501f0" />
-    <public type="string" name="AMS_AMSDM_DOWNLOADS" id="0x7f0501f1" />
-    <public type="string" name="AMS_PMDM_ALBUMS" id="0x7f0501f2" />
-    <public type="string" name="AMS_PMDM_MESSAGES" id="0x7f0501f3" />
-    <public type="string" name="AMS_DOWNLOAD_NOT_ENOUGH_MEMORY" id="0x7f0501f4" />
-    <public type="string" name="AMS_DELETE_FROM" id="0x7f0501f5" />
-    <public type="string" name="AMS_FREE_SPACE" id="0x7f0501f6" />
-    <public type="string" name="AMS_NEED_SPACE" id="0x7f0501f7" />
-    <public type="string" name="AMS_CONFIRM_DELETE" id="0x7f0501f8" />
-    <public type="string" name="AMS_URL" id="0x7f0501f9" />
-    <public type="string" name="AMS_EDIT_WEBSITE" id="0x7f0501fa" />
-    <public type="string" name="AMS_COPY_WEBSITE" id="0x7f0501fb" />
-    <public type="string" name="AMS_REMOVE_WEBSITE_TITLE" id="0x7f0501fc" />
-    <public type="string" name="AMS_CONFIRM_REMOVE_WEBSITE" id="0x7f0501fd" />
-    <public type="string" name="AMS_RUN_COMMAND_SHORT" id="0x7f0501fe" />
-    <public type="string" name="AMS_MANAGE_CONTENTMANAGER_COMMAND" id="0x7f0501ff" />
-    <public type="string" name="AMS_MANAGE_BLANK_COMMAND_SHORT" id="0x7f050200" />
-    <public type="string" name="AMS_MANAGE_BLANK_COMMAND" id="0x7f050201" />
-    <public type="string" name="AMS_LISTEN_COMMAND_SHORT" id="0x7f050202" />
-    <public type="string" name="AMS_LISTEN_COMMAND" id="0x7f050203" />
-    <public type="string" name="AMS_PLAY_COMMAND" id="0x7f050204" />
-    <public type="string" name="AMS_MANAGE_SETAS_COMMAND_SHORT" id="0x7f050205" />
-    <public type="string" name="AMS_MANAGE_SETAS_COMMAND" id="0x7f050206" />
-    <public type="string" name="AMS_PLAY_COMMAND_SHORT" id="0x7f050207" />
-    <public type="string" name="AMS_VIEW_COMMAND" id="0x7f050208" />
-    <public type="string" name="AMS_VIEW_COMMAND_SHORT" id="0x7f050209" />
-    <public type="string" name="AMS_MANAGE_MEMORY_COMMAND" id="0x7f05020a" />
-    <public type="string" name="AMS_MANAGE_OPEN_COMMAND" id="0x7f05020b" />
-    <public type="string" name="AMS_MANAGE_OPEN_COMMAND_SHORT" id="0x7f05020c" />
-    <public type="string" name="AMS_MANAGER_VIEWMEMORY_TITLE" id="0x7f05020d" />
-    <public type="string" name="AMS_MANAGER_VIEWMEMORY_INFO" id="0x7f05020e" />
-    <public type="string" name="AMS_RIGHT_CHECK_INFO" id="0x7f05020f" />
-    <public type="string" name="AMS_RIGHT_LICENSE_NOT_EXIST" id="0x7f050210" />
-    <public type="string" name="AMS_RIGHT_UNABLE_PROCESS_REQUEST" id="0x7f050211" />
-    <public type="string" name="AMS_RIGHT_CHECK_TRYINFO" id="0x7f050212" />
-    <public type="string" name="AMS_RETRY_COMMAND" id="0x7f050213" />
-    <public type="string" name="AMS_RETRY_COMMAND_SHORT" id="0x7f050214" />
-    <public type="string" name="AMS_REMOVE_TITLE" id="0x7f050215" />
-    <public type="string" name="AMS_RIGHT_CANCEL_DESCRIPTION" id="0x7f050216" />
-    <public type="string" name="AMS_CANCELED_BY_USER" id="0x7f050217" />
-    <public type="string" name="AMS_RIGHT_CANCEL_WAITING_TITLE" id="0x7f050218" />
-    <public type="string" name="AMS_RIGHT_RENEWAL_TITLE" id="0x7f050219" />
-    <public type="string" name="AMS_RIGHT_RENEWAL_RENEW" id="0x7f05021a" />
-    <public type="string" name="AMS_RIGHT_RENEWAL_CANCEL" id="0x7f05021b" />
-    <public type="string" name="AMS_RIGHT_RENEWAL_DELETE" id="0x7f05021c" />
-    <public type="string" name="AMS_RUN_COMMAND" id="0x7f05021d" />
-    <public type="string" name="AMS_REPLAY_COMMAND" id="0x7f05021e" />
-    <public type="string" name="AMS_REPLAY_COMMAND_SHORT" id="0x7f05021f" />
-    <public type="string" name="AMS_CONTENT_ASSIGNED" id="0x7f050220" />
-    <public type="string" name="AMS_CANNOT_PLAY_VIDEO" id="0x7f050221" />
-    <public type="string" name="AMS_LAUNCH_REQUEST_TITLE" id="0x7f050222" />
-    <public type="string" name="AMS_LAUNCH_REQUEST_QUERY" id="0x7f050223" />
-    <public type="string" name="AMS_LAUNCH_REQUEST_FAILED" id="0x7f050224" />
-    <public type="string" name="AMS_CONTENT_NOT_FOUND" id="0x7f050225" />
-    <public type="string" name="AMS_HANDLER_NOT_FOUND" id="0x7f050226" />
-    <public type="string" name="AMS_GET_CONTENT" id="0x7f050227" />
-    <public type="string" name="AMS_GET_HANDLER" id="0x7f050228" />
-    <public type="string" name="AMS_492" id="0x7f050229" />
-    <public type="string" name="AMS_493" id="0x7f05022a" />
-    <public type="string" name="AMS_494" id="0x7f05022b" />
-    <public type="string" name="AMS_PERMISSION_CONTEXT_SHUTTER" id="0x7f05022c" />
-    <public type="string" name="AMS_PERMISSION_CONTEXT_RADIO_PRESET" id="0x7f05022d" />
-    <public type="string" name="AMS_SETAS_SCREEN_SAVERS" id="0x7f05022e" />
-    <public type="string" name="AMS_SETAS_VOICE_CALLS" id="0x7f05022f" />
-    <public type="string" name="AMS_SETAS_VOICEMAIL" id="0x7f050230" />
-    <public type="string" name="AMS_SETAS_VOICE_SMS" id="0x7f050231" />
-    <public type="string" name="AMS_SETAS_PICTURE_MAIL" id="0x7f050232" />
-    <public type="string" name="AMS_SETAS_TEXT_MESSAGE" id="0x7f050233" />
-    <public type="string" name="AMS_SETAS_ALARM" id="0x7f050234" />
-    <public type="string" name="AMS_SETAS_PHONEBOOK" id="0x7f050235" />
-    <public type="string" name="AMS_SETAS_EXTERNAL_LCD" id="0x7f050236" />
-    <public type="string" name="AMS_SET_SUCCESS" id="0x7f050237" />
-    <public type="string" name="AMS_SET_ERROR" id="0x7f050238" />
-    <public type="string" name="AMS_SETAS_TITLE" id="0x7f050239" />
-    <public type="string" name="AMS_RESUME_COMMAND" id="0x7f05023a" />
-    <public type="string" name="AMS_RESUME_COMMAND_SHORT" id="0x7f05023b" />
-    <public type="string" name="AMS_DESCRIPTION" id="0x7f05023c" />
-    <public type="string" name="AMS_LOAD_BEFORE_LAUNCH_TITLE" id="0x7f05023d" />
-    <public type="string" name="AMS_LOAD_BEFORE_LAUNCH_BODY" id="0x7f05023e" />
-    <public type="string" name="AMS_RIGHT_CHECK_ERROR" id="0x7f05023f" />
-    <public type="string" name="AMS_DOWNLOAD_DOMAIN" id="0x7f050240" />
-    <public type="string" name="AMS_ONLINE_INFO_COMMAND" id="0x7f050241" />
-    <public type="string" name="AMS_ONLINE_INFO_COMMAND_SHORT" id="0x7f050242" />
-    <public type="string" name="AMS_TASK_RESUME_COMMAND_SHORT" id="0x7f050243" />
-    <public type="string" name="AMS_TASK_RESUME_COMMAND" id="0x7f050244" />
-    <public type="string" name="AMS_INSTALLATION_FAILED" id="0x7f050245" />
-    <public type="string" name="AMS_PROFILE_COMMAND" id="0x7f050246" />
-    <public type="string" name="AMS_PROFILE_COMMAND_SHORT" id="0x7f050247" />
-    <public type="string" name="AMS_CALL_OUT_TITLE" id="0x7f050248" />
-    <public type="string" name="AMS_CALL_OUT_QUERY" id="0x7f050249" />
-    <public type="string" name="AMS_PAPI_UPDATE_ERROR" id="0x7f05024a" />
-    <public type="string" name="AMS_PAPI_DISMISS_COMMAND" id="0x7f05024b" />
-    <public type="string" name="AMS_PAPI_REJECT_COMMAND" id="0x7f05024c" />
-    <public type="string" name="AMS_PAPI_EXPIRED_TITLE" id="0x7f05024d" />
-    <public type="string" name="AMS_PAPI_EXPIRED_CONTENT" id="0x7f05024e" />
-    <public type="string" name="AMS_PAPI_PROVIDER_SELECT" id="0x7f05024f" />
-    <public type="string" name="AMS_PAPI_UPDATE_STAMP" id="0x7f050250" />
-    <public type="string" name="AMS_PAPI_NO_UPDATE" id="0x7f050251" />
-    <public type="string" name="AMS_PAPI_UPDATE_DATE" id="0x7f050252" />
-    <public type="string" name="AMS_PAPI_SELECT_COMMAND" id="0x7f050253" />
-    <public type="string" name="AMS_PAPI_SELECT_PROVIDER" id="0x7f050254" />
-    <public type="string" name="AMS_PAPI_OTHER_PROVIDER" id="0x7f050255" />
-    <public type="string" name="AMS_PAPI_FEATURE_TITLE" id="0x7f050256" />
-    <public type="string" name="AMS_PAPI_FEATURE_DISCRIPTION" id="0x7f050257" />
-    <public type="string" name="AMS_PAPI_ADAPTER" id="0x7f050258" />
-    <public type="string" name="AMS_PAPI_PRICE" id="0x7f050259" />
-    <public type="string" name="AMS_PAPI_PAY_OR_NOT" id="0x7f05025a" />
-    <public type="string" name="AMS_PAPI_UPDATING" id="0x7f05025b" />
-    <public type="string" name="AMS_PAPI_DOWNLOAD_ERROR" id="0x7f05025c" />
-    <public type="string" name="AMS_PAPI_VERIFY_ERROR" id="0x7f05025d" />
-    <public type="string" name="AMS_COMPLETE_MESSAGE" id="0x7f05025e" />
-    <public type="string" name="AMS_SHOP_LABEL" id="0x7f05025f" />
-    <public type="string" name="AMS_RIGHT_RENEWAL_FAIL" id="0x7f050260" />
-    <public type="string" name="AMS_RIGHT_RENEWAL_URL_NULL" id="0x7f050261" />
-    <public type="string" name="AMS_PERMISSION_TYPE_BLUETOOTH" id="0x7f050262" />
-    <public type="string" name="AMS_PERMISSION_TYPE_BLUETOOTH_POPUP" id="0x7f050263" />
-    <public type="string" name="AMS_PERMISSION_TYPE_SPRINTEXTENSIONS" id="0x7f050264" />
-    <public type="string" name="AMS_PERMISSION_TYPE_SPRINTEXTENSIONS_POPUP" id="0x7f050265" />
-    <public type="string" name="AMS_SENDINGSMS_PERMISSION_GROUP" id="0x7f050266" />
-    <public type="string" name="AMS_BLUETOOTH_PERMISSION_GROUP" id="0x7f050267" />
-    <public type="string" name="AMS_SPRINTEXTENSIONS_PERMISSION_GROUP" id="0x7f050268" />
-    <public type="string" name="AMS_OVERWRITE_EXISTING" id="0x7f050269" />
-    <public type="string" name="AMS_LAUNCH_EXISTING" id="0x7f05026a" />
-    <public type="string" name="AMS_DOWNLOADING_MESSAGE" id="0x7f05026b" />
-    <public type="string" name="AMS_TOTAL_SIZE" id="0x7f05026c" />
-    <public type="string" name="AMS_COMPLETE" id="0x7f05026d" />
-    <public type="string" name="AMS_VIDEO_ASSIGN_MESSAGE" id="0x7f05026e" />
-    <public type="string" name="AMS_PREVIEW" id="0x7f05026f" />
-    <public type="string" name="AMS_ASSIGN" id="0x7f050270" />
-    <public type="string" name="AMS_SIGNATURE_MISSING" id="0x7f050271" />
-    <public type="string" name="AMS_NOT_ACCEPTABLE_CONTENT" id="0x7f050272" />
-    <public type="string" name="AMS_PERMISSION_TYPE_PAYMENTACCESS" id="0x7f050273" />
-    <public type="string" name="AMS_PERMISSION_TYPE_PAYMENTACCESS_POPUP" id="0x7f050274" />
-    <public type="string" name="AMS_PAYMENTACCESS_PERMISSION_GROUP" id="0x7f050275" />
-    <public type="string" name="AMS_PENDING_INSTALL_COMMAND" id="0x7f050276" />
-    <public type="string" name="AMS_PENDING_INSTALL_COMMAND_SHORT" id="0x7f050277" />
-    <public type="string" name="AMS_ACTIVATE_COMMAND" id="0x7f050278" />
-    <public type="string" name="AMS_ACTIVATE_COMMAND_SHORT" id="0x7f050279" />
-    <public type="string" name="AMS_WAITING_DRM_RIGHTS" id="0x7f05027a" />
-    <public type="string" name="AMS_DRM_RIGHTS_NOT_ARRIVED" id="0x7f05027b" />
-    <public type="string" name="AMS_CANNOT_REQUEST_DRM_RIGHTS" id="0x7f05027c" />
-    <public type="string" name="AMS_DRM_INSTALL_PENDING" id="0x7f05027d" />
-    <public type="string" name="AMS_BACKGROUND_COMMAND_SHORT" id="0x7f05027e" />
-    <public type="string" name="AMS_BACKGROUND_COMMAND" id="0x7f05027f" />
-    <public type="string" name="AMS_MISSING_TRANSACTION_REMAIN" id="0x7f050280" />
-    <public type="string" name="AMS_CONTRAINT_COUNT" id="0x7f050281" />
-    <public type="string" name="AMS_CONTRAINT_DATETIME_START" id="0x7f050282" />
-    <public type="string" name="AMS_CONTRAINT_DATETIME_END" id="0x7f050283" />
-    <public type="string" name="AMS_CONTRAINT_INTERVAL" id="0x7f050284" />
-    <public type="string" name="AMS_DATE_TIME" id="0x7f050285" />
-    <public type="string" name="AMS_DAYS" id="0x7f050286" />
-    <public type="string" name="AMS_HOURS" id="0x7f050287" />
-    <public type="string" name="AMS_MINUTES" id="0x7f050288" />
-    <public type="string" name="AMS_SECONDS" id="0x7f050289" />
-    <public type="string" name="AMS_RETAIN_RMS" id="0x7f05028a" />
-    <public type="string" name="AMS_REMOVABLE_MEDIA_ADDED" id="0x7f05028b" />
-    <public type="string" name="AMS_REMOVABLE_MEDIA_REMOVED" id="0x7f05028c" />
-    <public type="string" name="AMS_TERMINATE_MIDLET_ON_REMOVABLE_MEDIA" id="0x7f05028d" />
-    <public type="string" name="AMS_CHECK_DOMAIN_TITLE" id="0x7f05028e" />
-    <public type="string" name="AMS_CHECK_DOMAIN_APP" id="0x7f05028f" />
-    <public type="string" name="AMS_CHECK_DOMAIN_WAP" id="0x7f050290" />
-    <public type="string" name="AMS_CHECK_DOMAIN_TRUSTED" id="0x7f050291" />
-    <public type="string" name="AMS_CHECK_DOMAIN_UNTRUSTED" id="0x7f050292" />
-    <public type="string" name="AMS_MOTOROLA_SMSACCESS_READ_PERMISSION_GROUP" id="0x7f050293" />
-    <public type="string" name="AMS_PERMISSION_TYPE_MOTOROLA_SMSACCESS_READ" id="0x7f050294" />
-    <public type="string" name="AMS_PERMISSION_TYPE_MOTOROLA_SMSACCESS_READ_POPUP" id="0x7f050295" />
-    <public type="string" name="AMS_MOTOROLA_SMSACCESS_WRITE_PERMISSION_GROUP" id="0x7f050296" />
-    <public type="string" name="AMS_PERMISSION_TYPE_MOTOROLA_SMSACCESS_WRITE" id="0x7f050297" />
-    <public type="string" name="AMS_PERMISSION_TYPE_MOTOROLA_SMSACCESS_WRITE_POPUP" id="0x7f050298" />
-    <public type="string" name="AMS_VIEW_OPTIONS_COMMAND" id="0x7f050299" />
-    <public type="string" name="AMS_VIEW_OPTIONS_COMMAND_SHORT" id="0x7f05029a" />
-    <public type="string" name="AMS_SHOW_CORE" id="0x7f05029b" />
-    <public type="string" name="AMS_SHOW_REMOVABLE_MEDIA" id="0x7f05029c" />
-    <public type="string" name="AMS_CLOSE_COMMAND_SHORT" id="0x7f05029d" />
-    <public type="string" name="AMS_MIDLET_INIT_ERROR" id="0x7f05029e" />
-    <public type="string" name="AMS_PHONE_STORAGE_NAME" id="0x7f05029f" />
-    <public type="string" name="AMS_INSUFFICIENT_STORAGE_MOVE" id="0x7f0502a0" />
-    <public type="string" name="AMS_CANT_CREATE_DIRECTORY" id="0x7f0502a1" />
-    <public type="string" name="AMS_COPY_ERROR" id="0x7f0502a2" />
-    <public type="string" name="AMS_SELECT_STORAGE" id="0x7f0502a3" />
-    <public type="string" name="AMS_FORBIDDEN" id="0x7f0502a4" />
-    <public type="string" name="AMS_SERVER_ERROR" id="0x7f0502a5" />
-    <public type="string" name="AMS_INSTALL_CONTENT_HANDLER" id="0x7f0502a6" />
-    <public type="string" name="AMS_PDP_CONTEXT_DESCRIPTION" id="0x7f0502a7" />
-    <public type="string" name="AMS_PDP_CONTEXT_CHOICE_CREATE" id="0x7f0502a8" />
-    <public type="string" name="AMS_PDP_CONTEXT_CHOICE_REUSE" id="0x7f0502a9" />
-    <public type="string" name="AMS_CANT_REMOVE_SPECIFIC" id="0x7f0502aa" />
-    <public type="string" name="AMS_EXIT_MIDLET_BEFORE_INSTALL" id="0x7f0502ab" />
-    <public type="string" name="AMS_MIDLET_EXITING" id="0x7f0502ac" />
-    <public type="string" name="AMS_EXIT_MIDLET_BEFORE_REMOVE" id="0x7f0502ad" />
-    <public type="string" name="AMS_FOLDERS_CANT_BE_MOVED" id="0x7f0502ae" />
-    <public type="string" name="AMS_REQUIRE_CHAPI_INVOKE" id="0x7f0502af" />
-    <public type="string" name="AMS_NO_ENOUGH_MEMORY" id="0x7f0502b0" />
-    <public type="string" name="AMS_APPLICATION_MANAGER" id="0x7f0502b1" />
-    <public type="string" name="AMS_SEND_TO_BACKGROUND" id="0x7f0502b2" />
-    <public type="string" name="AMS_RESUME_APPLICATION" id="0x7f0502b3" />
-    <public type="string" name="AMS_EXIT_APPLICATION" id="0x7f0502b4" />
-    <public type="string" name="AMS_USER_ALERT_DEFAULT" id="0x7f0502b5" />
-    <public type="string" name="AMS_USER_ALERT_BACKGROUND" id="0x7f0502b6" />
-    <public type="string" name="AMS_MIDLET_CANNOT_EXIT" id="0x7f0502b7" />
-    <public type="string" name="AMS_USER_ALERT_UNCAUGHT_EXCEPTION" id="0x7f0502b8" />
-    <public type="string" name="AMS_APPLY_COMMAND_SHORT" id="0x7f0502b9" />
-    <public type="string" name="AMS_APPLY_COMMAND" id="0x7f0502ba" />
-    <public type="string" name="AMS_USER_ALERT_PUSH" id="0x7f0502bb" />
-    <public type="string" name="AMS_DOWNLOADING_INSUFFICIENT_STORAGE" id="0x7f0502bc" />
-    <public type="string" name="AMS_INSUFFICIENT_STORAGE_UNKNOWN_SIZE" id="0x7f0502bd" />
-    <public type="string" name="AMS_PUSH_HANDLER_QUERY_FOREGROUND" id="0x7f0502be" />
-    <public type="string" name="AMS_FILE_IO_ERROR" id="0x7f0502bf" />
-    <public type="string" name="AMS_ALARM" id="0x7f0502c0" />
-    <public type="string" name="AMS_CONFIRMATION" id="0x7f0502c1" />
-    <public type="string" name="AMS_TASKS_VIEW_ALERT_COMMAND" id="0x7f0502c2" />
-    <public type="string" name="AMS_TASKS_VIEW_ALERT_COMMAND_SHORT" id="0x7f0502c3" />
-    <public type="string" name="AMS_TASKS_IGNORE_ALERT_COMMAND" id="0x7f0502c4" />
-    <public type="string" name="AMS_TASKS_IGNORE_ALERT_COMMAND_SHORT" id="0x7f0502c5" />
-    <public type="string" name="AMS_RETAIN_RMS_PRIVATEDIR" id="0x7f0502c6" />
-    <public type="string" name="AMS_CONFIRM_DELETE_MIDLET_PRIVATE" id="0x7f0502c7" />
-    <public type="string" name="AMS_PRIVATEDIR_NAME" id="0x7f0502c8" />
-    <public type="string" name="AMS_TASKS_VIEW_APPLICATION_COMMAND" id="0x7f0502c9" />
-    <public type="string" name="AMS_TASKS_VIEW_APPLICATION_COMMAND_SHORT" id="0x7f0502ca" />
-    <public type="string" name="AMS_TASKS_SHOW_PERMISSION_REQUEST_COMMAND" id="0x7f0502cb" />
-    <public type="string" name="AMS_TASKS_SHOW_PERMISSION_REQUEST_COMMAND_SHORT" id="0x7f0502cc" />
-    <public type="string" name="AMS_TASKS_GENERAL_USER_ALERT" id="0x7f0502cd" />
-    <public type="string" name="AMS_PERMISSION_TYPE_PIMACCESS_POPUP" id="0x7f0502ce" />
-    <public type="string" name="AMS_BT_PUSH_HANDLER_QUERY" id="0x7f0502cf" />
-    <public type="string" name="AMS_BT_PUSH_HANDLER_QUERY_FOREGROUND" id="0x7f0502d0" />
-    <public type="string" name="AMS_BT_POWER_QUERY" id="0x7f0502d1" />
-    <public type="string" name="AMS_BT_DISCOVERABLE_QUERY" id="0x7f0502d2" />
-    <public type="string" name="AMS_PASSWD_TITLE" id="0x7f0502d3" />
-    <public type="string" name="AMS_RMS_LOCAL_PASSWD" id="0x7f0502d4" />
-    <public type="string" name="AMS_RMS_IFDATA_PASSWD" id="0x7f0502d5" />
-    <public type="string" name="AMS_PUSH_MULTIPLE_CONN_QUERY" id="0x7f0502d6" />
-    <public type="string" name="AMS_SESSION" id="0x7f0502d7" />
-    <public type="string" name="AMS_ONESHOT" id="0x7f0502d8" />
-    <public type="string" name="AMS_CANNOT_CONSUME_DRM_RIGHTS" id="0x7f0502d9" />
-    <public type="string" name="AMS_PLATFORM_REQUEST_ALERT_TITLE" id="0x7f0502da" />
-    <public type="string" name="AMS_PLATFORM_REQUEST_ALERT_PROMPT" id="0x7f0502db" />
-    <public type="string" name="AMS_AMS_BUSY_ALERT_MSG" id="0x7f0502dc" />
-    <public type="string" name="AMS_JAR_SIZE_EXCEED_ERROR" id="0x7f0502dd" />
-    <public type="string" name="AMS_UPDATE_LOCK" id="0x7f0502de" />
-    <public type="string" name="AMS_BLANKET" id="0x7f0502df" />
-    <public type="string" name="AMS_LOCKED" id="0x7f0502e0" />
-    <public type="string" name="AMS_AMS_TITLE_SEARCHING" id="0x7f0502e1" />
-    <public type="string" name="AMS_AMS_LABEL_SEARCHING" id="0x7f0502e2" />
-    <public type="string" name="AMS_AMS_TITLE_SEARCHING_RESULT" id="0x7f0502e3" />
-    <public type="string" name="AMS_BROWSER_COMMAND_SHORT" id="0x7f0502e4" />
-    <public type="string" name="AMS_BROWSER_COMMAND" id="0x7f0502e5" />
-    <public type="string" name="AMS_FOLDER_ERROR_SAME_NAME_EXISTS" id="0x7f0502e6" />
-    <public type="string" name="AMS_FOLDER_ERROR_CONTENTS_NOT_MODIFIABLE" id="0x7f0502e7" />
-    <public type="string" name="AMS_FOLDER_ERROR_READ_ONLY" id="0x7f0502e8" />
-    <public type="string" name="AMS_FOLDER_ERROR_CONTAINS_READ_ONLY" id="0x7f0502e9" />
-    <public type="string" name="AMS_FOLDER_ERROR_MOVE_INTO_CHILD" id="0x7f0502ea" />
-    <public type="string" name="AMS_FOLDER_ERROR_EMPTY_NAME" id="0x7f0502eb" />
-    <public type="string" name="AMS_FOLDER_ERROR_ILLEGAL_CHAR" id="0x7f0502ec" />
-    <public type="string" name="AMS_FOLDER_ERROR_NOT_EXISTS" id="0x7f0502ed" />
-    <public type="string" name="AMS_FOLDER_ERROR_CONTAINS_RUNNING_MIDLETS" id="0x7f0502ee" />
-    <public type="string" name="AMS_BACKGROUNDRUNNING_COMMAND_SHORT" id="0x7f0502ef" />
-    <public type="string" name="AMS_BACKGROUNDRUNNING_COMMAND" id="0x7f0502f0" />
-    <public type="string" name="AMS_SMARTCARDCOMMAID_PERMISSION_GROUP" id="0x7f0502f1" />
-    <public type="string" name="AMS_PERMISSION_TYPE_SMARTCARDCOMMAID" id="0x7f0502f2" />
-    <public type="string" name="AMS_PERMISSION_TYPE_SMARTCARDCOMMAID_POPUP" id="0x7f0502f3" />
-    <public type="string" name="AMS_ZZSATGROUP_PERMISSION_GROUP" id="0x7f0502f4" />
-    <public type="string" name="AMS_PERMISSION_TYPE_ZZSATGROUP" id="0x7f0502f5" />
-    <public type="string" name="AMS_PERMISSION_TYPE_ZZSATGROUP_POPUP" id="0x7f0502f6" />
-    <public type="string" name="AMS_ACTIVE_MENU_LIST" id="0x7f0502f7" />
-    <public type="string" name="AMS_PROVIDER_CERT_EXPIRED" id="0x7f0502f8" />
-    <public type="string" name="AMS_DELETE_COMMAND" id="0x7f0502f9" />
-    <public type="string" name="AMS_HANDLER_INSTALL_FAILED" id="0x7f0502fa" />
-    <public type="string" name="AMS_HANDLER_CONFLICTS" id="0x7f0502fb" />
-    <public type="string" name="AMS_PERMISSION_TYPE_PIMACCESS_ADD_POPUP" id="0x7f0502fc" />
-    <public type="string" name="AMS_PERMISSION_TYPE_PIMACCESS_READ_POPUP" id="0x7f0502fd" />
-    <public type="string" name="AMS_PERMISSION_TYPE_PIMACCESS_REMOVE_POPUP" id="0x7f0502fe" />
-    <public type="string" name="AMS_PERMISSION_TYPE_PIMACCESS_UPDATE_POPUP" id="0x7f0502ff" />
-    <public type="string" name="AMS_PERMISSION_TYPE_PIMACCESS_WRITE_POPUP" id="0x7f050300" />
-    <public type="string" name="AMS_OCSP_STATUS_BAD" id="0x7f050301" />
-    <public type="string" name="AMS_OCSP_PROC_FAILURE" id="0x7f050302" />
-    <public type="string" name="AMS_OCSP_STATUS_REVOKED" id="0x7f050303" />
-    <public type="string" name="AMS_OCSP_STATUS_UNKNOWN" id="0x7f050304" />
-    <public type="string" name="AMS_OCSP_OUTDATED_RESPONSE" id="0x7f050305" />
-    <public type="string" name="AMS_EXIT_VM_TITLE" id="0x7f050306" />
-    <public type="string" name="AMS_EXIT_VM" id="0x7f050307" />
-    <public type="string" name="AMS_OVERWRITE_MIDLET_ON_UNAVAILABLE_REMOVABLE_MEDIA" id="0x7f050308" />
-    <public type="string" name="AMS_MOVE_FROM_UNAVAILABLE_REMOVABLE_MEDIA" id="0x7f050309" />
-    <public type="string" name="AMS_LAUNCH_ON_UNAVAILABLE_REMOVABLE_MEDIA" id="0x7f05030a" />
-    <public type="string" name="AMS_MOVE_TO_UNAVAILABLE_REMOVABLE_MEDIA" id="0x7f05030b" />
-    <public type="string" name="AMS_MOVE_STORAGE_COMMAND_SHORT" id="0x7f05030c" />
-    <public type="string" name="AMS_MOVE_STORAGE_COMMAND" id="0x7f05030d" />
-    <public type="string" name="AMS_DISPLAYSIZE_COMMAND_SHORT" id="0x7f05030e" />
-    <public type="string" name="AMS_DISPLAYSIZE_COMMAND" id="0x7f05030f" />
-    <public type="string" name="AMS_SELECT_DISPLAY_SIZE_TITLE" id="0x7f050310" />
-    <public type="string" name="AMS_SELECT_DISPLAY_SIZE_PROMPT" id="0x7f050311" />
-    <public type="string" name="AMS_PERMISSION_TYPE_SENSORACCESS" id="0x7f050312" />
-    <public type="string" name="AMS_PERMISSION_TYPE_SENSORACCESS_POPUP" id="0x7f050313" />
-    <public type="string" name="AMS_GENERALSENSORACCESS_PERMISSION_GROUP" id="0x7f050314" />
-    <public type="string" name="AMS_PRIVATESENSORACCESS_PERMISSION_GROUP" id="0x7f050315" />
-    <public type="string" name="AMS_PROTECTEDSENSORACCESS_PERMISSION_GROUP" id="0x7f050316" />
-    <public type="string" name="AMS_VIRTUAL_KEYBOARD_COMMAND_SHORT" id="0x7f050317" />
-    <public type="string" name="AMS_VIRTUAL_KEYBOARD_COMMAND" id="0x7f050318" />
-    <public type="string" name="AMS_CHOOSE_VIRTUAL_KEYBOARD_TITLE" id="0x7f050319" />
-    <public type="string" name="AMS_CHOOSE_VIRTUAL_KEYBOARD_PROMPT" id="0x7f05031a" />
-    <public type="string" name="AMS_CHOOSE_VIRTUAL_KEYBOARD_ENABLE" id="0x7f05031b" />
-    <public type="string" name="AMS_CHOOSE_VIRTUAL_KEYBOARD_DISABLE" id="0x7f05031c" />
-    <public type="string" name="AMS_DEFAULT_FOLDERS" id="0x7f05031d" />
-    <public type="string" name="AMS_LOW_BATTERY_ERROR" id="0x7f05031e" />
-    <public type="string" name="PIM_PIM_FIELD_UID" id="0x7f05031f" />
-    <public type="string" name="PIM_PIM_FIELD_REVISION" id="0x7f050320" />
-    <public type="string" name="PIM_PIM_CONTACT_FIELD_NAME" id="0x7f050321" />
-    <public type="string" name="PIM_PIM_CONTACT_FIELD_ADDRESS" id="0x7f050322" />
-    <public type="string" name="PIM_PIM_CONTACT_FIELD_EMAIL" id="0x7f050323" />
-    <public type="string" name="PIM_PIM_CONTACT_FIELD_FORMATTED_NAME" id="0x7f050324" />
-    <public type="string" name="PIM_PIM_CONTACT_FIELD_FORMATTED_ADDRESS" id="0x7f050325" />
-    <public type="string" name="PIM_PIM_CONTACT_FIELD_NICKNAME" id="0x7f050326" />
-    <public type="string" name="PIM_PIM_CONTACT_FIELD_NOTE" id="0x7f050327" />
-    <public type="string" name="PIM_PIM_CONTACT_FIELD_ORGANIZATION" id="0x7f050328" />
-    <public type="string" name="PIM_PIM_CONTACT_FIELD_TELEPHONE" id="0x7f050329" />
-    <public type="string" name="PIM_PIM_CONTACT_FIELD_TITLE" id="0x7f05032a" />
-    <public type="string" name="PIM_PIM_CONTACT_FIELD_URL" id="0x7f05032b" />
-    <public type="string" name="PIM_PIM_CONTACT_FIELD_BIRTHDAY" id="0x7f05032c" />
-    <public type="string" name="PIM_PIM_CONTACT_FIELD_PHOTO" id="0x7f05032d" />
-    <public type="string" name="PIM_PIM_CONTACT_FIELD_PUBLIC_KEY" id="0x7f05032e" />
-    <public type="string" name="PIM_PIM_CONTACT_FIELD_PHOTO_URL" id="0x7f05032f" />
-    <public type="string" name="PIM_PIM_CONTACT_FIELD_PUBLIC_KEY_STRING" id="0x7f050330" />
-    <public type="string" name="PIM_PIM_CONTACT_FIELD_CLASS" id="0x7f050331" />
-    <public type="string" name="PIM_PIM_CONTACT_ATTRIBUTES_ASST" id="0x7f050332" />
-    <public type="string" name="PIM_PIM_CONTACT_ATTRIBUTES_AUTO" id="0x7f050333" />
-    <public type="string" name="PIM_PIM_CONTACT_ATTRIBUTES_FAX" id="0x7f050334" />
-    <public type="string" name="PIM_PIM_CONTACT_ATTRIBUTES_HOME" id="0x7f050335" />
-    <public type="string" name="PIM_PIM_CONTACT_ATTRIBUTES_MOBILE" id="0x7f050336" />
-    <public type="string" name="PIM_PIM_CONTACT_ATTRIBUTES_OTHER" id="0x7f050337" />
-    <public type="string" name="PIM_PIM_CONTACT_ATTRIBUTES_PAGER" id="0x7f050338" />
-    <public type="string" name="PIM_PIM_CONTACT_ATTRIBUTES_PREFERRED" id="0x7f050339" />
-    <public type="string" name="PIM_PIM_CONTACT_ATTRIBUTES_SMS" id="0x7f05033a" />
-    <public type="string" name="PIM_PIM_CONTACT_ATTRIBUTES_WORK" id="0x7f05033b" />
-    <public type="string" name="PIM_PIM_CONTACT_ATTRIBUTES_VIDEO_CALL" id="0x7f05033c" />
-    <public type="string" name="PIM_PIM_CONTACT_ELEMENTS_COUNTRY" id="0x7f05033d" />
-    <public type="string" name="PIM_PIM_CONTACT_ELEMENTS_EXTRA" id="0x7f05033e" />
-    <public type="string" name="PIM_PIM_CONTACT_ELEMENTS_LOCALITY" id="0x7f05033f" />
-    <public type="string" name="PIM_PIM_CONTACT_ELEMENTS_POBOX" id="0x7f050340" />
-    <public type="string" name="PIM_PIM_CONTACT_ELEMENTS_POSTALCODE" id="0x7f050341" />
-    <public type="string" name="PIM_PIM_CONTACT_ELEMENTS_REGION" id="0x7f050342" />
-    <public type="string" name="PIM_PIM_CONTACT_ELEMENTS_STREET" id="0x7f050343" />
-    <public type="string" name="PIM_PIM_CONTACT_ELEMENTS_FAMILY" id="0x7f050344" />
-    <public type="string" name="PIM_PIM_CONTACT_ELEMENTS_GIVEN" id="0x7f050345" />
-    <public type="string" name="PIM_PIM_CONTACT_ELEMENTS_OTHER" id="0x7f050346" />
-    <public type="string" name="PIM_PIM_CONTACT_ELEMENTS_PREFIX" id="0x7f050347" />
-    <public type="string" name="PIM_PIM_CONTACT_ELEMENTS_SUFFIX" id="0x7f050348" />
-    <public type="string" name="PIM_PIM_CONTACT_ELEMENTS_NAME_READING" id="0x7f050349" />
-    <public type="string" name="PIM_PIM_EVENT_FIELD_LOCATION" id="0x7f05034a" />
-    <public type="string" name="PIM_PIM_EVENT_FIELD_NOTE" id="0x7f05034b" />
-    <public type="string" name="PIM_PIM_EVENT_FIELD_SUMMARY" id="0x7f05034c" />
-    <public type="string" name="PIM_PIM_EVENT_FIELD_END" id="0x7f05034d" />
-    <public type="string" name="PIM_PIM_EVENT_FIELD_START" id="0x7f05034e" />
-    <public type="string" name="PIM_PIM_EVENT_FIELD_ALARM" id="0x7f05034f" />
-    <public type="string" name="PIM_PIM_EVENT_FIELD_CLASS" id="0x7f050350" />
-    <public type="string" name="PIM_PIM_TODO_FIELD_NOTE" id="0x7f050351" />
-    <public type="string" name="PIM_PIM_TODO_FIELD_SUMMARY" id="0x7f050352" />
-    <public type="string" name="PIM_PIM_TODO_FIELD_CLASS" id="0x7f050353" />
-    <public type="string" name="PIM_PIM_TODO_FIELD_PRIORITY" id="0x7f050354" />
-    <public type="string" name="PIM_PIM_TODO_FIELD_COMPLETION_DATE" id="0x7f050355" />
-    <public type="string" name="PIM_PIM_TODO_FIELD_DUE" id="0x7f050356" />
-    <public type="string" name="PIM_PIM_TODO_FIELD_COMPLETED" id="0x7f050357" />
-    <public type="string" name="PIM_57" id="0x7f050358" />
-    <public type="string" name="PIM_58" id="0x7f050359" />
-    <public type="string" name="PIM_59" id="0x7f05035a" />
-    <public type="string" name="PIM_60" id="0x7f05035b" />
-    <public type="string" name="PIM_61" id="0x7f05035c" />
-    <public type="string" name="PIM_PIM_CONTACTLIST_NAME" id="0x7f05035d" />
-    <public type="string" name="PIM_PIM_EVENTLIST_NAME" id="0x7f05035e" />
-    <public type="string" name="PIM_PIM_TODOLIST_NAME" id="0x7f05035f" />
-    <public type="string" name="PIM_65" id="0x7f050360" />
-    <public type="string" name="PIM_66" id="0x7f050361" />
-    <public type="string" name="PIM_67" id="0x7f050362" />
-    <public type="string" name="PRJ_EMPTY_AMS_LIST" id="0x7f050363" />
-    <public type="string" name="PRJ_SORT" id="0x7f050364" />
-    <public type="string" name="PRJ_SORT_BY_NAME" id="0x7f050365" />
-    <public type="string" name="PRJ_SORT_BY_SIZE" id="0x7f050366" />
-    <public type="string" name="PRJ_SORT_BY_TIME" id="0x7f050367" />
-    <public type="string" name="PRJ_ERROR_MIDLET_REMOVE_NOT_FOUND" id="0x7f050368" />
-    <public type="string" name="PRJ_ERROR_MIDLET_REMOVE_FAIL" id="0x7f050369" />
-    <public type="string" name="PRJ_INFO_NO_STORAGE" id="0x7f05036a" />
-    <public type="string" name="PRJ_ERROR_INVALID_URL" id="0x7f05036b" />
-    <public type="string" name="PRJ_WARNING_NOT_CHANGE_PERMISSION_PROPERTY" id="0x7f05036c" />
-    <public type="string" name="PRJ_DRM_PROTECTED" id="0x7f05036d" />
-    <public type="string" name="PRJ_DRM_FORWARD_LOCK" id="0x7f05036e" />
-    <public type="string" name="PRJ_DRM_CONSTRAINT_COUNT" id="0x7f05036f" />
-    <public type="string" name="PRJ_DRM_CONSTRAINT_START_DATE" id="0x7f050370" />
-    <public type="string" name="PRJ_DRM_CONSTRAINT_END_DATE" id="0x7f050371" />
-    <public type="string" name="PRJ_SDCARD_ERROR_MESSAGE" id="0x7f050372" />
-    <public type="string" name="PRJ_APN_SETTING" id="0x7f050373" />
-    <public type="string" name="PRJ_INSTALL_LOCATION" id="0x7f050374" />
-    <public type="string" name="PRJ_ROTATE_COMMAND" id="0x7f050375" />
-    <public type="string" name="PRJ_SIGNER" id="0x7f050376" />
-    <public type="string" name="PRJ_GETTING_JAR" id="0x7f050377" />
-    <public type="string" name="PRJ_INSTALL_CANCEL" id="0x7f050378" />
-    <public type="string" name="PRJ_RESUME_VM" id="0x7f050379" />
-    <public type="string" name="PRJ_CONFIRM_DELETE_NO_EXIST_MIDLET" id="0x7f05037a" />
-    <public type="string" name="PRJ_STORAGE_SETTING" id="0x7f05037b" />
-    <public type="string" name="PRJ_EXTERNAL_STORAGE_SDCARD" id="0x7f05037c" />
-    <public type="string" name="PRJ_REMOVE_MULTIPLE_COMMAND_SHORT" id="0x7f05037d" />
-    <public type="string" name="PRJ_SEND_INFO_COMMAND_SHORT" id="0x7f05037e" />
-    <public type="string" name="PRJ_STOP_ONE_MIDLET" id="0x7f05037f" />
-    <public type="string" name="PRJ_RESUME_ONE_MIDLET" id="0x7f050380" />
-    <public type="string" name="PRJ_DELETE" id="0x7f050381" />
-    <public type="string" name="PRJ_MOVE" id="0x7f050382" />
-    <public type="string" name="PRJ_MOVE_MULTI_MIDLETS" id="0x7f050383" />
-    <public type="string" name="PRJ_DELETE_MULTI_MIDLETS" id="0x7f050384" />
-    <public type="string" name="PRJ_STOP" id="0x7f050385" />
-    <public type="string" name="PRJ_STOP_MIDLET" id="0x7f050386" />
-    <public type="string" name="PRJ_GAMES" id="0x7f050387" />
-    <public type="string" name="PRJ_APPLICATIONS" id="0x7f050388" />
-    <public type="string" name="PRJ_JAR_SERVER_NOT_FOUND" id="0x7f050389" />
-    <public type="string" name="PRJ_JAR_SERVER_NOT_FOUND_TITLE" id="0x7f05038a" />
-    <public type="string" name="PRJ_DRM_COUNT_POPUP_STR" id="0x7f05038b" />
-    <public type="string" name="PRJ_DRM_EXPIRED_POPUP_STR" id="0x7f05038c" />
-    <public type="string" name="PRJ_DRM_DELETE_POPUP_STR" id="0x7f05038d" />
-    <public type="string" name="PRJ_DRM_PROTECT" id="0x7f05038e" />
-    <public type="string" name="PRJ_DRM_USES_LEFT" id="0x7f05038f" />
-    <public type="string" name="PRJ_DRM_VALID_FOR" id="0x7f050390" />
-    <public type="string" name="PRJ_DRM_UNLIMITED" id="0x7f050391" />
-    <public type="string" name="PRJ_DRM_DAYS" id="0x7f050392" />
-    <public type="string" name="PRJ_MOVE_MULTI_MIDLETS_TITLE" id="0x7f050393" />
-    <public type="string" name="PRJ_DRM_GET_LICENSE_USE1" id="0x7f050394" />
-    <public type="string" name="PRJ_DRM_GET_LICENSE_EXPIRED" id="0x7f050395" />
-    <public type="string" name="PRJ_DRM_GET_LICENSE_ALREADY_LOCKED" id="0x7f050396" />
-    <public type="string" name="PRJ_DRM_INFO_UNKNOWN" id="0x7f050397" />
-    <public type="string" name="PRJ_FOLDER_MOVE_NO_APPROPRIATE" id="0x7f050398" />
-    <public type="string" name="PRJ_SELECT_MIDLET" id="0x7f050399" />
-    <public type="string" name="PRJ_NO_FILES_SELECTED" id="0x7f05039a" />
-    <public type="string" name="PRJ_INSTALL_WARNING" id="0x7f05039b" />
-    <public type="string" name="PRJ_REMOVE_MULTIPLE_FOLDER" id="0x7f05039c" />
-    <public type="string" name="PRJ_DELETING" id="0x7f05039d" />
-    <public type="string" name="PRJ_REMOVE_MULTIPLE_SUITE" id="0x7f05039e" />
-    <public type="string" name="PRJ_DELETE_FOLDER_CONFIRM" id="0x7f05039f" />
-    <public type="string" name="PRJ_DELETE_PROTECTED_FOLDER_CONFIRM" id="0x7f0503a0" />
-    <public type="string" name="PRJ_FOLDER_FULL_PATH" id="0x7f0503a1" />
-    <public type="string" name="PRJ_MIDLET_COUNT" id="0x7f0503a2" />
-    <public type="string" name="PRJ_64" id="0x7f0503a3" />
-    <public type="string" name="PRJ_OPTION_MENU_ORI_SIZE" id="0x7f0503a4" />
-    <public type="string" name="PRJ_OPTION_MENU_FIT_SCREEN" id="0x7f0503a5" />
-    <public type="string" name="PRJ_OPTION_MENU_DISPLAY_SIZE" id="0x7f0503a6" />
-    <public type="string" name="PRJ_68" id="0x7f0503a7" />
-    <public type="string" name="htc_private_app" id="0x7f0503a8" />
-    <public type="string" name="ap_version_id" id="0x7f0503a9" />
-    <public type="style" name="SoftKeyboard" id="0x7f060000" />
-    <public type="style" name="SoftKeyboard.fill_parent" id="0x7f060001" />
-    <public type="style" name="SoftKeyboard.wrap_height" id="0x7f060002" />
-    <public type="menu" name="ams_menu" id="0x7f070000" />
-    <public type="menu" name="running_midlet_manager_menu" id="0x7f070001" />
-    <public type="menu" name="sdcard_file_menu" id="0x7f070002" />
-    <public type="id" name="empty" id="0x7f080000" />
-    <public type="id" name="textboxName" id="0x7f080001" />
-    <public type="id" name="edtName" id="0x7f080002" />
-    <public type="id" name="textboxPwd" id="0x7f080003" />
-    <public type="id" name="edtPwd" id="0x7f080004" />
-    <public type="id" name="edit" id="0x7f080005" />
-    <public type="id" name="btnOk" id="0x7f080006" />
-    <public type="id" name="btnCancel" id="0x7f080007" />
-    <public type="id" name="frameParent" id="0x7f080008" />
-    <public type="id" name="jbedView" id="0x7f080009" />
-    <public type="id" name="videoParent" id="0x7f08000a" />
-    <public type="id" name="videoRegionView" id="0x7f08000b" />
-    <public type="id" name="jbedVideoView" id="0x7f08000c" />
-    <public type="id" name="nativeWidgetView" id="0x7f08000d" />
-    <public type="id" name="progress_bar" id="0x7f08000e" />
-    <public type="id" name="progress_desc" id="0x7f08000f" />
-    <public type="id" name="listview" id="0x7f080010" />
-    <public type="id" name="list_item_icon" id="0x7f080011" />
-    <public type="id" name="list_item_text" id="0x7f080012" />
-    <public type="id" name="lge_sdcard_icon" id="0x7f080013" />
-    <public type="id" name="lge_drm_protect_icon" id="0x7f080014" />
-    <public type="id" name="vendor_text" id="0x7f080015" />
-    <public type="id" name="progress_small" id="0x7f080016" />
-    <public type="id" name="drm_protect_icon" id="0x7f080017" />
-    <public type="id" name="drm_pending_icon" id="0x7f080018" />
-    <public type="id" name="size_text" id="0x7f080019" />
-    <public type="id" name="install_date_text" id="0x7f08001a" />
-    <public type="id" name="typetext" id="0x7f08001b" />
-    <public type="id" name="fgtext" id="0x7f08001c" />
-    <public type="id" name="itemspinner" id="0x7f08001d" />
-    <public type="id" name="body" id="0x7f08001e" />
-    <public type="id" name="progress" id="0x7f08001f" />
-    <public type="id" name="message" id="0x7f080020" />
-    <public type="id" name="permissiontext" id="0x7f080021" />
-    <public type="id" name="permissionspinner" id="0x7f080022" />
-    <public type="id" name="apnchoice" id="0x7f080023" />
-    <public type="id" name="textview" id="0x7f080024" />
-    <public type="id" name="name" id="0x7f080025" />
-    <public type="id" name="msg" id="0x7f080026" />
-    <public type="id" name="titleLayout" id="0x7f080027" />
-    <public type="id" name="textboxTitle" id="0x7f080028" />
-    <public type="id" name="textbox" id="0x7f080029" />
-    <public type="id" name="tickerView" id="0x7f08002a" />
-    <public type="id" name="tickerText" id="0x7f08002b" />
-    <public type="id" name="commandsBtn" id="0x7f08002c" />
-    <public type="id" name="leftBtn" id="0x7f08002d" />
-    <public type="id" name="rightBtn" id="0x7f08002e" />
-    <public type="id" name="listView" id="0x7f08002f" />
-    <public type="id" name="okBtn" id="0x7f080030" />
-    <public type="id" name="cancelBtn" id="0x7f080031" />
-    <public type="id" name="commandText" id="0x7f080032" />
-    <public type="id" name="text" id="0x7f080033" />
-    <public type="id" name="screen_menu" id="0x7f080034" />
-    <public type="id" name="up_folder_item" id="0x7f080035" />
-    <public type="id" name="local_install_menu_item" id="0x7f080036" />
-    <public type="id" name="install_menu_item" id="0x7f080037" />
-    <public type="id" name="tasks_menu_item" id="0x7f080038" />
-    <public type="id" name="remove_multiple_menu_item" id="0x7f080039" />
-    <public type="id" name="create_folder_item" id="0x7f08003a" />
-    <public type="id" name="list_certificates_item" id="0x7f08003b" />
-    <public type="id" name="apn_menu_item" id="0x7f08003c" />
-    <public type="id" name="rotate_menu_item" id="0x7f08003d" />
-    <public type="id" name="storage_setting_item" id="0x7f08003e" />
-    <public type="id" name="about_menu_item" id="0x7f08003f" />
-    <public type="id" name="exit_menu_item" id="0x7f080040" />
-    <public type="id" name="screen_no_empty_menu" id="0x7f080041" />
-    <public type="id" name="remove_all_menu_item" id="0x7f080042" />
-    <public type="id" name="sort_menu_item" id="0x7f080043" />
-    <public type="id" name="sort_by_name_menu_item" id="0x7f080044" />
-    <public type="id" name="sort_by_reverse_name_menu_item" id="0x7f080045" />
-    <public type="id" name="sort_by_size_menu_item" id="0x7f080046" />
-    <public type="id" name="sort_by_time_menu_item" id="0x7f080047" />
-    <public type="id" name="item_menu" id="0x7f080048" />
-    <public type="id" name="rename_item" id="0x7f080049" />
-    <public type="id" name="move_to_folder_item" id="0x7f08004a" />
-    <public type="id" name="run_menu_item" id="0x7f08004b" />
-    <public type="id" name="remove_menu_item" id="0x7f08004c" />
-    <public type="id" name="info_menu_item" id="0x7f08004d" />
-    <public type="id" name="permission_menu_item" id="0x7f08004e" />
-    <public type="id" name="update_menu_item" id="0x7f08004f" />
-    <public type="id" name="send_info_menu_item" id="0x7f080050" />
-    <public type="id" name="bring_midlet_foreground_item" id="0x7f080051" />
-    <public type="id" name="stop_midlet_item" id="0x7f080052" />
-    <public type="id" name="back_to_ams_item" id="0x7f080053" />
-    <public type="id" name="sdcard_install_item" id="0x7f080054" />
-    <public type="id" name="sdcard_delete_item" id="0x7f080055" />
+    <public type="drawable" name="common_icon_info" />
+    <public type="drawable" name="default_midlet" />
+    <public type="drawable" name="download_icon" />
+    <public type="drawable" name="folder" />
+    <public type="drawable" name="general_info_folder" />
+    <public type="drawable" name="ic_lock_lock" />
+    <public type="drawable" name="ic_lock_open" />
+    <public type="drawable" name="ic_menu_move" />
+    <public type="drawable" name="ic_menu_rename" />
+    <public type="drawable" name="ic_pending_lock" />
+    <public type="drawable" name="java_icon_drm" />
+    <public type="drawable" name="java_icon_drm_lock" />
+    <public type="drawable" name="java_icon_sdcard" />
+    <public type="drawable" name="launcher_java" />
+    <public type="drawable" name="menu_delete" />
+    <public type="drawable" name="menu_info" />
+    <public type="drawable" name="menu_internet" />
+    <public type="drawable" name="menu_launch" />
+    <public type="drawable" name="menu_local" />
+    <public type="drawable" name="menu_remove_all" />
+    <public type="drawable" name="menu_running" />
+    <public type="drawable" name="menu_up" />
+    <public type="drawable" name="task_close" />
+    <public type="drawable" name="task_home" />
+    <public type="drawable" name="task_show" />
+    <public type="layout" name="ams_list" />
+    <public type="layout" name="authorization_input_dialog" />
+    <public type="layout" name="input_dialog" />
+    <public type="layout" name="jbed" />
+    <public type="layout" name="jbed_progress_dialog" />
+    <public type="layout" name="list_content" />
+    <public type="layout" name="list_selector_item" />
+    <public type="layout" name="name_input_dialog" />
+    <public type="layout" name="permission_item" />
+    <public type="layout" name="progress_dialog" />
+    <public type="layout" name="request_permission_dialog" />
+    <public type="layout" name="simple_apn_item" />
+    <public type="layout" name="simple_gallery_item" />
+    <public type="layout" name="simple_spinner_dropdown_item" />
+    <public type="layout" name="simple_spinner_item" />
+    <public type="layout" name="stop_confirm_dialog" />
+    <public type="layout" name="task_manager_view" />
+    <public type="layout" name="text_box" />
+    <public type="layout" name="text_box_command_list" />
+    <public type="layout" name="textbox_command_list_item" />
+    <public type="layout" name="textview" />
+    <public type="color" name="white" />
+    <public type="color" name="black" />
+    <public type="color" name="gray" />
+    <public type="color" name="ams_selector_color" />
+    <public type="string" name="MIDP_CMGR_MENU_COMMAND" />
+    <public type="string" name="MIDP_CMGR_SELECT_COMMAND" />
+    <public type="string" name="MIDP_CMGR_CANCEL_COMMAND" />
+    <public type="string" name="MIDP_CMGR_MENU_TITLE" />
+    <public type="string" name="MIDP_CMGR_MENU_LONG_COMMAND" />
+    <public type="string" name="MIDP_CMGR_SELECT_LONG_COMMAND" />
+    <public type="string" name="MIDP_CMGR_CANCEL_LONG_COMMAND" />
+    <public type="string" name="MIDP_INSTALL_STATUS_DOWNLOADING" />
+    <public type="string" name="MIDP_INSTALL_STATUS_INSTALLING" />
+    <public type="string" name="MIDP_INSTALL_STATUS_PREPROCESSING_JAR" />
+    <public type="string" name="MIDP_PROGRESS_DECODING_IMAGE" />
+    <public type="string" name="MIDP_DEEFAULT_INPUT_LABEL" />
+    <public type="string" name="MIDP_CMGR_BACK_COMMAND" />
+    <public type="string" name="MIDP2_FWD_OK_COMMAND" />
+    <public type="string" name="MIDP2_FWD_CANCEL_COMMAND" />
+    <public type="string" name="MIDP2_FWD_DONE_COMMAND" />
+    <public type="string" name="MIDP2_FORWARD_POPUP_COMMAND" />
+    <public type="string" name="MIDP2_FORWARD_DATEFIELD_COMMAND" />
+    <public type="string" name="MIDP2_SELECT_LISTITEM_COMMAND" />
+    <public type="string" name="MIDP2_DISMISS_COMMAND" />
+    <public type="string" name="MIDP2_7" />
+    <public type="string" name="MIDP2_8" />
+    <public type="string" name="MIDP2_9" />
+    <public type="string" name="MIDP2_CLEAR_TEXTFIELD_COMMAND" />
+    <public type="string" name="MIDP2_BACKSPACE_TEXTFIELD_COMMAND" />
+    <public type="string" name="MIDP2_TOGGLECASE_TEXTFIELD_COMMAND" />
+    <public type="string" name="MIDP2_SYMBOLS_TEXTFIELD_COMMAND" />
+    <public type="string" name="MIDP2_ADD_CHARACTER_TEXTFIELD_COMMAND" />
+    <public type="string" name="MIDP2_15" />
+    <public type="string" name="MIDP2_16" />
+    <public type="string" name="MIDP2_17" />
+    <public type="string" name="MIDP2_18" />
+    <public type="string" name="MIDP2_19" />
+    <public type="string" name="MIDP2_HOUR_LABEL" />
+    <public type="string" name="MIDP2_MINUTE_LABEL" />
+    <public type="string" name="MIDP2_DAY_VERY_SHORT_SUN" />
+    <public type="string" name="MIDP2_DAY_VERY_SHORT_MON" />
+    <public type="string" name="MIDP2_DAY_VERY_SHORT_TUE" />
+    <public type="string" name="MIDP2_DAY_VERY_SHORT_WED" />
+    <public type="string" name="MIDP2_DAY_VERY_SHORT_THU" />
+    <public type="string" name="MIDP2_DAY_VERY_SHORT_FRI" />
+    <public type="string" name="MIDP2_DAY_VERY_SHORT_SAT" />
+    <public type="string" name="MIDP2_29" />
+    <public type="string" name="MIDP2_MONTH_SHORT_JANUARY" />
+    <public type="string" name="MIDP2_MONTH_SHORT_FEBRUARY" />
+    <public type="string" name="MIDP2_MONTH_SHORT_MARCH" />
+    <public type="string" name="MIDP2_MONTH_SHORT_APRIL" />
+    <public type="string" name="MIDP2_MONTH_SHORT_MAY" />
+    <public type="string" name="MIDP2_MONTH_SHORT_JUNE" />
+    <public type="string" name="MIDP2_MONTH_SHORT_JULY" />
+    <public type="string" name="MIDP2_MONTH_SHORT_AUGUST" />
+    <public type="string" name="MIDP2_MONTH_SHORT_SEPTEMBER" />
+    <public type="string" name="MIDP2_MONTH_SHORT_OCTOBER" />
+    <public type="string" name="MIDP2_MONTH_SHORT_NOVEMBER" />
+    <public type="string" name="MIDP2_MONTH_SHORT_DECEMBER" />
+    <public type="string" name="MIDP2_42" />
+    <public type="string" name="MIDP2_DOMAIN_MIDP1" />
+    <public type="string" name="MIDP2_DOMAIN_UNTRUSTED" />
+    <public type="string" name="MIDP2_DOMAIN_TRUSTED_3RD_PARTY" />
+    <public type="string" name="MIDP2_DOMAIN_OPERATOR" />
+    <public type="string" name="MIDP2_DOMAIN_MANUFACTURER" />
+    <public type="string" name="AMS_MENU_COMMAND" />
+    <public type="string" name="AMS_SAVE_COMMAND" />
+    <public type="string" name="AMS_ABOUT_COMMAND" />
+    <public type="string" name="AMS_EXIT_COMMAND" />
+    <public type="string" name="AMS_CANCEL_COMMAND" />
+    <public type="string" name="AMS_BACK_COMMAND" />
+    <public type="string" name="AMS_STOP_COMMAND" />
+    <public type="string" name="AMS_NEXT_COMMAND" />
+    <public type="string" name="AMS_GO_COMMAND" />
+    <public type="string" name="AMS_OK_COMMAND" />
+    <public type="string" name="AMS_DONE_COMMAND" />
+    <public type="string" name="AMS_EDIT_COMMAND" />
+    <public type="string" name="AMS_ADD_COMMAND" />
+    <public type="string" name="AMS_YES_COMMAND" />
+    <public type="string" name="AMS_NO_COMMAND" />
+    <public type="string" name="AMS_CONTINUE_COMMAND" />
+    <public type="string" name="AMS_NONE_LABEL" />
+    <public type="string" name="AMS_LAUNCH_COMMAND" />
+    <public type="string" name="AMS_INSTALL_FORM_COMMAND" />
+    <public type="string" name="AMS_INSTALL_COMMAND" />
+    <public type="string" name="AMS_SETTINGS_COMMAND" />
+    <public type="string" name="AMS_INFO_COMMAND" />
+    <public type="string" name="AMS_REMOVE_COMMAND" />
+    <public type="string" name="AMS_UPDATE_COMMAND" />
+    <public type="string" name="AMS_OPTIONS_COMMAND" />
+    <public type="string" name="AMS_RENAME_COMMAND" />
+    <public type="string" name="AMS_KILL_COMMAND" />
+    <public type="string" name="AMS_PAUSE_COMMAND" />
+    <public type="string" name="AMS_COPY_COMMAND" />
+    <public type="string" name="AMS_WAIT_COMMAND" />
+    <public type="string" name="AMS_NEWFOLD_COMMAND" />
+    <public type="string" name="AMS_NEWFOLD_COMMAND_SHORT" />
+    <public type="string" name="AMS_UP_COMMAND" />
+    <public type="string" name="AMS_SELECT_MOVE_COMMAND" />
+    <public type="string" name="AMS_MOVE_COMMAND" />
+    <public type="string" name="AMS_CANT_REMOVE_NONEMPTY_FOLDER" />
+    <public type="string" name="AMS_CANT_MOVE_MIDLET" />
+    <public type="string" name="AMS_CANT_MOVE_SELF_INTO_CHILD" />
+    <public type="string" name="AMS_CANT_REMOVE_FOLDER" />
+    <public type="string" name="AMS_CANT_MOVE_FOLDER" />
+    <public type="string" name="AMS_CANT_RENAME_FOLDER" />
+    <public type="string" name="AMS_NEW_FOLDER_NAME" />
+    <public type="string" name="AMS_42" />
+    <public type="string" name="AMS_43" />
+    <public type="string" name="AMS_44" />
+    <public type="string" name="AMS_LOCAL_FILES_INSTALLED" />
+    <public type="string" name="AMS_BROWSE_COMMAND" />
+    <public type="string" name="AMS_47" />
+    <public type="string" name="AMS_WARNING" />
+    <public type="string" name="AMS_ERROR" />
+    <public type="string" name="AMS_INFO" />
+    <public type="string" name="AMS_SIZE" />
+    <public type="string" name="AMS_VERSION" />
+    <public type="string" name="AMS_VENDOR" />
+    <public type="string" name="AMS_EXPIRY_TIME" />
+    <public type="string" name="AMS_EXPIRY_COUNT" />
+    <public type="string" name="AMS_CONTENTS" />
+    <public type="string" name="AMS_WEBSITE" />
+    <public type="string" name="AMS_CANCELLED" />
+    <public type="string" name="AMS_DOMAIN" />
+    <public type="string" name="AMS_SIGNED" />
+    <public type="string" name="AMS_PUSHED_CONTENT" />
+    <public type="string" name="AMS_AMS_COPYRIGHT_SHORT" />
+    <public type="string" name="AMS_AMS_COPYRIGHT" />
+    <public type="string" name="AMS_MISSING_INFO" />
+    <public type="string" name="AMS_OPEN_COMMAND" />
+    <public type="string" name="AMS_66" />
+    <public type="string" name="AMS_INFO_MISMATCH" />
+    <public type="string" name="AMS_UPDATE_NEWER_VERSION" />
+    <public type="string" name="AMS_UPDATE_OLDER_VERSION" />
+    <public type="string" name="AMS_UPDATE_SAME_VERSION" />
+    <public type="string" name="AMS_FORBIDDEN_UPDATE" />
+    <public type="string" name="AMS_JAD_NOT_FOUND" />
+    <public type="string" name="AMS_JAR_NOT_FOUND" />
+    <public type="string" name="AMS_INVALID_INFO" />
+    <public type="string" name="AMS_INSUFFICIENT_STORAGE" />
+    <public type="string" name="AMS_INVALID_JAR_TYPE" />
+    <public type="string" name="AMS_INVALID_JAD_TYPE" />
+    <public type="string" name="AMS_CORRUPT_JAR" />
+    <public type="string" name="AMS_JAD_MOVED" />
+    <public type="string" name="AMS_UNSUPPORTED_AUTH" />
+    <public type="string" name="AMS_DEVICE_INCOMPATIBLE" />
+    <public type="string" name="AMS_INTERNAL_INSTALLER_ERROR" />
+    <public type="string" name="AMS_PUSH_DUP_FAILURE" />
+    <public type="string" name="AMS_PUSH_PROTO_FAILURE" />
+    <public type="string" name="AMS_PERMISSION_INSTALL_CONFIRM" />
+    <public type="string" name="AMS_PERMISSION_MISSING" />
+    <public type="string" name="AMS_PROVIDER_CERT_ERROR" />
+    <public type="string" name="AMS_EXPIRED_CA_KEY" />
+    <public type="string" name="AMS_UNKNOWN_CA" />
+    <public type="string" name="AMS_SIGNATURE_ERROR" />
+    <public type="string" name="AMS_FORMAT_INSTALL_CONFIRM" />
+    <public type="string" name="AMS_MAIN_SCREEN_TITLE" />
+    <public type="string" name="AMS_ABOUT_TITLE" />
+    <public type="string" name="AMS_94" />
+    <public type="string" name="AMS_SUITE_HAS_EXPIRED" />
+    <public type="string" name="AMS_LAUNCHING_TITLE" />
+    <public type="string" name="AMS_CANNOT_ACCESS_TITLE" />
+    <public type="string" name="AMS_LOG_TITLE" />
+    <public type="string" name="AMS_CONFIRM_REMOVE" />
+    <public type="string" name="AMS_THIS_SUITE_CONTAINS" />
+    <public type="string" name="AMS_REMOVING_WILL_ERASE_DATA" />
+    <public type="string" name="AMS_SEE_JAD_CONTENT" />
+    <public type="string" name="AMS_SELECT_TARGET" />
+    <public type="string" name="AMS_BACK_TO_WAP" />
+    <public type="string" name="AMS_LAUNCH_MIDLET" />
+    <public type="string" name="AMS_UPDATE_CANCELLED" />
+    <public type="string" name="AMS_FINISHING_UPDATE" />
+    <public type="string" name="AMS_UPDATING_SUITE" />
+    <public type="string" name="AMS_SUITE_SUCCESSFULLY_UPDATED" />
+    <public type="string" name="AMS_INSTALLATION_CANCELLED" />
+    <public type="string" name="AMS_FINISHING_INSTALLATION" />
+    <public type="string" name="AMS_INSTALLING_SUITE" />
+    <public type="string" name="AMS_SUITE_SUCCESSFULLY_INSTALLED" />
+    <public type="string" name="AMS_ENTER_NEW_NAME" />
+    <public type="string" name="AMS_SELECT_WEBSITE" />
+    <public type="string" name="AMS_ENTER_NAME" />
+    <public type="string" name="AMS_ENTER_URL" />
+    <public type="string" name="AMS_GETTING_INSTALL_LIST" />
+    <public type="string" name="AMS_ENTER_USERID" />
+    <public type="string" name="AMS_PASSWORD" />
+    <public type="string" name="AMS_USERID_NOT_ENTERED" />
+    <public type="string" name="AMS_PASSWORD_NOT_ENTERED" />
+    <public type="string" name="AMS_SELECT_MIDLET_TITLE" />
+    <public type="string" name="AMS_SELECT_FOLDER_TITLE" />
+    <public type="string" name="AMS_UNSUPPORTED_CONTENT_ENCODING" />
+    <public type="string" name="AMS_CONNECTION_DROPPED" />
+    <public type="string" name="AMS_SELECT_ONE_TO_INSTALL" />
+    <public type="string" name="AMS_NO_MIDLET_SUITES_FOUND" />
+    <public type="string" name="AMS_CONNECTION_FAILED" />
+    <public type="string" name="AMS_TASK_MANAGER_TITLE" />
+    <public type="string" name="AMS_131" />
+    <public type="string" name="AMS_QUERY_ALWAYS" />
+    <public type="string" name="AMS_QUERY_THIS_SESSION" />
+    <public type="string" name="AMS_QUERY_NOT_THIS_SESSION" />
+    <public type="string" name="AMS_QUERY_THIS_USE" />
+    <public type="string" name="AMS_QUERY_NOT_THIS_USE" />
+    <public type="string" name="AMS_QUERY_NEVER" />
+    <public type="string" name="AMS_INCOMING_CALL_TITLE" />
+    <public type="string" name="AMS_INCOMING_CALL_QUERY" />
+    <public type="string" name="AMS_SUSPENDING_ALL_MIDLETS" />
+    <public type="string" name="AMS_REMOTE_INSTALL_QUERY" />
+    <public type="string" name="AMS_PUSH_HANDLER_QUERY" />
+    <public type="string" name="AMS_PUSH_AUTHORIZATION_FAILURE" />
+    <public type="string" name="AMS_LIFECYCLE_QUERY" />
+    <public type="string" name="AMS_CANNOT_CREATE_MIDLET" />
+    <public type="string" name="AMS_LIFECYCLE_EXCEPTION" />
+    <public type="string" name="AMS_PERMISSION_COMMAND" />
+    <public type="string" name="AMS_PERMISSION_SETTINGS" />
+    <public type="string" name="AMS_PERMISSION_TYPE_MONEY" />
+    <public type="string" name="AMS_PERMISSION_TYPE_CONNECTION" />
+    <public type="string" name="AMS_PERMISSION_TYPE_PUSHREG" />
+    <public type="string" name="AMS_UNKNOWN_SUITE" />
+    <public type="string" name="AMS_PERMISSION_TYPE_MONEY_POPUP" />
+    <public type="string" name="AMS_PERMISSION_TYPE_CONNECTION_POPUP" />
+    <public type="string" name="AMS_PERMISSION_TYPE_PUSHREG_POPUP" />
+    <public type="string" name="AMS_156" />
+    <public type="string" name="AMS_157" />
+    <public type="string" name="AMS_NEVER" />
+    <public type="string" name="AMS_PROMPT" />
+    <public type="string" name="AMS_ALWAYS" />
+    <public type="string" name="AMS_ELLIPSIS" />
+    <public type="string" name="AMS_DATE_FIELD" />
+    <public type="string" name="AMS_TIME_FIELD" />
+    <public type="string" name="AMS_DATE_TIME_FIELD" />
+    <public type="string" name="AMS_PM" />
+    <public type="string" name="AMS_AM" />
+    <public type="string" name="AMS_MIDNIGHT" />
+    <public type="string" name="AMS_NOON" />
+    <public type="string" name="AMS_DAY_SHORT_SUN" />
+    <public type="string" name="AMS_DAY_SHORT_MON" />
+    <public type="string" name="AMS_DAY_SHORT_TUE" />
+    <public type="string" name="AMS_DAY_SHORT_WED" />
+    <public type="string" name="AMS_DAY_SHORT_THU" />
+    <public type="string" name="AMS_DAY_SHORT_FRI" />
+    <public type="string" name="AMS_DAY_SHORT_SAT" />
+    <public type="string" name="AMS_MONTH_SHORT_JANUARY" />
+    <public type="string" name="AMS_MONTH_SHORT_FEBRUARY" />
+    <public type="string" name="AMS_MONTH_SHORT_MARCH" />
+    <public type="string" name="AMS_MONTH_SHORT_APRIL" />
+    <public type="string" name="AMS_MONTH_SHORT_MAY" />
+    <public type="string" name="AMS_MONTH_SHORT_JUNE" />
+    <public type="string" name="AMS_MONTH_SHORT_JULY" />
+    <public type="string" name="AMS_MONTH_SHORT_AUGUST" />
+    <public type="string" name="AMS_MONTH_SHORT_SEPTEMBER" />
+    <public type="string" name="AMS_MONTH_SHORT_OCTOBER" />
+    <public type="string" name="AMS_MONTH_SHORT_NOVEMBER" />
+    <public type="string" name="AMS_MONTH_SHORT_DECEMBER" />
+    <public type="string" name="AMS_MONTH_JANUARY" />
+    <public type="string" name="AMS_MONTH_FEBRUARY" />
+    <public type="string" name="AMS_MONTH_MARCH" />
+    <public type="string" name="AMS_MONTH_APRIL" />
+    <public type="string" name="AMS_MONTH_MAY" />
+    <public type="string" name="AMS_MONTH_JUNE" />
+    <public type="string" name="AMS_MONTH_JULY" />
+    <public type="string" name="AMS_MONTH_AUGUST" />
+    <public type="string" name="AMS_MONTH_SEPTEMBER" />
+    <public type="string" name="AMS_MONTH_OCTOBER" />
+    <public type="string" name="AMS_MONTH_NOVEMBER" />
+    <public type="string" name="AMS_MONTH_DECEMBER" />
+    <public type="string" name="AMS_CMGR_MENU_COMMAND" />
+    <public type="string" name="AMS_CMGR_CANCEL_COMMAND" />
+    <public type="string" name="AMS_CMGR_SELECT_COMMAND" />
+    <public type="string" name="AMS_CMGR_MENU_TITLE" />
+    <public type="string" name="AMS_FWD_DONE_COMMAND" />
+    <public type="string" name="AMS_CLEAR_TEXTFIELD_COMMAND" />
+    <public type="string" name="AMS_BACKSPACE_TEXTFIELD_COMMAND" />
+    <public type="string" name="AMS_TOGGLECASE_TEXTFIELD_COMMAND" />
+    <public type="string" name="AMS_HOUR_LABEL" />
+    <public type="string" name="AMS_MINUTE_LABEL" />
+    <public type="string" name="AMS_DAY_VERY_SHORT_SUN" />
+    <public type="string" name="AMS_DAY_VERY_SHORT_MON" />
+    <public type="string" name="AMS_DAY_VERY_SHORT_TUE" />
+    <public type="string" name="AMS_DAY_VERY_SHORT_WED" />
+    <public type="string" name="AMS_DAY_VERY_SHORT_THU" />
+    <public type="string" name="AMS_DAY_VERY_SHORT_FRI" />
+    <public type="string" name="AMS_DAY_VERY_SHORT_SAT" />
+    <public type="string" name="AMS_BUSY_TITLE" />
+    <public type="string" name="AMS_UP_COMMAND_SHORT" />
+    <public type="string" name="AMS_SAVE_COMMAND_SHORT" />
+    <public type="string" name="AMS_ABOUT_COMMAND_SHORT" />
+    <public type="string" name="AMS_EXIT_COMMAND_SHORT" />
+    <public type="string" name="AMS_CANCEL_COMMAND_SHORT" />
+    <public type="string" name="AMS_BACK_COMMAND_SHORT" />
+    <public type="string" name="AMS_STOP_COMMAND_SHORT" />
+    <public type="string" name="AMS_NEXT_COMMAND_SHORT" />
+    <public type="string" name="AMS_GO_COMMAND_SHORT" />
+    <public type="string" name="AMS_OK_COMMAND_SHORT" />
+    <public type="string" name="AMS_DONE_COMMAND_SHORT" />
+    <public type="string" name="AMS_EDIT_COMMAND_SHORT" />
+    <public type="string" name="AMS_ADD_COMMAND_SHORT" />
+    <public type="string" name="AMS_YES_COMMAND_SHORT" />
+    <public type="string" name="AMS_NO_COMMAND_SHORT" />
+    <public type="string" name="AMS_CONTINUE_COMMAND_SHORT" />
+    <public type="string" name="AMS_LAUNCH_COMMAND_SHORT" />
+    <public type="string" name="AMS_INSTALL_FORM_COMMAND_SHORT" />
+    <public type="string" name="AMS_INSTALL_COMMAND_SHORT" />
+    <public type="string" name="AMS_SETTINGS_COMMAND_SHORT" />
+    <public type="string" name="AMS_INFO_COMMAND_SHORT" />
+    <public type="string" name="AMS_REMOVE_COMMAND_SHORT" />
+    <public type="string" name="AMS_UPDATE_COMMAND_SHORT" />
+    <public type="string" name="AMS_OPTIONS_COMMAND_SHORT" />
+    <public type="string" name="AMS_RENAME_COMMAND_SHORT" />
+    <public type="string" name="AMS_KILL_COMMAND_SHORT" />
+    <public type="string" name="AMS_PAUSE_COMMAND_SHORT" />
+    <public type="string" name="AMS_COPY_COMMAND_SHORT" />
+    <public type="string" name="AMS_WAIT_COMMAND_SHORT" />
+    <public type="string" name="AMS_SELECT_MOVE_COMMAND_SHORT" />
+    <public type="string" name="AMS_MOVE_COMMAND_SHORT" />
+    <public type="string" name="AMS_BROWSE_COMMAND_SHORT" />
+    <public type="string" name="AMS_LOG_COMMAND_SHORT" />
+    <public type="string" name="AMS_PERMISSION_COMMAND_SHORT" />
+    <public type="string" name="AMS_252" />
+    <public type="string" name="AMS_REMOVE_FOLDERS_AND_FILES" />
+    <public type="string" name="AMS_CANT_REMOVE_FACTORY_FILES" />
+    <public type="string" name="AMS_CONFIRM_REMOVE_ALL" />
+    <public type="string" name="AMS_REMOVE_ALL_COMMAND" />
+    <public type="string" name="AMS_REMOVE_ALL_FOLDERS_COMMAND" />
+    <public type="string" name="AMS_REMOVE_ALL_MIDLETS_COMMAND" />
+    <public type="string" name="AMS_REMOVE_ALL_COMMAND_SHORT" />
+    <public type="string" name="AMS_ROOT_FOLDER_NAME" />
+    <public type="string" name="AMS_NEWFOLD_TITLE" />
+    <public type="string" name="AMS_MANAGE_GETNEW_COMMAND" />
+    <public type="string" name="AMS_REMOVE_ALL_TITLE" />
+    <public type="string" name="AMS_SUITE_NOT_FOUND" />
+    <public type="string" name="AMS_COMPILATION_FAILED" />
+    <public type="string" name="AMS_COMPILING" />
+    <public type="string" name="AMS_OPTIMIZING_JAR_FILE" />
+    <public type="string" name="AMS_QUESTION_DIALOG_TITLE" />
+    <public type="string" name="AMS_THEMES_COMMAND" />
+    <public type="string" name="AMS_THEMES_TITLE" />
+    <public type="string" name="AMS_THEMES_COMMAND_SHORT" />
+    <public type="string" name="AMS_INVALID_FOLDER_NAME" />
+    <public type="string" name="AMS_DUPLICATE_FOLDER_NAME" />
+    <public type="string" name="AMS_FILES_INSTALLED" />
+    <public type="string" name="AMS_MIDLET_INSTALLED" />
+    <public type="string" name="AMS_OK_NEWFOLD_COMMAND" />
+    <public type="string" name="AMS_OK_NEWFOLD_COMMAND_SHORT" />
+    <public type="string" name="AMS_UNSIGNED_MIDLET" />
+    <public type="string" name="AMS_UNSIGNED_TITLE" />
+    <public type="string" name="AMS_280" />
+    <public type="string" name="AMS_NO_FILES_FOUND" />
+    <public type="string" name="AMS_SUIT_NAME" />
+    <public type="string" name="AMS_WAIT" />
+    <public type="string" name="AMS_TRUSTED_DOMAIN" />
+    <public type="string" name="AMS_UNTRUSTED_DOMAIN" />
+    <public type="string" name="AMS_NETACCESS_PERMISSION_GROUP" />
+    <public type="string" name="AMS_MESSAGING_PERMISSION_GROUP" />
+    <public type="string" name="AMS_APPAUTOINVOCATION_PERMISSION_GROUP" />
+    <public type="string" name="AMS_LOCALCONNECTIVITY_PERMISSION_GROUP" />
+    <public type="string" name="AMS_MULTIMEDIARECORDING_PERMISSION_GROUP" />
+    <public type="string" name="AMS_PERM_WARNUSER" />
+    <public type="string" name="AMS_PERM_NOTALLOWED" />
+    <public type="string" name="AMS_PERMISSION_TYPE_MMRECORD" />
+    <public type="string" name="AMS_PERMISSION_TYPE_SMSSEND_MONEY_POPUP" />
+    <public type="string" name="AMS_PERMISSION_TYPE_MMRECORD_POPUP" />
+    <public type="string" name="AMS_PERM_CHANGE_QUERY" />
+    <public type="string" name="AMS_FORBIDDEN_PERMISSION_GROUP" />
+    <public type="string" name="AMS_LAF_TITLE" />
+    <public type="string" name="AMS_LAF_COMMAND_SHORT" />
+    <public type="string" name="AMS_CONFIRM_REMOVE_ALL_THEMES" />
+    <public type="string" name="AMS_UPDATING_THEME" />
+    <public type="string" name="AMS_THEME_SUCCESSFULLY_UPDATED" />
+    <public type="string" name="AMS_INSTALLING_THEME" />
+    <public type="string" name="AMS_THEME_SUCCESSFULLY_INSTALLED" />
+    <public type="string" name="AMS_USE_THEME" />
+    <public type="string" name="AMS_LAF_COMMAND" />
+    <public type="string" name="AMS_UPDATE_THEME" />
+    <public type="string" name="AMS_COMPILATION_INSUFFICIENT_MEMORY" />
+    <public type="string" name="AMS_PLEASE_WAIT_DESTROYING_TITLE" />
+    <public type="string" name="AMS_PLEASE_WAIT_DESTROYING" />
+    <public type="string" name="AMS_SENDING_NOTIFICATIONS" />
+    <public type="string" name="AMS_SIGNED_BY" />
+    <public type="string" name="AMS_SERIAL_NUMBER" />
+    <public type="string" name="AMS_ISSUED_BY" />
+    <public type="string" name="AMS_AUTHENTICATED_BY" />
+    <public type="string" name="AMS_SIGNED_MIDLET_INFO" />
+    <public type="string" name="AMS_SIGNED_INFO_TITLE" />
+    <public type="string" name="AMS_MANAGE_CERTIFICATES_TITLE" />
+    <public type="string" name="AMS_TRUSTED_THIRDPARTY_CERTIFICATES_LIST" />
+    <public type="string" name="AMS_MANAGE_CERTIFICATES_COMMAND_SHORT" />
+    <public type="string" name="AMS_MANAGE_CERTIFICATES_COMMAND" />
+    <public type="string" name="AMS_SUITE_NOT_AUTHORISED" />
+    <public type="string" name="AMS_SUITE_DISABLED_CERT" />
+    <public type="string" name="AMS_UNTRUSTED_POPUP_PREFIX" />
+    <public type="string" name="AMS_TRUSTED_POPUP_PREFIX" />
+    <public type="string" name="AMS_CERTMANAGER_APPS_ENABLED" />
+    <public type="string" name="AMS_CERTMANAGER_APPS_DISABLED" />
+    <public type="string" name="AMS_328" />
+    <public type="string" name="AMS_WRITEUSERDATA_PERMISSION_GROUP" />
+    <public type="string" name="AMS_PERMISSION_TYPE_WRITEUSERDATA" />
+    <public type="string" name="AMS_PERMISSION_TYPE_WRITEUSERDATA_POPUP" />
+    <public type="string" name="AMS_SATSA_PIN_CHANGE_TITLE" />
+    <public type="string" name="AMS_SATSA_PIN_UNBLOCK_TITLE" />
+    <public type="string" name="AMS_SATSA_PIN_DISABLE_TITLE" />
+    <public type="string" name="AMS_SATSA_PIN_ENABLE_TITLE" />
+    <public type="string" name="AMS_SATSA_PIN_ENTER_TITLE" />
+    <public type="string" name="AMS_SATSA_PIN_UNBLOCK_CODE" />
+    <public type="string" name="AMS_SATSA_PIN_CHANGE_NEW" />
+    <public type="string" name="AMS_SATSA_ALERT_INVALID_TITLE" />
+    <public type="string" name="AMS_SATSA_ALERT_INVALID_INPUT" />
+    <public type="string" name="AMS_SATSA_LIST_TITLE" />
+    <public type="string" name="AMS_SATSA_CONFIRMATION_TITLE" />
+    <public type="string" name="AMS_SATSA_CONFIRMATION_USED" />
+    <public type="string" name="AMS_SATSA_CONFIRMATION_ADDED" />
+    <public type="string" name="AMS_SATSA_CONFIRMATION_REMOVED" />
+    <public type="string" name="AMS_SATSA_CONFIRMATION_SIGN" />
+    <public type="string" name="AMS_SATSA_CONFIRMATION_GENERATE" />
+    <public type="string" name="AMS_SATSA_ACCEPT" />
+    <public type="string" name="AMS_SATSA_REJECT" />
+    <public type="string" name="AMS_READUSERDATA_PERMISSION_GROUP" />
+    <public type="string" name="AMS_PERMISSION_TYPE_READUSERDATA" />
+    <public type="string" name="AMS_PERMISSION_TYPE_READUSERDATA_POPUP" />
+    <public type="string" name="AMS_OPERATORSMARTCARDCOMM_PERMISSION_GROUP" />
+    <public type="string" name="AMS_SMARTCARDCOMM_PERMISSION_GROUP" />
+    <public type="string" name="AMS_AUTHENTICATION_PERMISSION_GROUP" />
+    <public type="string" name="AMS_PERMISSION_TYPE_OPERATORSMARTCARDCOMM_POPUP" />
+    <public type="string" name="AMS_PERMISSION_TYPE_SMARTCARDCOMM_POPUP" />
+    <public type="string" name="AMS_PERMISSION_TYPE_AUTHENTICATION_POPUP" />
+    <public type="string" name="AMS_PERMISSION_TYPE_OPERATORSMARTCARDCOMM" />
+    <public type="string" name="AMS_PERMISSION_TYPE_SMARTCARDCOMM" />
+    <public type="string" name="AMS_PERMISSION_TYPE_AUTHENTICATION" />
+    <public type="string" name="AMS_MANDATORYCERTS" />
+    <public type="string" name="AMS_TASKS_COMMAND_SHORT" />
+    <public type="string" name="AMS_TASKS_COMMAND" />
+    <public type="string" name="AMS_TASKS_TITLE" />
+    <public type="string" name="AMS_TASK_SHOW_COMMAND_SHORT" />
+    <public type="string" name="AMS_TASK_SHOW_COMMAND" />
+    <public type="string" name="AMS_TASK_PAUSE_COMMAND_SHORT" />
+    <public type="string" name="AMS_TASK_PAUSE_COMMAND" />
+    <public type="string" name="AMS_TASK_STOP_COMMAND_SHORT" />
+    <public type="string" name="AMS_TASK_STOP_COMMAND" />
+    <public type="string" name="AMS_TASK_AMS_COMMAND_SHORT" />
+    <public type="string" name="AMS_TASK_AMS_COMMAND" />
+    <public type="string" name="AMS_TASKS_ERROR_TITLE" />
+    <public type="string" name="AMS_TASKS_ERROR_EMPTY_MSG" />
+    <public type="string" name="AMS_STARTING_MIDLET_TITLE" />
+    <public type="string" name="AMS_STARTING_MIDLET_MSG" />
+    <public type="string" name="AMS_378" />
+    <public type="string" name="AMS_379" />
+    <public type="string" name="AMS_380" />
+    <public type="string" name="AMS_381" />
+    <public type="string" name="AMS_382" />
+    <public type="string" name="AMS_383" />
+    <public type="string" name="AMS_384" />
+    <public type="string" name="AMS_ASK_SUSPEND_ALL_MIDLETS" />
+    <public type="string" name="AMS_JAR_ONLY_NOT_ALLOWED" />
+    <public type="string" name="AMS_CONTACT_OPERATOR" />
+    <public type="string" name="AMS_CONTACT_CONTENT_PROVIDER" />
+    <public type="string" name="AMS_RESET_COMMAND_SHORT" />
+    <public type="string" name="AMS_RESET_COMMAND" />
+    <public type="string" name="AMS_UNTRUSTED_PERM_COMMAND_SHORT" />
+    <public type="string" name="AMS_UNTRUSTED_PERM_COMMAND" />
+    <public type="string" name="AMS_TRUSTED_PERM_COMMAND_SHORT" />
+    <public type="string" name="AMS_TRUSTED_PERM_COMMAND" />
+    <public type="string" name="AMS_OPERATOR_PERM_COMMAND_SHORT" />
+    <public type="string" name="AMS_OPERATOR_PERM_COMMAND" />
+    <public type="string" name="AMS_MANUFACTURER_PERM_COMMAND_SHORT" />
+    <public type="string" name="AMS_MANUFACTURER_PERM_COMMAND" />
+    <public type="string" name="AMS_399" />
+    <public type="string" name="AMS_ASK_KILL_MIDLET_TITLE" />
+    <public type="string" name="AMS_ASK_KILL_MIDLET_BODY" />
+    <public type="string" name="AMS_CANT_REMOVE_SUITE" />
+    <public type="string" name="AMS_CANNOT_UPDATE" />
+    <public type="string" name="AMS_LOCAL_JAD_NOT_FOUND" />
+    <public type="string" name="AMS_LOCAL_JAR_NOT_FOUND" />
+    <public type="string" name="AMS_ASK_PREINSTALL" />
+    <public type="string" name="AMS_ASK_PREINSTALL_TITLE" />
+    <public type="string" name="AMS_MSG_PREINSTALL_CANCEL" />
+    <public type="string" name="AMS_CONFIRM_REMOVE_FOLDER" />
+    <public type="string" name="AMS_NP_ACCOUNTS_TITLE" />
+    <public type="string" name="AMS_NP_SETTINGS_TITLE" />
+    <public type="string" name="AMS_NETWORKPARAMS_COMMAND" />
+    <public type="string" name="AMS_NETWORKPARAMS_COMMAND_SHORT" />
+    <public type="string" name="AMS_NP_SAVE_CHANGES_TITLE" />
+    <public type="string" name="AMS_NP_SAVE_CHANGES" />
+    <public type="string" name="AMS_TASKS_EXIT_MIDLETS_BEFORE_EXIT_AMS" />
+    <public type="string" name="AMS_INSTALLATION_CANCELLED_TITLE" />
+    <public type="string" name="AMS_INSTALLATION_CANCELLING" />
+    <public type="string" name="AMS_LAPI_PERMISSION_GROUP" />
+    <public type="string" name="AMS_PERMISSION_TYPE_LAPI" />
+    <public type="string" name="AMS_PERMISSION_TYPE_LAPI_POPUP" />
+    <public type="string" name="AMS_DEBUG_COMMAND" />
+    <public type="string" name="AMS_DEBUG_COMMAND_SHORT" />
+    <public type="string" name="AMS_SUCCESS" />
+    <public type="string" name="AMS_REMOVE_SUCCESS" />
+    <public type="string" name="AMS_REMOVE_ALL_SUCCESS" />
+    <public type="string" name="AMS_INVALID_FILE_NAME" />
+    <public type="string" name="AMS_PERM_TYPE_MONEY_POPUP_APP" />
+    <public type="string" name="AMS_PERM_TYPE_MONEY_POPUP_WAP" />
+    <public type="string" name="AMS_PERM_TYPE_MONEY_POPUP_NET" />
+    <public type="string" name="AMS_ASK_TERMINATE_MIDLET_TITLE" />
+    <public type="string" name="AMS_ASK_TERMINATE_MIDLET_BODY" />
+    <public type="string" name="AMS_DOWNLOAD_UNTRUSTED_CONTENT" />
+    <public type="string" name="AMS_CONTENT_HANDLER_INFO" />
+    <public type="string" name="AMS_DIFFERENT_DOWNLOAD_DOMAIN" />
+    <public type="string" name="AMS_AMSDM_DOWNLOADS" />
+    <public type="string" name="AMS_PMDM_ALBUMS" />
+    <public type="string" name="AMS_PMDM_MESSAGES" />
+    <public type="string" name="AMS_DOWNLOAD_NOT_ENOUGH_MEMORY" />
+    <public type="string" name="AMS_DELETE_FROM" />
+    <public type="string" name="AMS_FREE_SPACE" />
+    <public type="string" name="AMS_NEED_SPACE" />
+    <public type="string" name="AMS_CONFIRM_DELETE" />
+    <public type="string" name="AMS_URL" />
+    <public type="string" name="AMS_EDIT_WEBSITE" />
+    <public type="string" name="AMS_COPY_WEBSITE" />
+    <public type="string" name="AMS_REMOVE_WEBSITE_TITLE" />
+    <public type="string" name="AMS_CONFIRM_REMOVE_WEBSITE" />
+    <public type="string" name="AMS_RUN_COMMAND_SHORT" />
+    <public type="string" name="AMS_MANAGE_CONTENTMANAGER_COMMAND" />
+    <public type="string" name="AMS_MANAGE_BLANK_COMMAND_SHORT" />
+    <public type="string" name="AMS_MANAGE_BLANK_COMMAND" />
+    <public type="string" name="AMS_LISTEN_COMMAND_SHORT" />
+    <public type="string" name="AMS_LISTEN_COMMAND" />
+    <public type="string" name="AMS_PLAY_COMMAND" />
+    <public type="string" name="AMS_MANAGE_SETAS_COMMAND_SHORT" />
+    <public type="string" name="AMS_MANAGE_SETAS_COMMAND" />
+    <public type="string" name="AMS_PLAY_COMMAND_SHORT" />
+    <public type="string" name="AMS_VIEW_COMMAND" />
+    <public type="string" name="AMS_VIEW_COMMAND_SHORT" />
+    <public type="string" name="AMS_MANAGE_MEMORY_COMMAND" />
+    <public type="string" name="AMS_MANAGE_OPEN_COMMAND" />
+    <public type="string" name="AMS_MANAGE_OPEN_COMMAND_SHORT" />
+    <public type="string" name="AMS_MANAGER_VIEWMEMORY_TITLE" />
+    <public type="string" name="AMS_MANAGER_VIEWMEMORY_INFO" />
+    <public type="string" name="AMS_RIGHT_CHECK_INFO" />
+    <public type="string" name="AMS_RIGHT_LICENSE_NOT_EXIST" />
+    <public type="string" name="AMS_RIGHT_UNABLE_PROCESS_REQUEST" />
+    <public type="string" name="AMS_RIGHT_CHECK_TRYINFO" />
+    <public type="string" name="AMS_RETRY_COMMAND" />
+    <public type="string" name="AMS_RETRY_COMMAND_SHORT" />
+    <public type="string" name="AMS_REMOVE_TITLE" />
+    <public type="string" name="AMS_RIGHT_CANCEL_DESCRIPTION" />
+    <public type="string" name="AMS_CANCELED_BY_USER" />
+    <public type="string" name="AMS_RIGHT_CANCEL_WAITING_TITLE" />
+    <public type="string" name="AMS_RIGHT_RENEWAL_TITLE" />
+    <public type="string" name="AMS_RIGHT_RENEWAL_RENEW" />
+    <public type="string" name="AMS_RIGHT_RENEWAL_CANCEL" />
+    <public type="string" name="AMS_RIGHT_RENEWAL_DELETE" />
+    <public type="string" name="AMS_RUN_COMMAND" />
+    <public type="string" name="AMS_REPLAY_COMMAND" />
+    <public type="string" name="AMS_REPLAY_COMMAND_SHORT" />
+    <public type="string" name="AMS_CONTENT_ASSIGNED" />
+    <public type="string" name="AMS_CANNOT_PLAY_VIDEO" />
+    <public type="string" name="AMS_LAUNCH_REQUEST_TITLE" />
+    <public type="string" name="AMS_LAUNCH_REQUEST_QUERY" />
+    <public type="string" name="AMS_LAUNCH_REQUEST_FAILED" />
+    <public type="string" name="AMS_CONTENT_NOT_FOUND" />
+    <public type="string" name="AMS_HANDLER_NOT_FOUND" />
+    <public type="string" name="AMS_GET_CONTENT" />
+    <public type="string" name="AMS_GET_HANDLER" />
+    <public type="string" name="AMS_492" />
+    <public type="string" name="AMS_493" />
+    <public type="string" name="AMS_494" />
+    <public type="string" name="AMS_PERMISSION_CONTEXT_SHUTTER" />
+    <public type="string" name="AMS_PERMISSION_CONTEXT_RADIO_PRESET" />
+    <public type="string" name="AMS_SETAS_SCREEN_SAVERS" />
+    <public type="string" name="AMS_SETAS_VOICE_CALLS" />
+    <public type="string" name="AMS_SETAS_VOICEMAIL" />
+    <public type="string" name="AMS_SETAS_VOICE_SMS" />
+    <public type="string" name="AMS_SETAS_PICTURE_MAIL" />
+    <public type="string" name="AMS_SETAS_TEXT_MESSAGE" />
+    <public type="string" name="AMS_SETAS_ALARM" />
+    <public type="string" name="AMS_SETAS_PHONEBOOK" />
+    <public type="string" name="AMS_SETAS_EXTERNAL_LCD" />
+    <public type="string" name="AMS_SET_SUCCESS" />
+    <public type="string" name="AMS_SET_ERROR" />
+    <public type="string" name="AMS_SETAS_TITLE" />
+    <public type="string" name="AMS_RESUME_COMMAND" />
+    <public type="string" name="AMS_RESUME_COMMAND_SHORT" />
+    <public type="string" name="AMS_DESCRIPTION" />
+    <public type="string" name="AMS_LOAD_BEFORE_LAUNCH_TITLE" />
+    <public type="string" name="AMS_LOAD_BEFORE_LAUNCH_BODY" />
+    <public type="string" name="AMS_RIGHT_CHECK_ERROR" />
+    <public type="string" name="AMS_DOWNLOAD_DOMAIN" />
+    <public type="string" name="AMS_ONLINE_INFO_COMMAND" />
+    <public type="string" name="AMS_ONLINE_INFO_COMMAND_SHORT" />
+    <public type="string" name="AMS_TASK_RESUME_COMMAND_SHORT" />
+    <public type="string" name="AMS_TASK_RESUME_COMMAND" />
+    <public type="string" name="AMS_INSTALLATION_FAILED" />
+    <public type="string" name="AMS_PROFILE_COMMAND" />
+    <public type="string" name="AMS_PROFILE_COMMAND_SHORT" />
+    <public type="string" name="AMS_CALL_OUT_TITLE" />
+    <public type="string" name="AMS_CALL_OUT_QUERY" />
+    <public type="string" name="AMS_PAPI_UPDATE_ERROR" />
+    <public type="string" name="AMS_PAPI_DISMISS_COMMAND" />
+    <public type="string" name="AMS_PAPI_REJECT_COMMAND" />
+    <public type="string" name="AMS_PAPI_EXPIRED_TITLE" />
+    <public type="string" name="AMS_PAPI_EXPIRED_CONTENT" />
+    <public type="string" name="AMS_PAPI_PROVIDER_SELECT" />
+    <public type="string" name="AMS_PAPI_UPDATE_STAMP" />
+    <public type="string" name="AMS_PAPI_NO_UPDATE" />
+    <public type="string" name="AMS_PAPI_UPDATE_DATE" />
+    <public type="string" name="AMS_PAPI_SELECT_COMMAND" />
+    <public type="string" name="AMS_PAPI_SELECT_PROVIDER" />
+    <public type="string" name="AMS_PAPI_OTHER_PROVIDER" />
+    <public type="string" name="AMS_PAPI_FEATURE_TITLE" />
+    <public type="string" name="AMS_PAPI_FEATURE_DISCRIPTION" />
+    <public type="string" name="AMS_PAPI_ADAPTER" />
+    <public type="string" name="AMS_PAPI_PRICE" />
+    <public type="string" name="AMS_PAPI_PAY_OR_NOT" />
+    <public type="string" name="AMS_PAPI_UPDATING" />
+    <public type="string" name="AMS_PAPI_DOWNLOAD_ERROR" />
+    <public type="string" name="AMS_PAPI_VERIFY_ERROR" />
+    <public type="string" name="AMS_COMPLETE_MESSAGE" />
+    <public type="string" name="AMS_SHOP_LABEL" />
+    <public type="string" name="AMS_RIGHT_RENEWAL_FAIL" />
+    <public type="string" name="AMS_RIGHT_RENEWAL_URL_NULL" />
+    <public type="string" name="AMS_PERMISSION_TYPE_BLUETOOTH" />
+    <public type="string" name="AMS_PERMISSION_TYPE_BLUETOOTH_POPUP" />
+    <public type="string" name="AMS_PERMISSION_TYPE_SPRINTEXTENSIONS" />
+    <public type="string" name="AMS_PERMISSION_TYPE_SPRINTEXTENSIONS_POPUP" />
+    <public type="string" name="AMS_SENDINGSMS_PERMISSION_GROUP" />
+    <public type="string" name="AMS_BLUETOOTH_PERMISSION_GROUP" />
+    <public type="string" name="AMS_SPRINTEXTENSIONS_PERMISSION_GROUP" />
+    <public type="string" name="AMS_OVERWRITE_EXISTING" />
+    <public type="string" name="AMS_LAUNCH_EXISTING" />
+    <public type="string" name="AMS_DOWNLOADING_MESSAGE" />
+    <public type="string" name="AMS_TOTAL_SIZE" />
+    <public type="string" name="AMS_COMPLETE" />
+    <public type="string" name="AMS_VIDEO_ASSIGN_MESSAGE" />
+    <public type="string" name="AMS_PREVIEW" />
+    <public type="string" name="AMS_ASSIGN" />
+    <public type="string" name="AMS_SIGNATURE_MISSING" />
+    <public type="string" name="AMS_NOT_ACCEPTABLE_CONTENT" />
+    <public type="string" name="AMS_PERMISSION_TYPE_PAYMENTACCESS" />
+    <public type="string" name="AMS_PERMISSION_TYPE_PAYMENTACCESS_POPUP" />
+    <public type="string" name="AMS_PAYMENTACCESS_PERMISSION_GROUP" />
+    <public type="string" name="AMS_PENDING_INSTALL_COMMAND" />
+    <public type="string" name="AMS_PENDING_INSTALL_COMMAND_SHORT" />
+    <public type="string" name="AMS_ACTIVATE_COMMAND" />
+    <public type="string" name="AMS_ACTIVATE_COMMAND_SHORT" />
+    <public type="string" name="AMS_WAITING_DRM_RIGHTS" />
+    <public type="string" name="AMS_DRM_RIGHTS_NOT_ARRIVED" />
+    <public type="string" name="AMS_CANNOT_REQUEST_DRM_RIGHTS" />
+    <public type="string" name="AMS_DRM_INSTALL_PENDING" />
+    <public type="string" name="AMS_BACKGROUND_COMMAND_SHORT" />
+    <public type="string" name="AMS_BACKGROUND_COMMAND" />
+    <public type="string" name="AMS_MISSING_TRANSACTION_REMAIN" />
+    <public type="string" name="AMS_CONTRAINT_COUNT" />
+    <public type="string" name="AMS_CONTRAINT_DATETIME_START" />
+    <public type="string" name="AMS_CONTRAINT_DATETIME_END" />
+    <public type="string" name="AMS_CONTRAINT_INTERVAL" />
+    <public type="string" name="AMS_DATE_TIME" />
+    <public type="string" name="AMS_DAYS" />
+    <public type="string" name="AMS_HOURS" />
+    <public type="string" name="AMS_MINUTES" />
+    <public type="string" name="AMS_SECONDS" />
+    <public type="string" name="AMS_RETAIN_RMS" />
+    <public type="string" name="AMS_REMOVABLE_MEDIA_ADDED" />
+    <public type="string" name="AMS_REMOVABLE_MEDIA_REMOVED" />
+    <public type="string" name="AMS_TERMINATE_MIDLET_ON_REMOVABLE_MEDIA" />
+    <public type="string" name="AMS_CHECK_DOMAIN_TITLE" />
+    <public type="string" name="AMS_CHECK_DOMAIN_APP" />
+    <public type="string" name="AMS_CHECK_DOMAIN_WAP" />
+    <public type="string" name="AMS_CHECK_DOMAIN_TRUSTED" />
+    <public type="string" name="AMS_CHECK_DOMAIN_UNTRUSTED" />
+    <public type="string" name="AMS_MOTOROLA_SMSACCESS_READ_PERMISSION_GROUP" />
+    <public type="string" name="AMS_PERMISSION_TYPE_MOTOROLA_SMSACCESS_READ" />
+    <public type="string" name="AMS_PERMISSION_TYPE_MOTOROLA_SMSACCESS_READ_POPUP" />
+    <public type="string" name="AMS_MOTOROLA_SMSACCESS_WRITE_PERMISSION_GROUP" />
+    <public type="string" name="AMS_PERMISSION_TYPE_MOTOROLA_SMSACCESS_WRITE" />
+    <public type="string" name="AMS_PERMISSION_TYPE_MOTOROLA_SMSACCESS_WRITE_POPUP" />
+    <public type="string" name="AMS_VIEW_OPTIONS_COMMAND" />
+    <public type="string" name="AMS_VIEW_OPTIONS_COMMAND_SHORT" />
+    <public type="string" name="AMS_SHOW_CORE" />
+    <public type="string" name="AMS_SHOW_REMOVABLE_MEDIA" />
+    <public type="string" name="AMS_CLOSE_COMMAND_SHORT" />
+    <public type="string" name="AMS_MIDLET_INIT_ERROR" />
+    <public type="string" name="AMS_PHONE_STORAGE_NAME" />
+    <public type="string" name="AMS_INSUFFICIENT_STORAGE_MOVE" />
+    <public type="string" name="AMS_CANT_CREATE_DIRECTORY" />
+    <public type="string" name="AMS_COPY_ERROR" />
+    <public type="string" name="AMS_SELECT_STORAGE" />
+    <public type="string" name="AMS_FORBIDDEN" />
+    <public type="string" name="AMS_SERVER_ERROR" />
+    <public type="string" name="AMS_INSTALL_CONTENT_HANDLER" />
+    <public type="string" name="AMS_PDP_CONTEXT_DESCRIPTION" />
+    <public type="string" name="AMS_PDP_CONTEXT_CHOICE_CREATE" />
+    <public type="string" name="AMS_PDP_CONTEXT_CHOICE_REUSE" />
+    <public type="string" name="AMS_CANT_REMOVE_SPECIFIC" />
+    <public type="string" name="AMS_EXIT_MIDLET_BEFORE_INSTALL" />
+    <public type="string" name="AMS_MIDLET_EXITING" />
+    <public type="string" name="AMS_EXIT_MIDLET_BEFORE_REMOVE" />
+    <public type="string" name="AMS_FOLDERS_CANT_BE_MOVED" />
+    <public type="string" name="AMS_REQUIRE_CHAPI_INVOKE" />
+    <public type="string" name="AMS_NO_ENOUGH_MEMORY" />
+    <public type="string" name="AMS_APPLICATION_MANAGER" />
+    <public type="string" name="AMS_SEND_TO_BACKGROUND" />
+    <public type="string" name="AMS_RESUME_APPLICATION" />
+    <public type="string" name="AMS_EXIT_APPLICATION" />
+    <public type="string" name="AMS_USER_ALERT_DEFAULT" />
+    <public type="string" name="AMS_USER_ALERT_BACKGROUND" />
+    <public type="string" name="AMS_MIDLET_CANNOT_EXIT" />
+    <public type="string" name="AMS_USER_ALERT_UNCAUGHT_EXCEPTION" />
+    <public type="string" name="AMS_APPLY_COMMAND_SHORT" />
+    <public type="string" name="AMS_APPLY_COMMAND" />
+    <public type="string" name="AMS_USER_ALERT_PUSH" />
+    <public type="string" name="AMS_DOWNLOADING_INSUFFICIENT_STORAGE" />
+    <public type="string" name="AMS_INSUFFICIENT_STORAGE_UNKNOWN_SIZE" />
+    <public type="string" name="AMS_PUSH_HANDLER_QUERY_FOREGROUND" />
+    <public type="string" name="AMS_FILE_IO_ERROR" />
+    <public type="string" name="AMS_ALARM" />
+    <public type="string" name="AMS_CONFIRMATION" />
+    <public type="string" name="AMS_TASKS_VIEW_ALERT_COMMAND" />
+    <public type="string" name="AMS_TASKS_VIEW_ALERT_COMMAND_SHORT" />
+    <public type="string" name="AMS_TASKS_IGNORE_ALERT_COMMAND" />
+    <public type="string" name="AMS_TASKS_IGNORE_ALERT_COMMAND_SHORT" />
+    <public type="string" name="AMS_RETAIN_RMS_PRIVATEDIR" />
+    <public type="string" name="AMS_CONFIRM_DELETE_MIDLET_PRIVATE" />
+    <public type="string" name="AMS_PRIVATEDIR_NAME" />
+    <public type="string" name="AMS_TASKS_VIEW_APPLICATION_COMMAND" />
+    <public type="string" name="AMS_TASKS_VIEW_APPLICATION_COMMAND_SHORT" />
+    <public type="string" name="AMS_TASKS_SHOW_PERMISSION_REQUEST_COMMAND" />
+    <public type="string" name="AMS_TASKS_SHOW_PERMISSION_REQUEST_COMMAND_SHORT" />
+    <public type="string" name="AMS_TASKS_GENERAL_USER_ALERT" />
+    <public type="string" name="AMS_PERMISSION_TYPE_PIMACCESS_POPUP" />
+    <public type="string" name="AMS_BT_PUSH_HANDLER_QUERY" />
+    <public type="string" name="AMS_BT_PUSH_HANDLER_QUERY_FOREGROUND" />
+    <public type="string" name="AMS_BT_POWER_QUERY" />
+    <public type="string" name="AMS_BT_DISCOVERABLE_QUERY" />
+    <public type="string" name="AMS_PASSWD_TITLE" />
+    <public type="string" name="AMS_RMS_LOCAL_PASSWD" />
+    <public type="string" name="AMS_RMS_IFDATA_PASSWD" />
+    <public type="string" name="AMS_PUSH_MULTIPLE_CONN_QUERY" />
+    <public type="string" name="AMS_SESSION" />
+    <public type="string" name="AMS_ONESHOT" />
+    <public type="string" name="AMS_CANNOT_CONSUME_DRM_RIGHTS" />
+    <public type="string" name="AMS_PLATFORM_REQUEST_ALERT_TITLE" />
+    <public type="string" name="AMS_PLATFORM_REQUEST_ALERT_PROMPT" />
+    <public type="string" name="AMS_AMS_BUSY_ALERT_MSG" />
+    <public type="string" name="AMS_JAR_SIZE_EXCEED_ERROR" />
+    <public type="string" name="AMS_UPDATE_LOCK" />
+    <public type="string" name="AMS_BLANKET" />
+    <public type="string" name="AMS_LOCKED" />
+    <public type="string" name="AMS_AMS_TITLE_SEARCHING" />
+    <public type="string" name="AMS_AMS_LABEL_SEARCHING" />
+    <public type="string" name="AMS_AMS_TITLE_SEARCHING_RESULT" />
+    <public type="string" name="AMS_BROWSER_COMMAND_SHORT" />
+    <public type="string" name="AMS_BROWSER_COMMAND" />
+    <public type="string" name="AMS_FOLDER_ERROR_SAME_NAME_EXISTS" />
+    <public type="string" name="AMS_FOLDER_ERROR_CONTENTS_NOT_MODIFIABLE" />
+    <public type="string" name="AMS_FOLDER_ERROR_READ_ONLY" />
+    <public type="string" name="AMS_FOLDER_ERROR_CONTAINS_READ_ONLY" />
+    <public type="string" name="AMS_FOLDER_ERROR_MOVE_INTO_CHILD" />
+    <public type="string" name="AMS_FOLDER_ERROR_EMPTY_NAME" />
+    <public type="string" name="AMS_FOLDER_ERROR_ILLEGAL_CHAR" />
+    <public type="string" name="AMS_FOLDER_ERROR_NOT_EXISTS" />
+    <public type="string" name="AMS_FOLDER_ERROR_CONTAINS_RUNNING_MIDLETS" />
+    <public type="string" name="AMS_BACKGROUNDRUNNING_COMMAND_SHORT" />
+    <public type="string" name="AMS_BACKGROUNDRUNNING_COMMAND" />
+    <public type="string" name="AMS_SMARTCARDCOMMAID_PERMISSION_GROUP" />
+    <public type="string" name="AMS_PERMISSION_TYPE_SMARTCARDCOMMAID" />
+    <public type="string" name="AMS_PERMISSION_TYPE_SMARTCARDCOMMAID_POPUP" />
+    <public type="string" name="AMS_ZZSATGROUP_PERMISSION_GROUP" />
+    <public type="string" name="AMS_PERMISSION_TYPE_ZZSATGROUP" />
+    <public type="string" name="AMS_PERMISSION_TYPE_ZZSATGROUP_POPUP" />
+    <public type="string" name="AMS_ACTIVE_MENU_LIST" />
+    <public type="string" name="AMS_PROVIDER_CERT_EXPIRED" />
+    <public type="string" name="AMS_DELETE_COMMAND" />
+    <public type="string" name="AMS_HANDLER_INSTALL_FAILED" />
+    <public type="string" name="AMS_HANDLER_CONFLICTS" />
+    <public type="string" name="AMS_PERMISSION_TYPE_PIMACCESS_ADD_POPUP" />
+    <public type="string" name="AMS_PERMISSION_TYPE_PIMACCESS_READ_POPUP" />
+    <public type="string" name="AMS_PERMISSION_TYPE_PIMACCESS_REMOVE_POPUP" />
+    <public type="string" name="AMS_PERMISSION_TYPE_PIMACCESS_UPDATE_POPUP" />
+    <public type="string" name="AMS_PERMISSION_TYPE_PIMACCESS_WRITE_POPUP" />
+    <public type="string" name="AMS_OCSP_STATUS_BAD" />
+    <public type="string" name="AMS_OCSP_PROC_FAILURE" />
+    <public type="string" name="AMS_OCSP_STATUS_REVOKED" />
+    <public type="string" name="AMS_OCSP_STATUS_UNKNOWN" />
+    <public type="string" name="AMS_OCSP_OUTDATED_RESPONSE" />
+    <public type="string" name="AMS_EXIT_VM_TITLE" />
+    <public type="string" name="AMS_EXIT_VM" />
+    <public type="string" name="AMS_OVERWRITE_MIDLET_ON_UNAVAILABLE_REMOVABLE_MEDIA" />
+    <public type="string" name="AMS_MOVE_FROM_UNAVAILABLE_REMOVABLE_MEDIA" />
+    <public type="string" name="AMS_LAUNCH_ON_UNAVAILABLE_REMOVABLE_MEDIA" />
+    <public type="string" name="AMS_MOVE_TO_UNAVAILABLE_REMOVABLE_MEDIA" />
+    <public type="string" name="AMS_MOVE_STORAGE_COMMAND_SHORT" />
+    <public type="string" name="AMS_MOVE_STORAGE_COMMAND" />
+    <public type="string" name="AMS_DISPLAYSIZE_COMMAND_SHORT" />
+    <public type="string" name="AMS_DISPLAYSIZE_COMMAND" />
+    <public type="string" name="AMS_SELECT_DISPLAY_SIZE_TITLE" />
+    <public type="string" name="AMS_SELECT_DISPLAY_SIZE_PROMPT" />
+    <public type="string" name="AMS_PERMISSION_TYPE_SENSORACCESS" />
+    <public type="string" name="AMS_PERMISSION_TYPE_SENSORACCESS_POPUP" />
+    <public type="string" name="AMS_GENERALSENSORACCESS_PERMISSION_GROUP" />
+    <public type="string" name="AMS_PRIVATESENSORACCESS_PERMISSION_GROUP" />
+    <public type="string" name="AMS_PROTECTEDSENSORACCESS_PERMISSION_GROUP" />
+    <public type="string" name="AMS_VIRTUAL_KEYBOARD_COMMAND_SHORT" />
+    <public type="string" name="AMS_VIRTUAL_KEYBOARD_COMMAND" />
+    <public type="string" name="AMS_CHOOSE_VIRTUAL_KEYBOARD_TITLE" />
+    <public type="string" name="AMS_CHOOSE_VIRTUAL_KEYBOARD_PROMPT" />
+    <public type="string" name="AMS_CHOOSE_VIRTUAL_KEYBOARD_ENABLE" />
+    <public type="string" name="AMS_CHOOSE_VIRTUAL_KEYBOARD_DISABLE" />
+    <public type="string" name="AMS_DEFAULT_FOLDERS" />
+    <public type="string" name="AMS_LOW_BATTERY_ERROR" />
+    <public type="string" name="PIM_PIM_FIELD_UID" />
+    <public type="string" name="PIM_PIM_FIELD_REVISION" />
+    <public type="string" name="PIM_PIM_CONTACT_FIELD_NAME" />
+    <public type="string" name="PIM_PIM_CONTACT_FIELD_ADDRESS" />
+    <public type="string" name="PIM_PIM_CONTACT_FIELD_EMAIL" />
+    <public type="string" name="PIM_PIM_CONTACT_FIELD_FORMATTED_NAME" />
+    <public type="string" name="PIM_PIM_CONTACT_FIELD_FORMATTED_ADDRESS" />
+    <public type="string" name="PIM_PIM_CONTACT_FIELD_NICKNAME" />
+    <public type="string" name="PIM_PIM_CONTACT_FIELD_NOTE" />
+    <public type="string" name="PIM_PIM_CONTACT_FIELD_ORGANIZATION" />
+    <public type="string" name="PIM_PIM_CONTACT_FIELD_TELEPHONE" />
+    <public type="string" name="PIM_PIM_CONTACT_FIELD_TITLE" />
+    <public type="string" name="PIM_PIM_CONTACT_FIELD_URL" />
+    <public type="string" name="PIM_PIM_CONTACT_FIELD_BIRTHDAY" />
+    <public type="string" name="PIM_PIM_CONTACT_FIELD_PHOTO" />
+    <public type="string" name="PIM_PIM_CONTACT_FIELD_PUBLIC_KEY" />
+    <public type="string" name="PIM_PIM_CONTACT_FIELD_PHOTO_URL" />
+    <public type="string" name="PIM_PIM_CONTACT_FIELD_PUBLIC_KEY_STRING" />
+    <public type="string" name="PIM_PIM_CONTACT_FIELD_CLASS" />
+    <public type="string" name="PIM_PIM_CONTACT_ATTRIBUTES_ASST" />
+    <public type="string" name="PIM_PIM_CONTACT_ATTRIBUTES_AUTO" />
+    <public type="string" name="PIM_PIM_CONTACT_ATTRIBUTES_FAX" />
+    <public type="string" name="PIM_PIM_CONTACT_ATTRIBUTES_HOME" />
+    <public type="string" name="PIM_PIM_CONTACT_ATTRIBUTES_MOBILE" />
+    <public type="string" name="PIM_PIM_CONTACT_ATTRIBUTES_OTHER" />
+    <public type="string" name="PIM_PIM_CONTACT_ATTRIBUTES_PAGER" />
+    <public type="string" name="PIM_PIM_CONTACT_ATTRIBUTES_PREFERRED" />
+    <public type="string" name="PIM_PIM_CONTACT_ATTRIBUTES_SMS" />
+    <public type="string" name="PIM_PIM_CONTACT_ATTRIBUTES_WORK" />
+    <public type="string" name="PIM_PIM_CONTACT_ATTRIBUTES_VIDEO_CALL" />
+    <public type="string" name="PIM_PIM_CONTACT_ELEMENTS_COUNTRY" />
+    <public type="string" name="PIM_PIM_CONTACT_ELEMENTS_EXTRA" />
+    <public type="string" name="PIM_PIM_CONTACT_ELEMENTS_LOCALITY" />
+    <public type="string" name="PIM_PIM_CONTACT_ELEMENTS_POBOX" />
+    <public type="string" name="PIM_PIM_CONTACT_ELEMENTS_POSTALCODE" />
+    <public type="string" name="PIM_PIM_CONTACT_ELEMENTS_REGION" />
+    <public type="string" name="PIM_PIM_CONTACT_ELEMENTS_STREET" />
+    <public type="string" name="PIM_PIM_CONTACT_ELEMENTS_FAMILY" />
+    <public type="string" name="PIM_PIM_CONTACT_ELEMENTS_GIVEN" />
+    <public type="string" name="PIM_PIM_CONTACT_ELEMENTS_OTHER" />
+    <public type="string" name="PIM_PIM_CONTACT_ELEMENTS_PREFIX" />
+    <public type="string" name="PIM_PIM_CONTACT_ELEMENTS_SUFFIX" />
+    <public type="string" name="PIM_PIM_CONTACT_ELEMENTS_NAME_READING" />
+    <public type="string" name="PIM_PIM_EVENT_FIELD_LOCATION" />
+    <public type="string" name="PIM_PIM_EVENT_FIELD_NOTE" />
+    <public type="string" name="PIM_PIM_EVENT_FIELD_SUMMARY" />
+    <public type="string" name="PIM_PIM_EVENT_FIELD_END" />
+    <public type="string" name="PIM_PIM_EVENT_FIELD_START" />
+    <public type="string" name="PIM_PIM_EVENT_FIELD_ALARM" />
+    <public type="string" name="PIM_PIM_EVENT_FIELD_CLASS" />
+    <public type="string" name="PIM_PIM_TODO_FIELD_NOTE" />
+    <public type="string" name="PIM_PIM_TODO_FIELD_SUMMARY" />
+    <public type="string" name="PIM_PIM_TODO_FIELD_CLASS" />
+    <public type="string" name="PIM_PIM_TODO_FIELD_PRIORITY" />
+    <public type="string" name="PIM_PIM_TODO_FIELD_COMPLETION_DATE" />
+    <public type="string" name="PIM_PIM_TODO_FIELD_DUE" />
+    <public type="string" name="PIM_PIM_TODO_FIELD_COMPLETED" />
+    <public type="string" name="PIM_57" />
+    <public type="string" name="PIM_58" />
+    <public type="string" name="PIM_59" />
+    <public type="string" name="PIM_60" />
+    <public type="string" name="PIM_61" />
+    <public type="string" name="PIM_PIM_CONTACTLIST_NAME" />
+    <public type="string" name="PIM_PIM_EVENTLIST_NAME" />
+    <public type="string" name="PIM_PIM_TODOLIST_NAME" />
+    <public type="string" name="PIM_65" />
+    <public type="string" name="PIM_66" />
+    <public type="string" name="PIM_67" />
+    <public type="string" name="PRJ_EMPTY_AMS_LIST" />
+    <public type="string" name="PRJ_SORT" />
+    <public type="string" name="PRJ_SORT_BY_NAME" />
+    <public type="string" name="PRJ_SORT_BY_SIZE" />
+    <public type="string" name="PRJ_SORT_BY_TIME" />
+    <public type="string" name="PRJ_ERROR_MIDLET_REMOVE_NOT_FOUND" />
+    <public type="string" name="PRJ_ERROR_MIDLET_REMOVE_FAIL" />
+    <public type="string" name="PRJ_INFO_NO_STORAGE" />
+    <public type="string" name="PRJ_ERROR_INVALID_URL" />
+    <public type="string" name="PRJ_WARNING_NOT_CHANGE_PERMISSION_PROPERTY" />
+    <public type="string" name="PRJ_DRM_PROTECTED" />
+    <public type="string" name="PRJ_DRM_FORWARD_LOCK" />
+    <public type="string" name="PRJ_DRM_CONSTRAINT_COUNT" />
+    <public type="string" name="PRJ_DRM_CONSTRAINT_START_DATE" />
+    <public type="string" name="PRJ_DRM_CONSTRAINT_END_DATE" />
+    <public type="string" name="PRJ_SDCARD_ERROR_MESSAGE" />
+    <public type="string" name="PRJ_APN_SETTING" />
+    <public type="string" name="PRJ_INSTALL_LOCATION" />
+    <public type="string" name="PRJ_ROTATE_COMMAND" />
+    <public type="string" name="PRJ_SIGNER" />
+    <public type="string" name="PRJ_GETTING_JAR" />
+    <public type="string" name="PRJ_INSTALL_CANCEL" />
+    <public type="string" name="PRJ_RESUME_VM" />
+    <public type="string" name="PRJ_CONFIRM_DELETE_NO_EXIST_MIDLET" />
+    <public type="string" name="PRJ_STORAGE_SETTING" />
+    <public type="string" name="PRJ_EXTERNAL_STORAGE_SDCARD" />
+    <public type="string" name="PRJ_REMOVE_MULTIPLE_COMMAND_SHORT" />
+    <public type="string" name="PRJ_SEND_INFO_COMMAND_SHORT" />
+    <public type="string" name="PRJ_STOP_ONE_MIDLET" />
+    <public type="string" name="PRJ_RESUME_ONE_MIDLET" />
+    <public type="string" name="PRJ_DELETE" />
+    <public type="string" name="PRJ_MOVE" />
+    <public type="string" name="PRJ_MOVE_MULTI_MIDLETS" />
+    <public type="string" name="PRJ_DELETE_MULTI_MIDLETS" />
+    <public type="string" name="PRJ_STOP" />
+    <public type="string" name="PRJ_STOP_MIDLET" />
+    <public type="string" name="PRJ_GAMES" />
+    <public type="string" name="PRJ_APPLICATIONS" />
+    <public type="string" name="PRJ_JAR_SERVER_NOT_FOUND" />
+    <public type="string" name="PRJ_JAR_SERVER_NOT_FOUND_TITLE" />
+    <public type="string" name="PRJ_DRM_COUNT_POPUP_STR" />
+    <public type="string" name="PRJ_DRM_EXPIRED_POPUP_STR" />
+    <public type="string" name="PRJ_DRM_DELETE_POPUP_STR" />
+    <public type="string" name="PRJ_DRM_PROTECT" />
+    <public type="string" name="PRJ_DRM_USES_LEFT" />
+    <public type="string" name="PRJ_DRM_VALID_FOR" />
+    <public type="string" name="PRJ_DRM_UNLIMITED" />
+    <public type="string" name="PRJ_DRM_DAYS" />
+    <public type="string" name="PRJ_MOVE_MULTI_MIDLETS_TITLE" />
+    <public type="string" name="PRJ_DRM_GET_LICENSE_USE1" />
+    <public type="string" name="PRJ_DRM_GET_LICENSE_EXPIRED" />
+    <public type="string" name="PRJ_DRM_GET_LICENSE_ALREADY_LOCKED" />
+    <public type="string" name="PRJ_DRM_INFO_UNKNOWN" />
+    <public type="string" name="PRJ_FOLDER_MOVE_NO_APPROPRIATE" />
+    <public type="string" name="PRJ_SELECT_MIDLET" />
+    <public type="string" name="PRJ_NO_FILES_SELECTED" />
+    <public type="string" name="PRJ_INSTALL_WARNING" />
+    <public type="string" name="PRJ_REMOVE_MULTIPLE_FOLDER" />
+    <public type="string" name="PRJ_DELETING" />
+    <public type="string" name="PRJ_REMOVE_MULTIPLE_SUITE" />
+    <public type="string" name="PRJ_DELETE_FOLDER_CONFIRM" />
+    <public type="string" name="PRJ_DELETE_PROTECTED_FOLDER_CONFIRM" />
+    <public type="string" name="PRJ_FOLDER_FULL_PATH" />
+    <public type="string" name="PRJ_MIDLET_COUNT" />
+    <public type="string" name="PRJ_64" />
+    <public type="string" name="PRJ_OPTION_MENU_ORI_SIZE" />
+    <public type="string" name="PRJ_OPTION_MENU_FIT_SCREEN" />
+    <public type="string" name="PRJ_OPTION_MENU_DISPLAY_SIZE" />
+    <public type="string" name="PRJ_68" />
+    <public type="string" name="htc_private_app" />
+    <public type="string" name="ap_version_id" />
+    <public type="style" name="SoftKeyboard" />
+    <public type="style" name="SoftKeyboard.fill_parent" />
+    <public type="style" name="SoftKeyboard.wrap_height" />
+    <public type="menu" name="ams_menu" />
+    <public type="menu" name="running_midlet_manager_menu" />
+    <public type="menu" name="sdcard_file_menu" />
+    <public type="id" name="empty" />
+    <public type="id" name="textboxName" />
+    <public type="id" name="edtName" />
+    <public type="id" name="textboxPwd" />
+    <public type="id" name="edtPwd" />
+    <public type="id" name="edit" />
+    <public type="id" name="btnOk" />
+    <public type="id" name="btnCancel" />
+    <public type="id" name="frameParent" />
+    <public type="id" name="jbedView" />
+    <public type="id" name="videoParent" />
+    <public type="id" name="videoRegionView" />
+    <public type="id" name="jbedVideoView" />
+    <public type="id" name="nativeWidgetView" />
+    <public type="id" name="progress_bar" />
+    <public type="id" name="progress_desc" />
+    <public type="id" name="listview" />
+    <public type="id" name="list_item_icon" />
+    <public type="id" name="list_item_text" />
+    <public type="id" name="lge_sdcard_icon" />
+    <public type="id" name="lge_drm_protect_icon" />
+    <public type="id" name="vendor_text" />
+    <public type="id" name="progress_small" />
+    <public type="id" name="drm_protect_icon" />
+    <public type="id" name="drm_pending_icon" />
+    <public type="id" name="size_text" />
+    <public type="id" name="install_date_text" />
+    <public type="id" name="typetext" />
+    <public type="id" name="fgtext" />
+    <public type="id" name="itemspinner" />
+    <public type="id" name="body" />
+    <public type="id" name="progress" />
+    <public type="id" name="message" />
+    <public type="id" name="permissiontext" />
+    <public type="id" name="permissionspinner" />
+    <public type="id" name="apnchoice" />
+    <public type="id" name="textview" />
+    <public type="id" name="name" />
+    <public type="id" name="msg" />
+    <public type="id" name="titleLayout" />
+    <public type="id" name="textboxTitle" />
+    <public type="id" name="textbox" />
+    <public type="id" name="tickerView" />
+    <public type="id" name="tickerText" />
+    <public type="id" name="commandsBtn" />
+    <public type="id" name="leftBtn" />
+    <public type="id" name="rightBtn" />
+    <public type="id" name="listView" />
+    <public type="id" name="okBtn" />
+    <public type="id" name="cancelBtn" />
+    <public type="id" name="commandText" />
+    <public type="id" name="text" />
+    <public type="id" name="screen_menu" />
+    <public type="id" name="up_folder_item" />
+    <public type="id" name="local_install_menu_item" />
+    <public type="id" name="install_menu_item" />
+    <public type="id" name="tasks_menu_item" />
+    <public type="id" name="remove_multiple_menu_item" />
+    <public type="id" name="create_folder_item" />
+    <public type="id" name="list_certificates_item" />
+    <public type="id" name="apn_menu_item" />
+    <public type="id" name="rotate_menu_item" />
+    <public type="id" name="storage_setting_item" />
+    <public type="id" name="about_menu_item" />
+    <public type="id" name="exit_menu_item" />
+    <public type="id" name="screen_no_empty_menu" />
+    <public type="id" name="remove_all_menu_item" />
+    <public type="id" name="sort_menu_item" />
+    <public type="id" name="sort_by_name_menu_item" />
+    <public type="id" name="sort_by_reverse_name_menu_item" />
+    <public type="id" name="sort_by_size_menu_item" />
+    <public type="id" name="sort_by_time_menu_item" />
+    <public type="id" name="item_menu" />
+    <public type="id" name="rename_item" />
+    <public type="id" name="move_to_folder_item" />
+    <public type="id" name="run_menu_item" />
+    <public type="id" name="remove_menu_item" />
+    <public type="id" name="info_menu_item" />
+    <public type="id" name="permission_menu_item" />
+    <public type="id" name="update_menu_item" />
+    <public type="id" name="send_info_menu_item" />
+    <public type="id" name="bring_midlet_foreground_item" />
+    <public type="id" name="stop_midlet_item" />
+    <public type="id" name="back_to_ams_item" />
+    <public type="id" name="sdcard_install_item" />
+    <public type="id" name="sdcard_delete_item" />
 </resources>
