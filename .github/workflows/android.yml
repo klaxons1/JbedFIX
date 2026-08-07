@@ -2,9 +2,9 @@ name: Build APK
 
 on:
   push:
-    branches: ["main", "arena/**"]
+    branches: ["main", "arena/019fcc77-mbwandroid"]
   pull_request:
-    branches: ["main", "arena/**"]
+    branches: ["main", "arena/019fcc77-mbwandroid"]
 
 jobs:
   build:
