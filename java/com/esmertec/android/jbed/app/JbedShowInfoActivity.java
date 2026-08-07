@@ -6,6 +6,7 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageInfo;
 import android.os.Bundle;
+import android.net.Uri;
 import com.esmertec.android.jbed.R;
 import com.esmertec.android.jbed.ams.AmsActivity;
 import com.esmertec.android.jbed.ams.BasicEventHandler;
@@ -63,7 +64,7 @@ public class JbedShowInfoActivity extends Activity {
                     List<PackageInfo> packageList = JbedShowInfoActivity.this.getPackageManager().getInstalledPackages(0);
                     for (int i = 0; i < packageList.size(); i++) {
                         if (packageList.get(i).packageName.equals(JbedShowInfoActivity.pkgName)) {
-                            JbedShowInfoActivity.this.getPackageManager().deletePackage(JbedShowInfoActivity.pkgName, null, 0);
+                            JbedShowInfoActivity.this.startActivity(new Intent(Intent.ACTION_UNINSTALL_PACKAGE, Uri.parse("package:" + JbedShowInfoActivity.pkgName)));
                             break;
                         }
                     }

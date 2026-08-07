@@ -83,7 +83,7 @@ public class JbedConfig {
                     throw th;
                 }
             } catch (Throwable th2) {
-                th = th2;
+                Log.w(TAG, "Failed to read config properties", th2);
             }
         } catch (IOException e5) {
         }

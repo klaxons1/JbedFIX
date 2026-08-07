@@ -847,8 +847,7 @@ public class AmsActivity extends ListActivity implements AmsConstants {
                 menuItemFlagMap.put(Integer.valueOf(R.id.list_certificates_item), 17936);
                 menuItemFlagMap.put(Integer.valueOf(R.id.storage_setting_item), 17936);
                 menuItemFlagMap.put(Integer.valueOf(R.id.tasks_menu_item), 17936);
-                return;
-            }
+            } else {
             menuItemFlagMap.put(Integer.valueOf(R.id.move_to_folder_item), 1050128);
             menuItemFlagMap.put(Integer.valueOf(R.id.remove_multiple_menu_item), 1050128);
             menuItemFlagMap.put(Integer.valueOf(R.id.info_menu_item), 1544);
@@ -860,6 +859,7 @@ public class AmsActivity extends ListActivity implements AmsConstants {
             menuItemFlagMap.put(Integer.valueOf(R.id.list_certificates_item), Integer.valueOf(TOP_ALL));
             menuItemFlagMap.put(Integer.valueOf(R.id.storage_setting_item), Integer.valueOf(ALL));
             menuItemFlagMap.put(Integer.valueOf(R.id.tasks_menu_item), Integer.valueOf(ALL));
+            }
         }
 
         /* JADX INFO: Access modifiers changed from: private */

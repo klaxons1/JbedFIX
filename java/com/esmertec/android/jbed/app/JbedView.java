@@ -465,12 +465,8 @@ public class JbedView extends SurfaceView {
     }
 
     class JbedClientImpl extends IJbedClient.Stub {
-        static final /* synthetic */ boolean $assertionsDisabled;
         private Handler mHandler = new Handler();
 
-        static {
-            $assertionsDisabled = !JbedView.class.desiredAssertionStatus();
-        }
 
         JbedClientImpl() {
         }
@@ -483,7 +479,7 @@ public class JbedView extends SurfaceView {
 
         @Override // com.esmertec.android.jbed.app.IJbedClient
         public void repaint(int clipLeft, int clipTop, int clipRight, int clipBottom, int width, int height, float pScale, float lScale) throws DeadObjectException {
-            if (!$assertionsDisabled && JbedView.this.mPainter.mHandler == null) {
+            if (JbedView.this.mPainter.mHandler == null) {
                 throw new AssertionError();
             }
             JbedView.this.mPainter.mHandler.removeMessages(4);
