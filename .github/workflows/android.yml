@@ -10,69 +10,69 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout project
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1 # Скачиваем только последний коммит для экономии времени
 
-      # Sets up Java and enables built-in Gradle caching automatically
       - name: Set up JDK 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5 # Обновлено до v5 для поддержки Node 24
         with:
           java-version: '17'
           distribution: 'temurin'
-          cache: gradle
+          cache: 'gradle' # Встроенный кэш Gradle
 
-      # Caches only the debug keystore to avoid recreating it every run
+      - name: Set up Android Environment
+        run: |
+          # Используем системный Android SDK, который уже есть на GitHub Runner
+          echo "ANDROID_HOME=/usr/local/lib/android/sdk" >> $GITHUB_ENV
+          echo "/usr/local/lib/android/sdk/tools/bin" >> $GITHUB_PATH
+          echo "/usr/local/lib/android/sdk/platform-tools" >> $GITHUB_PATH
+
       - name: Cache debug keystore
         uses: actions/cache@v4
         with:
           path: debug.keystore
           key: debug-keystore-v1
 
-      # Generates a new debug keystore if it wasn't restored from cache
       - name: Generate debug keystore if not exists
         run: |
           if [ ! -f debug.keystore ]; then
-            keytool -genkey -v \
-              -keystore debug.keystore \
-              -alias androiddebugkey \
-              -keyalg RSA \
-              -keysize 2048 \
-              -validity 10000 \
+            keytool -genkey -v -keystore debug.keystore -alias androiddebugkey \
+              -keyalg RSA -keysize 2048 -validity 10000 \
               -dname "CN=Android Debug,O=Android,C=US" \
-              -storepass android \
-              -keypass android
+              -storepass android -keypass android
           fi
 
-      - name: Grant execute permission for gradlew
+      - name: Make gradlew executable
         run: chmod +x gradlew
 
-      # Builds the release APK using parallel execution and build cache features
       - name: Build with Gradle
-        run: ./gradlew assembleRelease --parallel --build-cache --warning-mode all
+        run: ./gradlew assembleRelease --no-daemon
 
-      # Dynamically locates the generated APK file across the whole workspace fast
-      - name: Find APK file
+      - name: Find and Sign APK
         run: |
+          # Ищем собранный release APK универсальным поиском, игнорируя скрытые папки
           APK_FILE=$(find . -not -path '*/.*' -name "*.apk" -type f | head -n 1)
+          
           if [ -z "$APK_FILE" ]; then
-            echo "ERROR: No APK file found in the project!"
+            echo "Error: APK file not found!"
             exit 1
           fi
+          
           echo "Found APK: $APK_FILE"
-          echo "APK_PATH=$APK_FILE" >> $GITHUB_ENV
-
-      # Signs the APK using the pre-installed build-tools on the runner
-      - name: Sign APK with debug keystore
-        run: |
+          
+          # Накатываем подпись из дебажного ключа через системный apksigner
           $ANDROID_HOME/build-tools/34.0.0/apksigner sign \
             --ks debug.keystore \
             --ks-pass pass:android \
             --key-pass pass:android \
-            "${{ env.APK_PATH }}"
+            "$APK_FILE"
+            
+          echo "APK_PATH=$APK_FILE" >> $GITHUB_ENV
 
-      # Uploads the signed APK as a build artifact
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: app-release
           path: ${{ env.APK_PATH }}
-          if-no-files-found: warn
