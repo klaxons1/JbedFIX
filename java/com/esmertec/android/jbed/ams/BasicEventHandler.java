@@ -154,8 +154,9 @@ public class BasicEventHandler {
                     DateFormat.getDateTimeInstance(1, 1, Locale.getDefault());
                     int cnt = 0;
                     String suiteId = null;
-                    while (in.available() > 0) {
+                    while (true) {
                         try {
+                            if (in.available() <= 0) break;
                             String token = readJbedString(in);
                             if ("drmConstraintCount".equals(token)) {
                                 cnt = Integer.parseInt(readJbedString(in));
@@ -203,8 +204,9 @@ public class BasicEventHandler {
                 StringBuffer mInfo2 = new StringBuffer();
                 DataInputStream in2 = new DataInputStream(new ByteArrayInputStream(this.mEvent.mData));
                 DateFormat dateFormat = DateFormat.getDateTimeInstance(1, 1, Locale.getDefault());
-                while (in2.available() > 0) {
+                while (true) {
                     try {
+                        if (in2.available() <= 0) break;
                         String token2 = readJbedString(in2);
                         if ("drmConstraintCount".equals(token2)) {
                             mInfo2.append(this.mContext.getString(R.string.PRJ_DRM_CONSTRAINT_COUNT)).append(" : ");
