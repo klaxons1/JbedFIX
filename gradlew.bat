@@ -5,7 +5,14 @@ set WRAPPER_JAR=%WRAPPER_DIR%\gradle-wrapper.jar
 if not exist "%WRAPPER_JAR%" (
     echo gradle-wrapper.jar not found, downloading...
     if not exist "%WRAPPER_DIR%" mkdir "%WRAPPER_DIR%"
-    powershell -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; (New-Object System.Net.WebClient).DownloadFile('https://raw.githubusercontent.com/gradle/gradle/v8.4.0/gradle/wrapper/gradle-wrapper.jar', '%WRAPPER_JAR%')"
+    
+    echo Trying to download from Apache Kafka repository...
+    powershell -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; (New-Object System.Net.WebClient).DownloadFile('https://raw.githubusercontent.com/apache/kafka/trunk/gradle/wrapper/gradle-wrapper.jar', '%WRAPPER_JAR%')"
+    
+    if not exist "%WRAPPER_JAR%" (
+        echo Trying to download from Square Retrofit repository...
+        powershell -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; (New-Object System.Net.WebClient).DownloadFile('https://raw.githubusercontent.com/square/retrofit/master/gradle/wrapper/gradle-wrapper.jar', '%WRAPPER_JAR%')"
+    )
 )
 
 if exist "%WRAPPER_JAR%" (
