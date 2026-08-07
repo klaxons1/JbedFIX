@@ -322,99 +322,25 @@ public class JbedMediaManager implements JbedService.LifecycleListener {
         return storeImage(bitmap, filename);
     }
 
-    private static int storeImage(Bitmap data, String filename) throws Throwable {
-        File file = new File(filename);
-        if (data == null) {
+    private static int storeImage(Bitmap data, String filename) {
+        if (data == null) return -1;
+        try (OutputStream stream = new FileOutputStream(new File(filename))) {
+            data.compress(Bitmap.CompressFormat.JPEG, 100, stream);
+            return (int) new File(filename).length();
+        } catch (IOException e) {
+            Log.e(TAG, "getSnapshot, failed to write bitmap file: " + filename, e);
             return -1;
-        }
-        OutputStream stream = null;
-        try {
-            try {
-                OutputStream stream2 = new FileOutputStream(file);
-                try {
-                    data.compress(Bitmap.CompressFormat.JPEG, 100, stream2);
-                    if (stream2 != null) {
-                        try {
-                            stream2.close();
-                        } catch (IOException e) {
-                        }
-                    }
-                    return (int) file.length();
-                } catch (Exception e2) {
-                    stream = stream2;
-                    if (Log.isLoggable(TAG, 6)) {
-                        Log.e(TAG, "getSnapshot, fails to write bitmap file : " + filename);
-                    }
-                    if (stream != null) {
-                        try {
-                            stream.close();
-                        } catch (IOException e3) {
-                        }
-                    }
-                    return -1;
-                } catch (Throwable th) {
-                    th = th;
-                    stream = stream2;
-                    if (stream != null) {
-                        try {
-                            stream.close();
-                        } catch (IOException e4) {
-                        }
-                    }
-                    throw th;
-                }
-            } catch (Exception e5) {
-            }
-        } catch (Throwable th2) {
-            // Preserve the original best-effort failure behavior.
         }
     }
 
-    private static int storeImage(byte[] data, String filename) throws Throwable {
-        File file = new File(filename);
-        if (data == null) {
+    private static int storeImage(byte[] data, String filename) {
+        if (data == null) return -1;
+        try (OutputStream stream = new FileOutputStream(new File(filename))) {
+            stream.write(data);
+            return (int) new File(filename).length();
+        } catch (IOException e) {
+            Log.e(TAG, "getSnapshot, failed to write image file: " + filename, e);
             return -1;
-        }
-        OutputStream stream = null;
-        try {
-            try {
-                OutputStream stream2 = new FileOutputStream(file);
-                try {
-                    stream2.write(data, 0, data.length);
-                    if (stream2 != null) {
-                        try {
-                            stream2.close();
-                        } catch (IOException e) {
-                        }
-                    }
-                    return (int) file.length();
-                } catch (Exception e2) {
-                    stream = stream2;
-                    if (Log.isLoggable(TAG, 6)) {
-                        Log.e(TAG, "getSnapshot, fails to write bitmap file : " + filename);
-                    }
-                    if (stream != null) {
-                        try {
-                            stream.close();
-                        } catch (IOException e3) {
-                        }
-                    }
-                    return -1;
-                } catch (Throwable th) {
-                    th = th;
-                    stream = stream2;
-                    if (stream != null) {
-                        try {
-                            stream.close();
-                        } catch (IOException e4) {
-                        }
-                    }
-                    throw th;
-                }
-            } catch (Throwable th2) {
-                // Preserve the original best-effort failure behavior.
-            }
-        } catch (Exception e5) {
         }
     }
 
