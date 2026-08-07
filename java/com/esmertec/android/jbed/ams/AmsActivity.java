@@ -147,7 +147,7 @@ public class AmsActivity extends ListActivity implements AmsConstants {
                                 AmsActivity.this.getAmsClient().requestRunEvent(AmsActivity.this.mCurSelectedItem.mRoot, AmsActivity.this.mCurSelectedItem.mNo);
                                 return;
                             } else {
-                                AmsActivity.this.showWarningDialog(AmsActivity.this.getString(R.string.AMS_WARNING), AmsActivity.this.getString(android.R.string.accessibility_system_action_dpad_center_label));
+                                AmsActivity.this.showWarningDialog(AmsActivity.this.getString(R.string.AMS_WARNING), AmsActivity.this.getString(R.string.AMS_NO_ENOUGH_MEMORY));
                                 return;
                             }
                         }
@@ -455,7 +455,7 @@ public class AmsActivity extends ListActivity implements AmsConstants {
                 if (hasEnoughFreeMemory()) {
                     getAmsClient().requestRunEvent(this.mCurSelectedItem.mRoot, this.mCurSelectedItem.mNo);
                 } else {
-                    showWarningDialog(getString(R.string.AMS_WARNING), getString(android.R.string.accessibility_system_action_dpad_center_label));
+                    showWarningDialog(getString(R.string.AMS_WARNING), getString(R.string.AMS_NO_ENOUGH_MEMORY));
                 }
                 break;
             case R.id.remove_menu_item /* 2131230796 */:

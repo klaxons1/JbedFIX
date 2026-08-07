@@ -164,7 +164,14 @@ public class AmsConnection extends IJbedAmsConnection.Stub implements AmsConstan
                 }
                 JbedSelectorData selectorData = new JbedSelectorData(root, -1);
                 AmsConnection amsConnection = AmsConnection.this;
-                boolean z = (root == null || selectorData.isFullScreen()) ? false : true;
+                boolean z = false;
+                if (root != null) {
+                    try {
+                        z = !selectorData.isFullScreen();
+                    } catch (Throwable e) {
+                        Log.w(AmsConnection.TAG, "Unable to read MIDlet display settings", e);
+                    }
+                }
                 amsConnection.startJbedClientAndWait(z);
                 return true;
             }

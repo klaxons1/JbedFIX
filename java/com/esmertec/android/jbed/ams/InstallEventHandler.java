@@ -132,7 +132,7 @@ public class InstallEventHandler {
                         this.mHandler.obtainMessage(10017, this.suite).sendToTarget();
                     }
                 } else {
-                    new AlertDialog.Builder(getContext()).setTitle(this.mContext.getString(R.string.AMS_WARNING)).setMessage(this.mContext.getString(android.R.string.accessibility_system_action_dpad_center_label)).setPositiveButton(android.R.string.yes, (DialogInterface.OnClickListener) null).show();
+                    new AlertDialog.Builder(getContext()).setTitle(this.mContext.getString(R.string.AMS_WARNING)).setMessage(this.mContext.getString(R.string.AMS_NO_ENOUGH_MEMORY)).setPositiveButton(android.R.string.yes, (DialogInterface.OnClickListener) null).show();
                 }
             } else {
                 new AlertDialog.Builder(getContext()).setTitle(this.mContext.getString(R.string.AMS_WARNING)).setMessage(R.string.AMS_LAUNCH_MIDLET).setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() { // from class: com.esmertec.android.jbed.ams.InstallEventHandler.InstalledEventHandler.1
@@ -147,7 +147,7 @@ public class InstallEventHandler {
                                 return;
                             }
                         }
-                        new AlertDialog.Builder(InstalledEventHandler.this.getContext()).setTitle(InstalledEventHandler.this.mContext.getString(R.string.AMS_WARNING)).setMessage(InstalledEventHandler.this.mContext.getString(android.R.string.accessibility_system_action_dpad_center_label)).setPositiveButton(android.R.string.yes, (DialogInterface.OnClickListener) null).show();
+                        new AlertDialog.Builder(InstalledEventHandler.this.getContext()).setTitle(InstalledEventHandler.this.mContext.getString(R.string.AMS_WARNING)).setMessage(InstalledEventHandler.this.mContext.getString(R.string.AMS_NO_ENOUGH_MEMORY)).setPositiveButton(android.R.string.yes, (DialogInterface.OnClickListener) null).show();
                     }
                 }).setNegativeButton(android.R.string.no, defaultDismissListener).setOnCancelListener(defaultCancelListener).show();
             }
