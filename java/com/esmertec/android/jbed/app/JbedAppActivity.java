@@ -247,7 +247,7 @@ public class JbedAppActivity extends Activity implements JbedConstants {
     public void onCreate(Bundle icicle) {
         super.onCreate(icicle);
         Intent intent = getIntent();
-        SmsIntent = (Intent) intent.getExtra(JbedConstants.ACTION_JBED_PUSH_SMS);
+        SmsIntent = (Intent) intent.getParcelableExtra(JbedConstants.ACTION_JBED_PUSH_SMS);
         this.mIsFullScreen = intent.getBooleanExtra(AmsConstants.FULL_SCREEN_FLAG, false);
         LogTag.appDebug(TAG, "JbedActivity onCreate ");
         getWindow().setFormat(-3);

@@ -10,8 +10,8 @@ import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 import android.database.sqlite.SQLiteQueryBuilder;
 import android.net.Uri;
-import android.os.FileUtils;
 import android.os.ParcelFileDescriptor;
+import android.system.Os;
 import android.provider.BaseColumns;
 import android.text.TextUtils;
 import android.util.Log;
@@ -112,7 +112,11 @@ public class JbedProvider extends ContentProvider {
                 if (folder.equals(Settings.DEFAULT_TMP_DIR)) {
                     mode = 500 | 1;
                 }
-                FileUtils.setPermissions(folder, mode, -1, -1);
+                try {
+                    Os.chmod(folder, mode);
+                } catch (Exception e) {
+                    Log.w(TAG, "failed to chmod " + folder, e);
+                }
             }
         }
 
