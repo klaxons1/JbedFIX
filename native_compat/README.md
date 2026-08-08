@@ -74,10 +74,10 @@ be a full renderer; Jbed's Surface-buffer rendering can then be tested.
 - clones the active `JNIEnv` table long enough to promote libjbedvm's saved
   `JbedEngine` local reference to a global reference and to bypass unsafe
   legacy static callbacks (`JbedMidpManager.getString`, `JbedFileManager.getRoots`);
-- re-registers `JbedEngine.nativeJbedRun()` so the VM loop calls the exported
-  `Jbed_run(1)` instead of the original JNI wrapper's `Jbed_run(50)`. This is a
-  native scheduler-quantum experiment for the Android 11 host-stack overflow;
-  it is not a complete fix for the proprietary scheduler.
+- patches libjbedvm's original `JbedEngine.nativeJbedRun()` Thumb wrapper in
+  memory so it calls `Jbed_run(1)` instead of its hard-coded `Jbed_run(50)`.
+  This keeps execution inside the proprietary VM while lowering the scheduler
+  quantum; it is not a complete fix for the proprietary scheduler.
 
 ## Surface software bridge
 

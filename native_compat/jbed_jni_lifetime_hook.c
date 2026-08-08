@@ -16,20 +16,19 @@
  */
 #include <jni.h>
 #include <android/log.h>
+#include <errno.h>
 #include <dlfcn.h>
 #include <link.h>
 #include <stdint.h>
 #include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/mman.h>
+#include <unistd.h>
 
 #define LOG_TAG "jbed-jni-compat"
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
-
-#ifndef RTLD_NOLOAD
-#define RTLD_NOLOAD 0
-#endif
 
 /* dword_31C864 in the original ELF; its first LOAD segment has vaddr zero. */
 #define JBED_ENGINE_LOCAL_REF_OFFSET 0x31c864u
@@ -49,20 +48,16 @@ static jobject g_promoted_engine;
  * The Java method nativeJbedRun() in libjbedvm is only a tiny wrapper around
  * Jbed_run(50). On ART/Android 11 the VM currently consumes the whole host
  * thread stack during the first zero-delay NativeAms scheduler pass before the
- * Java loop gets a chance to wait. RegisterNatives below replaces that JNI
- * entry point with this compatibility wrapper, which still executes the
- * proprietary scheduler but with a one-step quantum. This is intentionally
- * conservative: it trades some startup throughput for native stack headroom
- * while we investigate the deeper scheduler recursion.
+ * Java loop gets a chance to wait. Instead of replacing the JNI method with a
+ * cross-library callback, patch the original Thumb wrapper's immediate from 50
+ * to 1 in-place. This keeps execution inside libjbedvm's own wrapper while
+ * lowering the scheduler quantum.
  */
-#define JBED_RUN_THUMB_OFFSET 0x2bd331u
-#define JBED_RUN_COMPAT_QUANTUM 1
-#define JBED_RUN_STACK_FALLBACK_DELAY_MS 100
+#define JBED_NATIVE_JBED_RUN_MOV_IMM_OFFSET 0x0a0ac2u
+#define JBED_NATIVE_JBED_RUN_MOV_R0_50 0x2032u
+#define JBED_NATIVE_JBED_RUN_MOV_R0_1 0x2001u
 
-typedef int (*jbed_run_fn)(int quantum);
-static jbed_run_fn g_jbed_run;
-static jclass g_stack_overflow_error_class;
-static int g_logged_jbed_run_hook;
+static int g_patched_jbed_run_quantum;
 
 static int locate_jbedvm(struct dl_phdr_info *info, size_t size, void *data) {
     (void) size;
@@ -80,29 +75,44 @@ static void ensure_jbed_base(void) {
     }
 }
 
-static jbed_run_fn resolve_jbed_run(void) {
-    if (g_jbed_run != NULL) return g_jbed_run;
+static void patch_native_jbed_run_quantum(void) {
+    if (g_patched_jbed_run_quantum) return;
 
-    void *handle = dlopen("libjbedvm.so", RTLD_NOW | RTLD_NOLOAD);
-    if (handle == NULL) {
-        /* The library is already loaded by JbedService before libjbedcompat,
-         * but some Android linkers only match the exact soname/path with a
-         * plain dlopen. This should still return the existing instance. */
-        handle = dlopen("libjbedvm.so", RTLD_NOW);
-    }
-    if (handle != NULL) {
-        g_jbed_run = (jbed_run_fn) dlsym(handle, "Jbed_run");
+    ensure_jbed_base();
+    if (g_jbed_base == 0) {
+        LOGE("libjbedvm.so is not loaded; cannot patch nativeJbedRun quantum");
+        return;
     }
 
-    if (g_jbed_run == NULL) {
-        ensure_jbed_base();
-        if (g_jbed_base != 0) {
-            /* readelf shows Jbed_run at st_value 0x2bd331; the low bit marks
-             * the exported ARM Thumb function pointer. */
-            g_jbed_run = (jbed_run_fn) (g_jbed_base + JBED_RUN_THUMB_OFFSET);
-        }
+    uint16_t *instruction = (uint16_t *) (g_jbed_base + JBED_NATIVE_JBED_RUN_MOV_IMM_OFFSET);
+    uint16_t current = *instruction;
+    if (current == JBED_NATIVE_JBED_RUN_MOV_R0_1) {
+        g_patched_jbed_run_quantum = 1;
+        LOGI("libjbedvm nativeJbedRun quantum patch already active");
+        return;
     }
-    return g_jbed_run;
+    if (current != JBED_NATIVE_JBED_RUN_MOV_R0_50) {
+        LOGE("unexpected nativeJbedRun quantum instruction 0x%04x at %p; not patching",
+             current, instruction);
+        return;
+    }
+
+    long page_size_long = sysconf(_SC_PAGESIZE);
+    size_t page_size = page_size_long > 0 ? (size_t) page_size_long : 4096u;
+    uintptr_t page = ((uintptr_t) instruction) & ~(uintptr_t) (page_size - 1u);
+    if (mprotect((void *) page, page_size, PROT_READ | PROT_WRITE | PROT_EXEC) != 0) {
+        LOGE("mprotect RWX failed while patching nativeJbedRun: errno=%d", errno);
+        return;
+    }
+
+    *instruction = JBED_NATIVE_JBED_RUN_MOV_R0_1;
+    __builtin___clear_cache((char *) instruction, (char *) instruction + sizeof(*instruction));
+
+    if (mprotect((void *) page, page_size, PROT_READ | PROT_EXEC) != 0) {
+        LOGE("mprotect RX restore failed after nativeJbedRun patch: errno=%d", errno);
+    }
+    g_patched_jbed_run_quantum = 1;
+    LOGI("patched libjbedvm nativeJbedRun quantum: Jbed_run(50) -> Jbed_run(1)");
 }
 
 static void promote_engine_reference(JNIEnv *env) {
@@ -228,6 +238,7 @@ Java_com_esmertec_android_jbed_service_JbedEngine_nativeInstallJniLifetimeHook(J
         LOGE("libjbedvm.so is not loaded; cannot install JNI lifetime hook");
         return;
     }
+    patch_native_jbed_run_quantum();
 
     g_original_table = *env;
     g_original_get_method_id = g_original_table->GetMethodID;
@@ -269,44 +280,6 @@ Java_com_esmertec_android_jbed_service_JbedEngine_nativeReleaseJniLifetimeHook(J
     g_jbed_base = 0;
 }
 
-static jint JNICALL hooked_native_jbed_run(JNIEnv *env, jobject thiz) {
-    (void) thiz;
-
-    jbed_run_fn jbed_run = resolve_jbed_run();
-    if (jbed_run == NULL) {
-        LOGE("unable to resolve libjbedvm Jbed_run; delaying VM loop");
-        return JBED_RUN_STACK_FALLBACK_DELAY_MS;
-    }
-
-    if (!g_logged_jbed_run_hook) {
-        g_logged_jbed_run_hook = 1;
-        LOGI("hooked nativeJbedRun: calling Jbed_run(%d) instead of legacy Jbed_run(50)",
-             JBED_RUN_COMPAT_QUANTUM);
-    }
-
-    jint delay = (jint) jbed_run(JBED_RUN_COMPAT_QUANTUM);
-    if ((*env)->ExceptionCheck(env)) {
-        jthrowable pending = (*env)->ExceptionOccurred(env);
-        (*env)->ExceptionClear(env);
-        if (pending != NULL && g_stack_overflow_error_class != NULL &&
-            (*env)->IsInstanceOf(env, pending, g_stack_overflow_error_class)) {
-            LOGE("Jbed_run(%d) still raised StackOverflowError; returning %dms fallback",
-                 JBED_RUN_COMPAT_QUANTUM, JBED_RUN_STACK_FALLBACK_DELAY_MS);
-            if (pending != NULL) (*env)->DeleteLocalRef(env, pending);
-            return JBED_RUN_STACK_FALLBACK_DELAY_MS;
-        }
-
-        LOGE("Jbed_run(%d) raised a non-stack exception; rethrowing to Java",
-             JBED_RUN_COMPAT_QUANTUM);
-        if (pending != NULL) {
-            (*env)->Throw(env, pending);
-            (*env)->DeleteLocalRef(env, pending);
-        }
-        return JBED_RUN_STACK_FALLBACK_DELAY_MS;
-    }
-    return delay;
-}
-
 /* Explicit registration avoids relying on ART's cross-library native symbol
  * lookup order after libjbedvm.so has registered its own methods. */
 JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
@@ -314,30 +287,21 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
     JNIEnv *env = NULL;
     if ((*vm)->GetEnv(vm, (void **) &env, JNI_VERSION_1_6) != JNI_OK) return JNI_ERR;
 
-    jclass stack_overflow = (*env)->FindClass(env, "java/lang/StackOverflowError");
-    if (stack_overflow != NULL) {
-        g_stack_overflow_error_class = (*env)->NewGlobalRef(env, stack_overflow);
-        (*env)->DeleteLocalRef(env, stack_overflow);
-    } else if ((*env)->ExceptionCheck(env)) {
-        (*env)->ExceptionClear(env);
-    }
-
     ensure_jbed_base();
-    resolve_jbed_run();
+    patch_native_jbed_run_quantum();
 
     jclass engine = (*env)->FindClass(env, "com/esmertec/android/jbed/service/JbedEngine");
     if (engine == NULL) return JNI_ERR;
     JNINativeMethod methods[] = {
         {"nativeInstallJniLifetimeHook", "()V", (void *) Java_com_esmertec_android_jbed_service_JbedEngine_nativeInstallJniLifetimeHook},
         {"nativeReleaseJniLifetimeHook", "()V", (void *) Java_com_esmertec_android_jbed_service_JbedEngine_nativeReleaseJniLifetimeHook},
-        {"nativeJbedRun", "()I", (void *) hooked_native_jbed_run},
     };
-    if ((*env)->RegisterNatives(env, engine, methods, 3) != JNI_OK) return JNI_ERR;
+    if ((*env)->RegisterNatives(env, engine, methods, 2) != JNI_OK) return JNI_ERR;
 
     /* The experimental JbedService MIDP-class hook was removed from Java.
      * Do not register methods that are no longer declared: ART treats that
      * as an error and rejects the entire compatibility library in JNI_OnLoad.
      * The active JbedEngine hook also handles the string callback fallback. */
-    LOGI("registered ART JbedEngine JNI compatibility methods (lifetime + nativeJbedRun quantum hook)");
+    LOGI("registered ART JbedEngine JNI compatibility methods (lifetime + nativeJbedRun patch)");
     return JNI_VERSION_1_6;
 }

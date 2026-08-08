@@ -352,8 +352,8 @@ public class JbedEngine implements JbedConstants {
 
         public JbedThread() {
             // Diagnostic headroom for the legacy native VM. The actual stack-pressure
-            // workaround is the libjbedcompat nativeJbedRun hook, which lowers the
-            // Jbed_run scheduler quantum instead of growing this stack indefinitely.
+            // workaround is the libjbedcompat nativeJbedRun binary patch, which lowers
+            // the Jbed_run scheduler quantum instead of growing this stack indefinitely.
             super(null, null, "JbedThread", 8L * 1024L * 1024L);
             this.mViewWidth = -1;
             this.mViewHeight = -1;

@@ -204,7 +204,7 @@ at com.esmertec.android.jbed.service.JbedEngine$JbedThread.run(JbedEngine.java:.
 
 The same stack exhaustion occurred during the failing `getRoots()` callback. The Android host `JbedThread` stack was raised from the ART default (~1 MiB) to diagnostic headroom, but stack-only tuning is not a real fix. Testing showed the VM can still overflow with a larger host stack (for example `stack size 9232KB`) immediately after the zero-delay NativeAms scheduler path. Therefore the issue is not simply the default ART stack limit: it is an unbounded/deep recursive path inside the proprietary VM scheduler/bootstrap.
 
-Current experiment: `libjbedcompat.so` now also overrides `JbedEngine.nativeJbedRun()` with a RegisterNatives hook. Instead of libjbedvm's hard-coded `Jbed_run(50)` JNI wrapper, the hook resolves the original exported `Jbed_run` symbol and calls `Jbed_run(1)`, returning a 100 ms fallback if ART still reports `StackOverflowError`. This is a conservative native scheduler-quantum hook to reduce host-stack pressure while preserving the proprietary scheduler entry point.
+Current experiment: `libjbedcompat.so` now also patches libjbedvm's original `JbedEngine.nativeJbedRun()` Thumb wrapper in memory. Instead of replacing the JNI method with a cross-library callback, it changes the wrapper's hard-coded `Jbed_run(50)` immediate to `Jbed_run(1)`. This is a conservative native scheduler-quantum patch to reduce host-stack pressure while keeping execution inside the proprietary VM entry point.
 
 Surface rendering also remains unresolved because the `libsurfaceflinger_client.so` shim has no modern display presentation path.
 
