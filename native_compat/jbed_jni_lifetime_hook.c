@@ -117,12 +117,24 @@ static jobject JNICALL hooked_call_static_object_method(JNIEnv *env, jclass claz
     }
     if (method == g_file_get_roots_method) {
         if (result == NULL) {
-            LOGE("JbedFileManager.getRoots returned null (exception=%d)",
+            jbyteArray empty_roots;
+            jbyte zero_roots[5] = {0, 0, 0, 0, 0};
+            LOGE("JbedFileManager.getRoots returned null (exception=%d); using an empty root list",
                  (*env)->ExceptionCheck(env));
-        } else {
-            LOGI("JbedFileManager.getRoots returned %d-byte payload",
-                 (*env)->GetArrayLength(env, (jarray) result));
+            /* Preserve ART's diagnostic for the unexpected Java exception,
+             * then give the 2011 VM a valid zero-root payload. Its native
+             * parser reads five header bytes even when the root count is 0. */
+            (*env)->ExceptionDescribe(env);
+            (*env)->ExceptionClear(env);
+            empty_roots = (*env)->NewByteArray(env, (jsize) sizeof(zero_roots));
+            if (empty_roots != NULL) {
+                (*env)->SetByteArrayRegion(env, empty_roots, 0,
+                                            (jsize) sizeof(zero_roots), zero_roots);
+            }
+            return empty_roots;
         }
+        LOGI("JbedFileManager.getRoots returned %d-byte payload",
+             (*env)->GetArrayLength(env, (jarray) result));
     }
     return result;
 }
