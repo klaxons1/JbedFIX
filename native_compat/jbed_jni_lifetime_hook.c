@@ -122,3 +122,21 @@ Java_com_esmertec_android_jbed_service_JbedEngine_nativeReleaseJniLifetimeHook(J
     g_original_get_method_id = NULL;
     g_jbed_base = 0;
 }
+
+/* Explicit registration avoids relying on ART's cross-library native symbol
+ * lookup order after libjbedvm.so has registered its own methods. */
+JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
+    (void) reserved;
+    JNIEnv *env = NULL;
+    if ((*vm)->GetEnv(vm, (void **) &env, JNI_VERSION_1_6) != JNI_OK) return JNI_ERR;
+
+    jclass engine = (*env)->FindClass(env, "com/esmertec/android/jbed/service/JbedEngine");
+    if (engine == NULL) return JNI_ERR;
+    JNINativeMethod methods[] = {
+        {"nativeInstallJniLifetimeHook", "()V", (void *) Java_com_esmertec_android_jbed_service_JbedEngine_nativeInstallJniLifetimeHook},
+        {"nativeReleaseJniLifetimeHook", "()V", (void *) Java_com_esmertec_android_jbed_service_JbedEngine_nativeReleaseJniLifetimeHook},
+    };
+    if ((*env)->RegisterNatives(env, engine, methods, 2) != JNI_OK) return JNI_ERR;
+    LOGI("registered ART JNI lifetime compatibility methods");
+    return JNI_VERSION_1_6;
+}
