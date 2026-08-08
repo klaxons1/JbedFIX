@@ -84,10 +84,12 @@ be a full renderer; Jbed's Surface-buffer rendering can then be tested.
   execution inside the proprietary VM while minimizing scheduler stack pressure;
   it is not a complete fix for the proprietary scheduler;
 - registers an `AmsConnection.nativeRequestLocalInstall()` bridge that calls the
-  exported `Jbed_ams_event_requestLocalInstall()` upcall directly when Java
-  selects a local JAR/JAD. This is a diagnostic bypass for cases where the
-  original Java event queue is populated but the native AMS scheduler does not
-  reach `NativeAms.nativeGetEvent()` after stack overflow.
+  exported `Jbed_ams_event_requestLocalInstall()` upcall when Java selects a
+  local JAR/JAD. `AmsConnection` enqueues this call onto `JbedThread`; calling it
+  directly from the Binder thread crashes because the old VM expects Jbed-thread
+  native state. This is a diagnostic bypass for cases where the original Java
+  event queue is populated but the native AMS scheduler does not reach
+  `NativeAms.nativeGetEvent()` after stack overflow.
 
 ## Surface software bridge
 

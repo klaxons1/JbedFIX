@@ -73,6 +73,8 @@ static int g_patched_low_jbed_run_quantum;
 typedef void (*jbed_request_local_install_fn)(char *url);
 static jbed_request_local_install_fn g_jbed_request_local_install;
 
+static void clear_pending_exception(JNIEnv *env);
+
 static int locate_jbedvm(struct dl_phdr_info *info, size_t size, void *data) {
     (void) size;
     (void) data;
@@ -221,6 +223,7 @@ Java_com_esmertec_android_jbed_ams_AmsConnection_nativeRequestLocalInstall(JNIEn
     jbed_request_local_install_fn request_local_install;
 
     if (url == NULL) return JNI_FALSE;
+    clear_pending_exception(env);
     request_local_install = resolve_jbed_request_local_install();
     if (request_local_install == NULL) return JNI_FALSE;
 

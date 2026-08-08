@@ -166,6 +166,12 @@ public class JbedEngine implements JbedConstants {
                     case 9:
                         new ToastVmBlocker(JbedEngine.this).run();
                         return;
+                    case 10:
+                        if (msg.obj instanceof Runnable && JbedEngine.this.mJbedThread != null) {
+                            JbedEngine.this.mJbedThread.mPendingEventQueue.add((Runnable) msg.obj);
+                            JbedEngine.this.wakeUp();
+                        }
+                        return;
                 }
             }
         };
