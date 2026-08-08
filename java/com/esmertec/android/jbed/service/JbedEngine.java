@@ -351,10 +351,10 @@ public class JbedEngine implements JbedConstants {
         private int mViewWidth;
 
         public JbedThread() {
-            // Diagnostic: HEAPSIZE 20M mod still overflows at 9232KB with 8MiB host stack,
-            // confirming VM interpreter recursion uses host stack. Try 16MiB;
-            // if still overflows, next fix must be native scheduler hook (Jbed_iterate).
-            super(null, null, "JbedThread", 16L * 1024L * 1024L);
+            // Diagnostic headroom for the legacy native VM. The actual stack-pressure
+            // workaround is the libjbedcompat nativeJbedRun hook, which lowers the
+            // Jbed_run scheduler quantum instead of growing this stack indefinitely.
+            super(null, null, "JbedThread", 8L * 1024L * 1024L);
             this.mViewWidth = -1;
             this.mViewHeight = -1;
             this.mBytesPerPixel = -1;

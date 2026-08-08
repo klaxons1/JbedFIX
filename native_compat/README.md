@@ -66,6 +66,19 @@ not dereference legacy C++ object layouts, while text drawing and metrics are
 currently no-ops. This gets the linker past `libskia.so` without claiming to
 be a full renderer; Jbed's Surface-buffer rendering can then be tested.
 
+## Jbed JNI/native scheduler compatibility hook
+
+`jbed_jni_lifetime_hook.c` builds `libjbedcompat.so`, loaded after the original
+`libjbedvm.so`. It currently provides two targeted ART workarounds:
+
+- clones the active `JNIEnv` table long enough to promote libjbedvm's saved
+  `JbedEngine` local reference to a global reference and to bypass unsafe
+  legacy static callbacks (`JbedMidpManager.getString`, `JbedFileManager.getRoots`);
+- re-registers `JbedEngine.nativeJbedRun()` so the VM loop calls the exported
+  `Jbed_run(1)` instead of the original JNI wrapper's `Jbed_run(50)`. This is a
+  native scheduler-quantum experiment for the Android 11 host-stack overflow;
+  it is not a complete fix for the proprietary scheduler.
+
 ## Surface software bridge
 
 The `main` branch reference commit `1b9e561` includes an Android 2.x

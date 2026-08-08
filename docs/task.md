@@ -202,13 +202,11 @@ at com.esmertec.android.jbed.service.JbedEngine.nativeJbedRun(Native Method)
 at com.esmertec.android.jbed.service.JbedEngine$JbedThread.run(JbedEngine.java:...)
 ```
 
-The same stack exhaustion occurred during the failing `getRoots()` callback. The final current commit changes the Android host `JbedThread` from the ART default (~1 MiB) to a requested 4 MiB stack:
+The same stack exhaustion occurred during the failing `getRoots()` callback. The Android host `JbedThread` stack was raised from the ART default (~1 MiB) to diagnostic headroom, but stack-only tuning is not a real fix. Testing showed the VM can still overflow with a larger host stack (for example `stack size 9232KB`) immediately after the zero-delay NativeAms scheduler path. Therefore the issue is not simply the default ART stack limit: it is an unbounded/deep recursive path inside the proprietary VM scheduler/bootstrap.
 
-```text
-0393f61 Increase Jbed VM thread stack on ART
-```
+Current experiment: `libjbedcompat.so` now also overrides `JbedEngine.nativeJbedRun()` with a RegisterNatives hook. Instead of libjbedvm's hard-coded `Jbed_run(50)` JNI wrapper, the hook resolves the original exported `Jbed_run` symbol and calls `Jbed_run(1)`, returning a 100 ms fallback if ART still reports `StackOverflowError`. This is a conservative native scheduler-quantum hook to reduce host-stack pressure while preserving the proprietary scheduler entry point.
 
-This was tested on the Android 11 device. The larger stack lets NativeAms reach `ACTIVE_FOREGROUND`, but the VM still overflows at `stack size 5136KB` immediately after `Scheduler.schedule wait delay=0`. Therefore the issue is not simply the default ART stack limit: it is an unbounded/deep recursive path inside the proprietary VM scheduler/bootstrap. Do not keep increasing the host thread stack as a production fix; use this setting only to expose more diagnostics. The next investigation target is native `Jbed_iterate()` / the Java ME scheduler path around zero-delay scheduling. Surface rendering also remains unresolved because the `libsurfaceflinger_client.so` shim has no modern display presentation path.
+Surface rendering also remains unresolved because the `libsurfaceflinger_client.so` shim has no modern display presentation path.
 
 ### Focused test procedure
 

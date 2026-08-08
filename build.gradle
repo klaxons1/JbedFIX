@@ -14,15 +14,15 @@ def ndkVersionForDrmShim = '26.3.11579264'
 
 tasks.register('buildDrmCompatibilityShim') {
     group = 'build'
-    description = 'Builds the ARM32 libdrm1 compatibility shim needed by the legacy Jbed VM.'
+    description = 'Builds the ARM32 native compatibility shims needed by the legacy Jbed VM.'
+    inputs.files(fileTree('native_compat') {
+        include '*.c'
+        include '*.S'
+        include '*.sh'
+    })
     outputs.files(drmShimOutput, utilsShimOutput, skiaShimOutput, cutilsShimOutput, uiShimOutput, surfaceShimOutput, pngShimOutput, jbedCompatOutput)
 
     doLast {
-        if (drmShimOutput.exists() && utilsShimOutput.exists() && skiaShimOutput.exists() && cutilsShimOutput.exists() && uiShimOutput.exists() && surfaceShimOutput.exists() && pngShimOutput.exists() && jbedCompatOutput.exists()) {
-            logger.lifecycle("Using existing native compatibility shims")
-            return
-        }
-
         def sdkRoot = System.getenv('ANDROID_HOME') ?: System.getenv('ANDROID_SDK_ROOT')
         if (sdkRoot == null) {
             throw new GradleException('ANDROID_HOME or ANDROID_SDK_ROOT is required to build libdrm1.so')
