@@ -161,88 +161,83 @@ libjbedvm.so --DT_NEEDED--> libcutils.so --DT_NEEDED--> libpng.so
 
 This puts PNG symbols in the linker's dependency group while resolving `libjbedvm.so`.
 
-## Latest observed runtime status
+## Runtime status and current blockers (updated 2026-08-08)
 
-The linker phase has now completed successfully on the Android 11 test device:
+The ARM32 VM now loads and executes meaningful Jbed code on the Android 11 ARM test device. This is **link/load and bootstrap progress**, not a complete Android 11 port.
 
-- Android 11 allows `libjbedvm.so` text relocations because target SDK is 22.
-- The service connects.
-- `JbedEngine` starts its native VM thread.
-- `nativeInitializeSubsystems()` completes sufficiently to log the command line/settings.
-- The first `nativeJbedRun()` call enters the real VM.
+### Confirmed working path
 
-The latest runtime failure occurs immediately in the first VM iteration:
+- `targetSdk 22` permits the required text relocations in `libjbedvm.so`; do not raise it to API 23+.
+- Legacy dependency shims resolve the old Android 2.x linker dependencies sufficiently for the VM to load.
+- `libjbedcompat.so` loads cleanly and registers its two `JbedEngine` methods. The removed experimental `JbedService`/MIDP class hook is no longer registered (`a33c7c1`).
+- The JNI hook promotes the VM's stale saved `JbedEngine` local reference to a global reference before its first callback. This fixes ART's former `use of invalid jobject` abort.
+- The hook substitutes `"<unknown>"` when the native MIDP string bridge returns null/throws, preventing the observed `strlen(NULL)` crash in `android_midp_getString`.
+- Empty recovered `PreInstall/` content is no longer passed as `-preinstall` (`17def98`); current native AMS arguments are only `-native-ams`.
+- The VM starts the root isolate, builds `com.jbed.ams.NativeAms`, starts the media subsystem, and reaches scheduler foreground selection.
 
-```text
-JbedEngine: Jbed Thread Started
-JbedEngine: jbed.settings=...
-from int com.esmertec.android.jbed.service.JbedEngine.nativeJbedRun()
-pc ... libjbedvm.so (Java_android_jbed_service_JbedEngine_nativeJbedRun+12)
-```
-
-`Java_android_jbed_service_JbedEngine_nativeJbedRun()` is only a thin wrapper:
-
-```c
-int Java_android_jbed_service_JbedEngine_nativeJbedRun() {
-    return Jbed_run(50);
-}
-```
-
-The primary ART failure was subsequently captured and is now known exactly:
+Observed proof from the latest test before the final stack-size change:
 
 ```text
-JNI DETECTED ERROR IN APPLICATION: use of invalid jobject 0xc200299c
-from int com.esmertec.android.jbed.service.JbedEngine.nativeJbedRun()
+Main: main() started ROOT isolate
+ams.Main started with 1 args:
+  args[0] : -native-ams
+Main: main() currentCommand is 16
+NativeAms constructed okay
+Scheduler.setForeground from null to com.jbed.ams.NativeAms
 ```
 
-This is an Android 2.x JNI lifetime bug in the proprietary VM, not a missing linker symbol. `docs/libjbedvm.so.c` identifies the bad flow:
+### FileConnection bridge
 
-1. `Java_android_jbed_service_JbedEngine_nativeInitializeSubsystems()` receives the Java `JbedEngine` object as JNI parameter `a2`.
-2. It saves that **local JNI reference** directly in global native storage:
+`JbedFileManager.getRoots()` is reached through the old native JNI bridge but returns null with a pending Java exception on this ART runtime. Its precise failure did not safely produce a Java stack trace: attempting `ExceptionDescribe()` itself hit the already constrained Jbed thread stack.
 
-   ```c
-   dword_31C864 = a2;
-   ```
+A deliberately limited compatibility fallback in `libjbedcompat.so` now clears that pending exception and returns the valid five-byte **zero-root** payload expected by the native parser (`c0daa81`). This lets `FileSystemCallHandler.register` complete, but does **not** provide a usable SD-card/FileConnection implementation. Separately, `JbedFileManager` now maps legacy `/mnt/sdcard` to Android's actual legacy external-storage path when the normal Java method can run (`043ce2f`).
 
-3. The native method returns, making `a2` invalid on modern ART.
-4. On the first `Jbed_run()`, `JbniS_com_jbed_runtime_Main_notifyStateChange()` invokes callback `sub_A0264()`.
-5. `sub_A0264()` calls `CallBooleanMethod` using the stale `dword_31C864` object reference, which ART rejects.
+### Current active blocker: Jbed thread stack
 
-The relevant decompiled callback is:
-
-```c
-return (*env)->CallBooleanMethod(
-    env, dword_31C864, dword_31C868, commit, oldState, newState, reason);
-```
-
-Dalvik-era JNI represented references in a way that let this unsafe pattern survive. ART uses checked/indirect JNI references and aborts immediately.
-
-A real fix now requires an ARM32 binary patch to `libjbedvm.so`:
-
-- replace/augment the `dword_31C864 = a2` path with `NewGlobalRef(a2)`;
-- store that global ref instead of the local ref;
-- call `DeleteGlobalRef` when the VM finalizes;
-- keep the existing callback ABI unchanged.
-
-A compatibility shim loaded after the original method returns cannot reliably fix this because the local reference has already expired. The patch must occur inside the original native initialization method or through a carefully designed in-method interception.
-
-The previous Skia ABI mismatch was fixed in:
+The VM advanced past FileConnection but then failed while scheduling NativeAms:
 
 ```text
-870f647 Match legacy SkPaint measureText ABI
+java.lang.StackOverflowError: stack size 1040KB
+at com.esmertec.android.jbed.service.JbedEngine.nativeJbedRun(Native Method)
+at com.esmertec.android.jbed.service.JbedEngine$JbedThread.run(JbedEngine.java:...)
 ```
 
-The next agent should collect a fresh complete failure using the `crash` buffer and look specifically for lines immediately before the `from int ... nativeJbedRun()` message:
+The same stack exhaustion occurred during the failing `getRoots()` callback. The final current commit changes the Android host `JbedThread` from the ART default (~1 MiB) to a requested 4 MiB stack:
 
-```bash
-adb logcat -c
-adb shell am force-stop com.esmertec.android.jbed
-adb shell monkey -p com.esmertec.android.jbed 1
-adb logcat -d -b crash -v threadtime
-adb logcat -d -b main -v threadtime | grep -Ei 'JNI DETECTED|JNI ERROR|Fatal signal|Abort message|nativeJbedRun|jbed.native'
+```text
+0393f61 Increase Jbed VM thread stack on ART
 ```
 
-On Windows PowerShell, use `Select-String` instead of `grep`.
+This needs device verification next. It is a bounded host-thread stack increase, not a VM heap change. If it removes the overflow, capture the first new scheduler/UI/native error; surface rendering is still expected to be unresolved because the `libsurfaceflinger_client.so` shim has no modern display presentation path.
+
+### Focused test procedure
+
+Do not filter an accumulated old capture. Clear logcat, start the newest APK, then save a fresh capture:
+
+```powershell
+C:\adb\adb.exe logcat -c
+C:\adb\adb.exe shell am force-stop com.esmertec.android.jbed
+C:\adb\adb.exe shell monkey -p com.esmertec.android.jbed 1
+Start-Sleep -Seconds 3
+C:\adb\adb.exe logcat -d -v threadtime | Set-Content .\jbed-fresh.txt
+Get-Content .\jbed-fresh.txt | Select-String -Pattern "jbed-jni-compat|JbedFileManager|FileSystemCallHandler|NativeAms|Scheduler|StackOverflowError|Fatal signal|JNI DETECTED|jbed_gfx|jbed.native" -Context 3,15
+```
+
+The previous `tools/collect-jbed-log.ps1` helper may also be used. Verify the APK is at or after `0393f61` before interpreting a missing marker.
+
+### Relevant recent commits
+
+```text
+0393f61 Increase Jbed VM thread stack on ART
+c0daa81 Provide empty roots when legacy file bridge fails
+5cc09d5 Trace legacy file system JNI startup
+043ce2f Use current external storage root for J2ME file system
+a33c7c1 Stop registering removed MIDP JNI hook methods
+892a390 Replace obsolete display and surface APIs
+17def98 Skip empty legacy preinstall mode
+2197fab Guard null legacy MIDP JNI string results
+c54dcf0 Prevent null localized strings crossing native boundary
+```
 
 ## Important native reference in `main`
 
