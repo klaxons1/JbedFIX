@@ -49,4 +49,10 @@ mkdir -p lib/armeabi
   -Wl,-soname,libsurfaceflinger_client.so \
   -o lib/armeabi/libsurfaceflinger_client.so native_compat/libsurface_compat.c
 
+# libjbedvm was linked against a platform libpng rather than declaring it as a
+# DT_NEEDED dependency. It is loaded explicitly before the VM below.
+"$clang" --target=armv7a-linux-androideabi21 -fPIC -shared -O2 \
+  -Wl,-soname,libpng.so \
+  -o lib/armeabi/libpng.so native_compat/libpng_compat.c
+
 echo "Built Jbed native compatibility libraries"
