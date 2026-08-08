@@ -91,9 +91,10 @@ be a full renderer; Jbed's Surface-buffer rendering can then be tested.
   directly from the Binder thread crashes because the old VM expects Jbed-thread
   native state. The bridge supplies an empty secondary JAD URL argument because
   the exported function's vararg formatting path calls `strlen()` on that second
-  native argument for JAR installs. This is a diagnostic bypass for cases where
-  the original Java event queue is populated but the native AMS scheduler does
-  not reach `NativeAms.nativeGetEvent()` after stack overflow.
+  native argument for JAR installs, then immediately calls `Jbed_upcall_poll()`
+  to bypass a stalled native scheduler poll. This is a diagnostic bypass for
+  cases where the original Java event queue is populated but the native AMS
+  scheduler does not reach `NativeAms.nativeGetEvent()` after stack overflow.
 
 ## Surface software bridge
 

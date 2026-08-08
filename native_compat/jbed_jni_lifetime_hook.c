@@ -81,7 +81,9 @@ static int g_patched_startup_jbed_run_quantum;
 static int g_patched_low_jbed_run_quantum;
 
 typedef void (*jbed_request_local_install_fn)(char *url, char *jad_url);
+typedef int (*jbed_upcall_poll_fn)(void);
 static jbed_request_local_install_fn g_jbed_request_local_install;
+static jbed_upcall_poll_fn g_jbed_upcall_poll;
 
 static void clear_pending_exception(JNIEnv *env);
 
@@ -253,6 +255,19 @@ static jbed_request_local_install_fn resolve_jbed_request_local_install(void) {
     return g_jbed_request_local_install;
 }
 
+static jbed_upcall_poll_fn resolve_jbed_upcall_poll(void) {
+    if (g_jbed_upcall_poll != NULL) return g_jbed_upcall_poll;
+
+    void *handle = dlopen("libjbedvm.so", RTLD_NOW);
+    if (handle != NULL) {
+        g_jbed_upcall_poll = (jbed_upcall_poll_fn) dlsym(handle, "Jbed_upcall_poll");
+    }
+    if (g_jbed_upcall_poll == NULL) {
+        LOGE("unable to resolve Jbed_upcall_poll");
+    }
+    return g_jbed_upcall_poll;
+}
+
 JNIEXPORT jboolean JNICALL
 Java_com_esmertec_android_jbed_ams_AmsConnection_nativeRequestLocalInstall(JNIEnv *env, jclass clazz,
                                                                             jstring url) {
@@ -269,6 +284,17 @@ Java_com_esmertec_android_jbed_ams_AmsConnection_nativeRequestLocalInstall(JNIEn
     if (utf == NULL) return JNI_FALSE;
     LOGI("direct native local-install upcall: %s", utf);
     request_local_install((char *) utf, "");
+    if (!(*env)->ExceptionCheck(env)) {
+        jbed_upcall_poll_fn upcall_poll = resolve_jbed_upcall_poll();
+        if (upcall_poll != NULL) {
+            int poll_result = upcall_poll();
+            LOGI("direct native local-install upcall poll result=%d", poll_result);
+        }
+    }
+    if ((*env)->ExceptionCheck(env)) {
+        LOGI("clearing pending JNI exception after direct local-install upcall");
+        (*env)->ExceptionClear(env);
+    }
     (*env)->ReleaseStringUTFChars(env, url, utf);
     return JNI_TRUE;
 }
@@ -562,6 +588,7 @@ Java_com_esmertec_android_jbed_service_JbedEngine_nativeReleaseJniLifetimeHook(J
     g_patched_startup_jbed_run_quantum = 0;
     g_patched_low_jbed_run_quantum = 0;
     g_jbed_request_local_install = NULL;
+    g_jbed_upcall_poll = NULL;
 }
 
 /* Explicit registration avoids relying on ART's cross-library native symbol
