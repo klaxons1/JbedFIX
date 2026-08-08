@@ -22,6 +22,7 @@
 #include <dlfcn.h>
 #include <stdint.h>
 #include <stdarg.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
@@ -115,26 +116,36 @@ static int use_modern_art_scheduler_workarounds(void) {
 }
 
 static void ensure_jbed_base(void) {
-    void *handle;
-    void *symbol;
-    Dl_info info;
+    FILE *maps;
+    char line[512];
+    uintptr_t best = UINTPTR_MAX;
 
     if (g_jbed_base != 0) return;
 
-    handle = dlopen("libjbedvm.so", RTLD_NOW);
-    if (handle == NULL) {
-        LOGE("dlopen(libjbedvm.so) failed while locating base: %s", dlerror());
+    /* dl_iterate_phdr is not available on Android 4.4/API 19, and dladdr is
+     * not consistently exposed by old NDK levels. /proc/self/maps is stable
+     * enough for this diagnostic compatibility shim and keeps the API-19 build
+     * path usable. Pick the lowest mapped address for libjbedvm.so; this ELF's
+     * first LOAD segment has p_vaddr == p_offset == 0, so it is the base used
+     * by all offsets below. */
+    maps = fopen("/proc/self/maps", "r");
+    if (maps == NULL) {
+        LOGE("unable to open /proc/self/maps while locating libjbedvm base: errno=%d", errno);
         return;
     }
-
-    symbol = dlsym(handle, "Jbed_run");
-    if (symbol == NULL) {
-        symbol = dlsym(handle, "JNI_OnLoad");
+    while (fgets(line, sizeof(line), maps) != NULL) {
+        unsigned long start;
+        if (strstr(line, "libjbedvm.so") == NULL) continue;
+        if (sscanf(line, "%lx-", &start) == 1 && (uintptr_t) start < best) {
+            best = (uintptr_t) start;
+        }
     }
-    if (symbol != NULL && dladdr(symbol, &info) != 0 && info.dli_fbase != NULL) {
-        g_jbed_base = (uintptr_t) info.dli_fbase;
+    fclose(maps);
+
+    if (best != UINTPTR_MAX) {
+        g_jbed_base = best;
     } else {
-        LOGE("dladdr(libjbedvm.so) failed while locating base");
+        LOGE("libjbedvm.so mapping not found in /proc/self/maps");
     }
 }
 
