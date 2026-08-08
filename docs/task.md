@@ -208,7 +208,7 @@ The same stack exhaustion occurred during the failing `getRoots()` callback. The
 0393f61 Increase Jbed VM thread stack on ART
 ```
 
-This needs device verification next. It is a bounded host-thread stack increase, not a VM heap change. If it removes the overflow, capture the first new scheduler/UI/native error; surface rendering is still expected to be unresolved because the `libsurfaceflinger_client.so` shim has no modern display presentation path.
+This was tested on the Android 11 device. The larger stack lets NativeAms reach `ACTIVE_FOREGROUND`, but the VM still overflows at `stack size 5136KB` immediately after `Scheduler.schedule wait delay=0`. Therefore the issue is not simply the default ART stack limit: it is an unbounded/deep recursive path inside the proprietary VM scheduler/bootstrap. Do not keep increasing the host thread stack as a production fix; use this setting only to expose more diagnostics. The next investigation target is native `Jbed_iterate()` / the Java ME scheduler path around zero-delay scheduling. Surface rendering also remains unresolved because the `libsurfaceflinger_client.so` shim has no modern display presentation path.
 
 ### Focused test procedure
 
