@@ -29,8 +29,10 @@
 /* dword_31C864 in the original ELF; its first LOAD segment has vaddr zero. */
 #define JBED_ENGINE_LOCAL_REF_OFFSET 0x31c864u
 
-static const struct JNINativeInterface_ *g_original_table;
-static struct JNINativeInterface_ *g_hook_table;
+/* NDK's C jni.h names this structure JNINativeInterface (without the
+ * trailing underscore used by some platform headers). */
+static const struct JNINativeInterface *g_original_table;
+static struct JNINativeInterface *g_hook_table;
 static jmethodID (*g_original_get_method_id)(JNIEnv *, jclass, const char *, const char *);
 static uintptr_t g_jbed_base;
 static jobject g_promoted_engine;
