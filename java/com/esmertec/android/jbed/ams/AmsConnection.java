@@ -236,7 +236,7 @@ public class AmsConnection extends IJbedAmsConnection.Stub implements AmsConstan
     private static AmsEvent fetchEvent() {
         AmsEvent e = INSTANCE.mEventQueue.poll();
         if (e != null) {
-            LogTag.amsDebug(TAG, "fetchAmsEvent() " + e.toString());
+            Log.i(TAG, "fetchAmsEvent() " + e.toString());
         } else {
             LogTag.amsWarning(TAG, "There is no any event, who call the fetchAmsEvent()?");
         }
@@ -313,7 +313,7 @@ public class AmsConnection extends IJbedAmsConnection.Stub implements AmsConstan
             return;
         }
         AmsEvent e2 = new AmsEvent(eventId, result, data);
-        LogTag.amsDebug(TAG, " deliverEventToJbedVm() " + e2.toString());
+        Log.i(TAG, "deliverEventToJbedVm() " + e2.toString());
         this.mEventQueue.add(e2);
         this.mHandler.obtainMessage(5, 41, 0).sendToTarget();
     }

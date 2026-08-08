@@ -800,6 +800,7 @@ public class BasicEventHandler {
                     @Override // android.content.DialogInterface.OnClickListener
                     public void onClick(DialogInterface dialog2, int pos) {
                         String fileUri = "file:///" + ((FileEntry) AndroidListLocallInstallEventHandler.mLocalInsallFiles.get(pos)).mPath;
+                        Log.i("AmsEventHandler", "local MIDlet selected for install: " + fileUri);
                         ((AmsClient) AndroidListLocallInstallEventHandler.this.mClient).requestInstallEvent(fileUri);
                         dialog2.dismiss();
                     }

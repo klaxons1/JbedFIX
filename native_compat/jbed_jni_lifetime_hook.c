@@ -47,27 +47,27 @@ static jobject g_promoted_engine;
 
 /*
  * The Java method nativeJbedRun() in libjbedvm is only a tiny wrapper around
- * Jbed_run(50). On ART/Android 11 the VM currently consumes the whole host
- * thread stack during the first zero-delay NativeAms scheduler pass before the
- * Java loop gets a chance to wait. Instead of replacing the JNI method with a
- * cross-library callback, patch the original Thumb wrapper's immediate from 50
- * to a smaller value in-place. libjbedvm asserts that this quantum is at
- * least 20, but Android 11 still overflows the ART host stack at 20. Patch
- * both the wrapper immediate and the matching Thumb `cmp r1,#20` guard in
- * Jbed_iterate so we can test a one-step scheduler quantum without tripping
- * the VM's fatal assertion path.
+ * Jbed_run(50). Quantum 20 is the lowest value accepted by libjbedvm during
+ * NativeAms bootstrap; lower values trip an internal assertion before the AMS
+ * foreground transition. After Java observes that foreground transition, the
+ * Java side calls nativeEnableLowSchedulerQuantum() so event processing can use
+ * a one-step quantum and avoid the deep zero-delay scheduler recursion seen on
+ * ART/Android 11.
  */
 #define JBED_NATIVE_JBED_RUN_MOV_IMM_OFFSET 0x0a0ac2u
 #define JBED_NATIVE_JBED_RUN_LEGACY_QUANTUM 50u
-#define JBED_NATIVE_JBED_RUN_TARGET_QUANTUM 1u
+#define JBED_NATIVE_JBED_RUN_STARTUP_QUANTUM 20u
+#define JBED_NATIVE_JBED_RUN_LOW_QUANTUM 1u
 #define JBED_NATIVE_JBED_RUN_MOV_R0_LEGACY ((uint16_t) (0x2000u | JBED_NATIVE_JBED_RUN_LEGACY_QUANTUM))
-#define JBED_NATIVE_JBED_RUN_MOV_R0_TARGET ((uint16_t) (0x2000u | JBED_NATIVE_JBED_RUN_TARGET_QUANTUM))
+#define JBED_NATIVE_JBED_RUN_MOV_R0_STARTUP ((uint16_t) (0x2000u | JBED_NATIVE_JBED_RUN_STARTUP_QUANTUM))
+#define JBED_NATIVE_JBED_RUN_MOV_R0_LOW ((uint16_t) (0x2000u | JBED_NATIVE_JBED_RUN_LOW_QUANTUM))
 
 #define JBED_ITERATE_MIN_QUANTUM_CMP_OFFSET 0x0f1718u
 #define JBED_ITERATE_CMP_R1_20 0x2914u
-#define JBED_ITERATE_CMP_R1_TARGET ((uint16_t) (0x2900u | JBED_NATIVE_JBED_RUN_TARGET_QUANTUM))
+#define JBED_ITERATE_CMP_R1_LOW ((uint16_t) (0x2900u | JBED_NATIVE_JBED_RUN_LOW_QUANTUM))
 
-static int g_patched_jbed_run_quantum;
+static int g_patched_startup_jbed_run_quantum;
+static int g_patched_low_jbed_run_quantum;
 
 static int locate_jbedvm(struct dl_phdr_info *info, size_t size, void *data) {
     (void) size;
@@ -85,23 +85,12 @@ static void ensure_jbed_base(void) {
     }
 }
 
-static int patch_thumb16_instruction(uintptr_t offset, uint16_t expected, uint16_t replacement,
+static int write_thumb16_instruction(uintptr_t offset, uint16_t replacement,
                                       const char *description) {
     uint16_t *instruction = (uint16_t *) (g_jbed_base + offset);
-    uint16_t current = *instruction;
     long page_size_long;
     size_t page_size;
     uintptr_t page;
-
-    if (current == replacement) {
-        LOGI("%s patch already active", description);
-        return 1;
-    }
-    if (current != expected) {
-        LOGE("unexpected %s instruction 0x%04x at %p; not patching",
-             description, current, instruction);
-        return 0;
-    }
 
     page_size_long = sysconf(_SC_PAGESIZE);
     page_size = page_size_long > 0 ? (size_t) page_size_long : 4096u;
@@ -120,31 +109,89 @@ static int patch_thumb16_instruction(uintptr_t offset, uint16_t expected, uint16
     return 1;
 }
 
-static void patch_native_jbed_run_quantum(void) {
-    int wrapper_ok;
-    int guard_ok;
+static int patch_thumb16_instruction(uintptr_t offset, uint16_t expected, uint16_t replacement,
+                                      const char *description) {
+    uint16_t *instruction = (uint16_t *) (g_jbed_base + offset);
+    uint16_t current = *instruction;
 
-    if (g_patched_jbed_run_quantum) return;
+    if (current == replacement) {
+        LOGI("%s patch already active", description);
+        return 1;
+    }
+    if (current != expected) {
+        LOGE("unexpected %s instruction 0x%04x at %p; not patching",
+             description, current, instruction);
+        return 0;
+    }
+    return write_thumb16_instruction(offset, replacement, description);
+}
+
+static int patch_thumb16_instruction_from_either(uintptr_t offset, uint16_t expected_a,
+                                                  uint16_t expected_b, uint16_t replacement,
+                                                  const char *description) {
+    uint16_t *instruction = (uint16_t *) (g_jbed_base + offset);
+    uint16_t current = *instruction;
+
+    if (current == replacement) {
+        LOGI("%s patch already active", description);
+        return 1;
+    }
+    if (current != expected_a && current != expected_b) {
+        LOGE("unexpected %s instruction 0x%04x at %p; not patching",
+             description, current, instruction);
+        return 0;
+    }
+    return write_thumb16_instruction(offset, replacement, description);
+}
+
+static void patch_native_jbed_run_startup_quantum(void) {
+    if (g_patched_startup_jbed_run_quantum) return;
 
     ensure_jbed_base();
     if (g_jbed_base == 0) {
-        LOGE("libjbedvm.so is not loaded; cannot patch nativeJbedRun quantum");
+        LOGE("libjbedvm.so is not loaded; cannot patch nativeJbedRun startup quantum");
         return;
     }
 
-    wrapper_ok = patch_thumb16_instruction(JBED_NATIVE_JBED_RUN_MOV_IMM_OFFSET,
-                                           JBED_NATIVE_JBED_RUN_MOV_R0_LEGACY,
-                                           JBED_NATIVE_JBED_RUN_MOV_R0_TARGET,
-                                           "nativeJbedRun quantum");
+    if (patch_thumb16_instruction(JBED_NATIVE_JBED_RUN_MOV_IMM_OFFSET,
+                                  JBED_NATIVE_JBED_RUN_MOV_R0_LEGACY,
+                                  JBED_NATIVE_JBED_RUN_MOV_R0_STARTUP,
+                                  "nativeJbedRun startup quantum")) {
+        g_patched_startup_jbed_run_quantum = 1;
+        LOGI("patched libjbedvm startup scheduler quantum: Jbed_run(%u) -> Jbed_run(%u)",
+             JBED_NATIVE_JBED_RUN_LEGACY_QUANTUM, JBED_NATIVE_JBED_RUN_STARTUP_QUANTUM);
+    }
+}
+
+JNIEXPORT void JNICALL
+Java_com_esmertec_android_jbed_service_JbedEngine_nativeEnableLowSchedulerQuantum(JNIEnv *env, jclass clazz) {
+    (void) env;
+    (void) clazz;
+    int wrapper_ok;
+    int guard_ok;
+
+    if (g_patched_low_jbed_run_quantum) return;
+
+    ensure_jbed_base();
+    if (g_jbed_base == 0) {
+        LOGE("libjbedvm.so is not loaded; cannot enable low scheduler quantum");
+        return;
+    }
+
+    wrapper_ok = patch_thumb16_instruction_from_either(JBED_NATIVE_JBED_RUN_MOV_IMM_OFFSET,
+                                                       JBED_NATIVE_JBED_RUN_MOV_R0_STARTUP,
+                                                       JBED_NATIVE_JBED_RUN_MOV_R0_LEGACY,
+                                                       JBED_NATIVE_JBED_RUN_MOV_R0_LOW,
+                                                       "nativeJbedRun low quantum");
     guard_ok = patch_thumb16_instruction(JBED_ITERATE_MIN_QUANTUM_CMP_OFFSET,
                                          JBED_ITERATE_CMP_R1_20,
-                                         JBED_ITERATE_CMP_R1_TARGET,
-                                         "Jbed_iterate minimum-quantum guard");
+                                         JBED_ITERATE_CMP_R1_LOW,
+                                         "Jbed_iterate low-quantum guard");
     if (wrapper_ok && guard_ok) {
-        g_patched_jbed_run_quantum = 1;
-        LOGI("patched libjbedvm scheduler quantum: Jbed_run(%u) -> Jbed_run(%u), guard >=20 -> >=%u",
-             JBED_NATIVE_JBED_RUN_LEGACY_QUANTUM, JBED_NATIVE_JBED_RUN_TARGET_QUANTUM,
-             JBED_NATIVE_JBED_RUN_TARGET_QUANTUM);
+        g_patched_low_jbed_run_quantum = 1;
+        LOGI("lowered libjbedvm scheduler quantum after foreground: Jbed_run(%u) -> Jbed_run(%u), guard >=20 -> >=%u",
+             JBED_NATIVE_JBED_RUN_STARTUP_QUANTUM, JBED_NATIVE_JBED_RUN_LOW_QUANTUM,
+             JBED_NATIVE_JBED_RUN_LOW_QUANTUM);
     }
 }
 
@@ -323,7 +370,7 @@ Java_com_esmertec_android_jbed_service_JbedEngine_nativeInstallJniLifetimeHook(J
         LOGE("libjbedvm.so is not loaded; cannot install JNI lifetime hook");
         return;
     }
-    patch_native_jbed_run_quantum();
+    patch_native_jbed_run_startup_quantum();
 
     g_original_table = *env;
     g_original_get_method_id = g_original_table->GetMethodID;
@@ -363,6 +410,8 @@ Java_com_esmertec_android_jbed_service_JbedEngine_nativeReleaseJniLifetimeHook(J
     g_midp_get_string_method = NULL;
     g_file_get_roots_method = NULL;
     g_jbed_base = 0;
+    g_patched_startup_jbed_run_quantum = 0;
+    g_patched_low_jbed_run_quantum = 0;
 }
 
 /* Explicit registration avoids relying on ART's cross-library native symbol
@@ -373,20 +422,21 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
     if ((*vm)->GetEnv(vm, (void **) &env, JNI_VERSION_1_6) != JNI_OK) return JNI_ERR;
 
     ensure_jbed_base();
-    patch_native_jbed_run_quantum();
+    patch_native_jbed_run_startup_quantum();
 
     jclass engine = (*env)->FindClass(env, "com/esmertec/android/jbed/service/JbedEngine");
     if (engine == NULL) return JNI_ERR;
     JNINativeMethod methods[] = {
         {"nativeInstallJniLifetimeHook", "()V", (void *) Java_com_esmertec_android_jbed_service_JbedEngine_nativeInstallJniLifetimeHook},
         {"nativeReleaseJniLifetimeHook", "()V", (void *) Java_com_esmertec_android_jbed_service_JbedEngine_nativeReleaseJniLifetimeHook},
+        {"nativeEnableLowSchedulerQuantum", "()V", (void *) Java_com_esmertec_android_jbed_service_JbedEngine_nativeEnableLowSchedulerQuantum},
     };
-    if ((*env)->RegisterNatives(env, engine, methods, 2) != JNI_OK) return JNI_ERR;
+    if ((*env)->RegisterNatives(env, engine, methods, 3) != JNI_OK) return JNI_ERR;
 
     /* The experimental JbedService MIDP-class hook was removed from Java.
      * Do not register methods that are no longer declared: ART treats that
      * as an error and rejects the entire compatibility library in JNI_OnLoad.
      * The active JbedEngine hook also handles the string callback fallback. */
-    LOGI("registered ART JbedEngine JNI compatibility methods (lifetime + nativeJbedRun patch)");
+    LOGI("registered ART JbedEngine JNI compatibility methods (lifetime + staged scheduler quantum patch)");
     return JNI_VERSION_1_6;
 }

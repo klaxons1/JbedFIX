@@ -75,11 +75,12 @@ be a full renderer; Jbed's Surface-buffer rendering can then be tested.
   `JbedEngine` local reference to a global reference and to bypass unsafe
   legacy static callbacks. `JbedMidpManager.getString` returns `"<unknown>"`;
   `JbedFileManager.getRoots` returns a synthesized one-root `sdcard/` payload;
-- patches libjbedvm's original `JbedEngine.nativeJbedRun()` Thumb wrapper in
-  memory so it calls `Jbed_run(1)` instead of its hard-coded `Jbed_run(50)` and
-  lowers the matching `Jbed_iterate` minimum-quantum assertion guard from 20 to
-  1. This keeps execution inside the proprietary VM while minimizing scheduler
-  stack pressure; it is not a complete fix for the proprietary scheduler.
+- uses a staged scheduler patch: bootstrap runs the original `nativeJbedRun`
+  wrapper at `Jbed_run(20)`, then Java calls back after foreground transition
+  to lower the wrapper to `Jbed_run(1)` and patch the matching `Jbed_iterate`
+  minimum-quantum assertion guard from 20 to 1. This keeps execution inside the
+  proprietary VM while minimizing scheduler stack pressure; it is not a complete
+  fix for the proprietary scheduler.
 
 ## Surface software bridge
 

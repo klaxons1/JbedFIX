@@ -99,6 +99,9 @@ public class JbedEngine implements JbedConstants {
     /** Releases the global JNI reference created by the compatibility hook. */
     private static native void nativeReleaseJniLifetimeHook();
 
+    /** Lowers the VM scheduler quantum after NativeAms has reached foreground. */
+    private static native void nativeEnableLowSchedulerQuantum();
+
     static {
         VMCHANGE_ALLOW_MAPS.put(2, 22);
         VMCHANGE_ALLOW_MAPS.put(1, 31);
@@ -499,6 +502,7 @@ public class JbedEngine implements JbedConstants {
                 if (newState == 3) {
                     if (!this.mJbedThread.mIsVmInitialized) {
                         LogTag.serviceDebug(TAG, "wakeup main thread after vm has been started totally!!");
+                        nativeEnableLowSchedulerQuantum();
                         this.mJbedThread.mIsVmInitialized = true;
                         this.mJbedThread.notify();
                         nativeInitializePush();
