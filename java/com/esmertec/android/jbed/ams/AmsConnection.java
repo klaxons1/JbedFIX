@@ -212,6 +212,8 @@ public class AmsConnection extends IJbedAmsConnection.Stub implements AmsConstan
         EVENT_RUN
     }
 
+    private static native boolean nativeRequestLocalInstall(String url);
+
     public AmsConnection(Handler handler) {
         this.mHandler = handler;
         INSTANCE = this;
@@ -236,7 +238,7 @@ public class AmsConnection extends IJbedAmsConnection.Stub implements AmsConstan
     private static AmsEvent fetchEvent() {
         AmsEvent e = INSTANCE.mEventQueue.poll();
         if (e != null) {
-            LogTag.amsDebug(TAG, "fetchAmsEvent() " + e.toString());
+            Log.i(TAG, "fetchAmsEvent() " + e.toString());
         } else {
             LogTag.amsWarning(TAG, "There is no any event, who call the fetchAmsEvent()?");
         }
@@ -313,8 +315,25 @@ public class AmsConnection extends IJbedAmsConnection.Stub implements AmsConstan
             return;
         }
         AmsEvent e2 = new AmsEvent(eventId, result, data);
-        LogTag.amsDebug(TAG, " deliverEventToJbedVm() " + e2.toString());
+        Log.i(TAG, "deliverEventToJbedVm() " + e2.toString());
         this.mEventQueue.add(e2);
+        if (eventId == 5 && data != null) {
+            final String installUrl = new String(data).trim();
+            this.mHandler.obtainMessage(10, new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        if (nativeRequestLocalInstall(installUrl)) {
+                            Log.i(TAG, "direct native local-install upcall queued on JbedThread for " + installUrl);
+                        } else {
+                            Log.w(TAG, "direct native local-install upcall was not queued for " + installUrl);
+                        }
+                    } catch (Throwable t) {
+                        Log.w(TAG, "direct native local-install upcall failed for " + installUrl, t);
+                    }
+                }
+            }).sendToTarget();
+        }
         this.mHandler.obtainMessage(5, 41, 0).sendToTarget();
     }
 

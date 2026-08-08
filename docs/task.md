@@ -62,6 +62,8 @@ GitHub Actions builds currently pass and upload an APK artifact. The workflow st
 
 `build.gradle` now invokes `buildDrmCompatibilityShim` before `mergeReleaseNativeLibs` so generated ARM32 libraries are packaged before the APK is assembled.
 
+The app now keeps `minSdk 19` so the APK can be installed on Android 4.4.2/KitKat test devices, while retaining `targetSdk 22` for Android 11 compatibility experiments.
+
 The target SDK was lowered from 28 to 22 because Android 11's linker allows this legacy-target app to load an ELF with text relocations:
 
 ```text
@@ -190,7 +192,7 @@ Scheduler.setForeground from null to com.jbed.ams.NativeAms
 
 `JbedFileManager.getRoots()` is reached through the old native JNI bridge but returns null with a pending Java exception on this ART runtime. Its precise failure did not safely produce a Java stack trace: attempting `ExceptionDescribe()` itself hit the already constrained Jbed thread stack.
 
-The compatibility shim now bypasses the two unsafe legacy static JNI callbacks entirely (`088a580`): it supplies `"<unknown>"` for native i18n and a valid five-byte **zero-root** payload for `getRoots`, without entering Android Java. This lets `FileSystemCallHandler.register` complete, but does **not** provide a usable SD-card/FileConnection implementation. Separately, `JbedFileManager` maps legacy `/mnt/sdcard` to Android's actual legacy external-storage path when its normal Java method can run (`043ce2f`).
+The compatibility shim now bypasses the two unsafe legacy static JNI callbacks entirely (`088a580`): it supplies `"<unknown>"` for native i18n and synthesizes a one-root `sdcard/` FileConnection payload for `getRoots`, without entering Android Java. The root path is chosen from `EXTERNAL_STORAGE`, `/storage/emulated/0`, `/sdcard`, then `/mnt/sdcard`. This is enough to stop NativeAms from treating storage as absent, but full FileConnection behavior is still not proven. Separately, `JbedFileManager` maps legacy `/mnt/sdcard` to Android's actual legacy external-storage path when its normal Java method can run (`043ce2f`).
 
 ### Current active blocker: Jbed thread stack
 
@@ -202,13 +204,11 @@ at com.esmertec.android.jbed.service.JbedEngine.nativeJbedRun(Native Method)
 at com.esmertec.android.jbed.service.JbedEngine$JbedThread.run(JbedEngine.java:...)
 ```
 
-The same stack exhaustion occurred during the failing `getRoots()` callback. The final current commit changes the Android host `JbedThread` from the ART default (~1 MiB) to a requested 4 MiB stack:
+The same stack exhaustion occurred during the failing `getRoots()` callback. The Android host `JbedThread` stack was raised from the ART default (~1 MiB) to diagnostic headroom, but stack-only tuning is not a real fix. Testing showed the VM can still overflow with a larger host stack (for example `stack size 9232KB`) immediately after the zero-delay NativeAms scheduler path. Therefore the issue is not simply the default ART stack limit: it is an unbounded/deep recursive path inside the proprietary VM scheduler/bootstrap.
 
-```text
-0393f61 Increase Jbed VM thread stack on ART
-```
+Current experiment: `libjbedcompat.so` now uses a staged scheduler patch. During NativeAms bootstrap it changes libjbedvm's hard-coded `Jbed_run(50)` immediate to the VM's minimum accepted `Jbed_run(20)`. The cloned JNIEnv table also intercepts the legacy `vmStateChange(true, ..., 3, ...)` `CallBooleanMethod` and lowers the wrapper to `Jbed_run(1)`, patches the matching `Jbed_iterate` `quantum >= 20` assertion guard to `>= 1`, and patches the later `if (quantum < 20) skip scheduled execution` gate to `if (quantum < 1)`. Java still repeats the same low-quantum patch from the `StackOverflowError` fallback. The fallback also resets libjbedvm native-call/scheduler flags that are normally restored at the end of `Jbed_iterate()` but are skipped when ART throws through the native frame. The Android host `JbedThread` is currently at 64 MiB diagnostic stack headroom because the scheduler now reaches the install handler but still overflows at the former 16 MiB setting; this distinguishes finite deep recursion from an effectively infinite loop. Java unblocks the AMS startup wait if nativeJbedRun still overflows after the foreground transition, so the UI is not left forever on the modal wait dialog.
 
-This was tested on the Android 11 device. The larger stack lets NativeAms reach `ACTIVE_FOREGROUND`, but the VM still overflows at `stack size 5136KB` immediately after `Scheduler.schedule wait delay=0`. Therefore the issue is not simply the default ART stack limit: it is an unbounded/deep recursive path inside the proprietary VM scheduler/bootstrap. Do not keep increasing the host thread stack as a production fix; use this setting only to expose more diagnostics. The next investigation target is native `Jbed_iterate()` / the Java ME scheduler path around zero-delay scheduling. Surface rendering also remains unresolved because the `libsurfaceflinger_client.so` shim has no modern display presentation path.
+Surface rendering also remains unresolved because the `libsurfaceflinger_client.so` shim has no modern display presentation path. Android 11 also blocks direct APN provider access; `JbedMidpManager` now treats APN lookup/observer failures as "no HTTP proxy" instead of crashing the remote VM process, and the legacy APN settings menu is hidden. Local JAR/JAD selections now also enqueue direct native install upcalls onto `JbedThread` from `AmsConnection` in addition to the original queued `INSTALL` event, because the recursive scheduler can fail to reach `NativeAms.nativeGetEvent()` after a post-foreground stack overflow. The bridge calls both `Jbed_ams_event_requestInstall(url)` and `Jbed_ams_event_requestLocalInstall(url, "")`, then invokes `Jbed_upcall_poll()` immediately to bypass a stalled scheduler poll. Calling these upcalls directly from the Binder thread crashed because the old VM expects Jbed-thread native state; calling `requestLocalInstall` with only one argument crashed in `strlen(NULL)`, so the bridge supplies an empty secondary JAD URL argument.
 
 ### Focused test procedure
 

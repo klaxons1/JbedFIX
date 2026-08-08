@@ -99,6 +99,12 @@ public class JbedEngine implements JbedConstants {
     /** Releases the global JNI reference created by the compatibility hook. */
     private static native void nativeReleaseJniLifetimeHook();
 
+    /** Lowers the VM scheduler quantum after NativeAms has reached foreground. */
+    private static native void nativeEnableLowSchedulerQuantum();
+
+    /** Resets legacy VM native-call flags after ART reports StackOverflowError. */
+    private static native void nativeRecoverAfterStackOverflow();
+
     static {
         VMCHANGE_ALLOW_MAPS.put(2, 22);
         VMCHANGE_ALLOW_MAPS.put(1, 31);
@@ -162,6 +168,12 @@ public class JbedEngine implements JbedConstants {
                         return;
                     case 9:
                         new ToastVmBlocker(JbedEngine.this).run();
+                        return;
+                    case 10:
+                        if (msg.obj instanceof Runnable && JbedEngine.this.mJbedThread != null) {
+                            JbedEngine.this.mJbedThread.mPendingEventQueue.add((Runnable) msg.obj);
+                            JbedEngine.this.wakeUp();
+                        }
                         return;
                 }
             }
@@ -351,10 +363,10 @@ public class JbedEngine implements JbedConstants {
         private int mViewWidth;
 
         public JbedThread() {
-            // The 2011 VM schedules its own Java-isolate frames through this
-            // Android thread. ART's default ~1 MiB stack overflows during AMS
-            // bootstrap; use a bounded but practical legacy VM stack.
-            super(null, null, "JbedThread", 4L * 1024L * 1024L);
+            // Diagnostic headroom for the legacy native VM. The scheduler now reaches
+            // the install handler but still overflows a 16MiB ART host stack, so use
+            // a large stack to distinguish finite deep recursion from an infinite loop.
+            super(null, null, "JbedThread", 64L * 1024L * 1024L);
             this.mViewWidth = -1;
             this.mViewHeight = -1;
             this.mBytesPerPixel = -1;
@@ -373,6 +385,16 @@ public class JbedEngine implements JbedConstants {
                         wait();
                     }
                 } catch (Exception e) {
+                }
+            }
+        }
+
+        private void unblockStartupWaiterAfterNativeOverflow() {
+            synchronized (this) {
+                if (!this.mIsVmInitialized) {
+                    Log.w(JbedEngine.TAG, "nativeJbedRun overflowed after foreground transition; unblocking AMS startup wait");
+                    this.mIsVmInitialized = true;
+                    notifyAll();
                 }
             }
         }
@@ -424,7 +446,20 @@ public class JbedEngine implements JbedConstants {
                 JbedEngine.this.nativeJbedRequestState(3);
                 while (!JbedEngine.this.mShutdownVM) {
                     JbedEngine.this.mEventPending = false;
-                    int delay = JbedEngine.this.nativeJbedRun();
+                    int delay;
+                    try {
+                        delay = JbedEngine.this.nativeJbedRun();
+                    } catch (StackOverflowError e) {
+                        Log.e(JbedEngine.TAG, "StackOverflow in nativeJbedRun, recovering native scheduler state and using delay fallback 100ms", e);
+                        try {
+                            nativeRecoverAfterStackOverflow();
+                            nativeEnableLowSchedulerQuantum();
+                        } catch (Throwable hookError) {
+                            Log.w(JbedEngine.TAG, "unable to recover native scheduler state after nativeJbedRun overflow", hookError);
+                        }
+                        unblockStartupWaiterAfterNativeOverflow();
+                        delay = 100;
+                    }
                     if (delay >= 10 && !JbedEngine.this.mShutdownVM) {
                         synchronized (this) {
                             if (!JbedEngine.this.mEventPending) {
@@ -483,6 +518,7 @@ public class JbedEngine implements JbedConstants {
                 if (newState == 3) {
                     if (!this.mJbedThread.mIsVmInitialized) {
                         LogTag.serviceDebug(TAG, "wakeup main thread after vm has been started totally!!");
+                        nativeEnableLowSchedulerQuantum();
                         this.mJbedThread.mIsVmInitialized = true;
                         this.mJbedThread.notify();
                         nativeInitializePush();

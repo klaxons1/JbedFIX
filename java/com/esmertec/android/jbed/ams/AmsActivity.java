@@ -153,6 +153,13 @@ public class AmsActivity extends ListActivity implements AmsConstants {
                             }
                         }
                         if (!JbedConfig.Menu.isReconfigEnable() || !AmsActivity.this.mCurSelectedItem.isFolder() || AmsActivity.this.mCurSelectedItem.mModifiableContent) {
+                            if (AmsActivity.this.mCurSelectedItem.isFolder()
+                                    && JbedFileManager.SDCARD_FOLDER_NAME.equals(AmsActivity.this.mCurSelectedItem.mName)
+                                    && AmsActivity.this.mCurSelectedItem.getChildCount() == 0) {
+                                LogTag.amsDebug(AmsActivity.TAG, "empty sdcard selector folder selected; scanning external storage for local MIDlet files");
+                                client.requestListLocalInstall(true);
+                                return;
+                            }
                             AmsActivity.this.refreshList(AmsActivity.this.loadListOrderId(), AmsActivity.this.mCurSelectedItem);
                         } else {
                             FolderNameI18N folderNameI18N = new FolderNameI18N(AmsActivity.this);

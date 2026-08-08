@@ -34,7 +34,7 @@ for **armeabi-v7a / 32-bit ARM**, because the Jbed VM is an ELF32 ARM library.
 
 ```bash
 "$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/clang" \
-  --target=armv7a-linux-androideabi21 \
+  --target=armv7a-linux-androideabi19 \
   -fPIC -shared -O2 \
   -Wl,-soname,libdrm1.so \
   -o lib/armeabi/libdrm1.so native_compat/libdrm1.c
@@ -65,6 +65,41 @@ operations. It is a safe first-stage compatibility layer: object operations do
 not dereference legacy C++ object layouts, while text drawing and metrics are
 currently no-ops. This gets the linker past `libskia.so` without claiming to
 be a full renderer; Jbed's Surface-buffer rendering can then be tested.
+
+## Jbed JNI/native scheduler compatibility hook
+
+`jbed_jni_lifetime_hook.c` builds `libjbedcompat.so`, loaded after the original
+`libjbedvm.so`. The shims are built for Android API 19 so the APK can install
+on Android 4.4.2/KitKat. Scheduler-quantum binary patches are disabled on
+pre-Lollipop devices and left to the legacy VM path; ART/Android 5+ keeps the
+staged scheduler workarounds. It currently provides targeted ART workarounds:
+
+- clones the active `JNIEnv` table long enough to promote libjbedvm's saved
+  `JbedEngine` local reference to a global reference and to bypass unsafe
+  legacy static callbacks. `JbedMidpManager.getString` returns `"<unknown>"`;
+  `JbedFileManager.getRoots` returns a synthesized one-root `sdcard/` payload;
+- uses a staged scheduler patch: bootstrap runs the original `nativeJbedRun`
+  wrapper at `Jbed_run(20)`, then the cloned `JNIEnv` intercepts the legacy
+  foreground `vmStateChange` `CallBooleanMethod` before it returns to the VM and
+  lowers the wrapper to `Jbed_run(1)`, patches the matching `Jbed_iterate`
+  minimum-quantum assertion guard from 20 to 1, and patches the later
+  scheduled-execution gate from `quantum < 20` to `quantum < 1`. Java repeats
+  this low-quantum patch from the `StackOverflowError` fallback as a safety net and resets the
+  native-call/scheduler flags skipped when ART throws through the old native
+  frame. This keeps execution inside the proprietary VM while minimizing
+  scheduler stack pressure; it is not a complete fix for the proprietary
+  scheduler;
+- registers an `AmsConnection.nativeRequestLocalInstall()` bridge for local
+  JAR/JAD selection. `AmsConnection` enqueues this call onto `JbedThread`;
+  calling it directly from the Binder thread crashes because the old VM expects
+  Jbed-thread native state. The bridge calls both exported native entry points,
+  `Jbed_ams_event_requestInstall(url)` and
+  `Jbed_ams_event_requestLocalInstall(url, "")`, then immediately calls
+  `Jbed_upcall_poll()` to bypass a stalled native scheduler poll. The empty
+  secondary JAD URL avoids `strlen(NULL)` in the local-install vararg formatter.
+  This is a diagnostic bypass for cases where the original Java event queue is
+  populated but the native AMS scheduler does not reach `NativeAms.nativeGetEvent()`
+  after stack overflow.
 
 ## Surface software bridge
 
