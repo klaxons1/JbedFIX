@@ -81,8 +81,11 @@ static jobject g_promoted_engine;
 #define JBED_NATIVE_JBED_RUN_MOV_R0_LOW ((uint16_t) (0x2000u | JBED_NATIVE_JBED_RUN_LOW_QUANTUM))
 
 #define JBED_ITERATE_MIN_QUANTUM_CMP_OFFSET 0x0f1718u
+#define JBED_ITERATE_RUN_BODY_QUANTUM_CMP_OFFSET 0x0f17a2u
 #define JBED_ITERATE_CMP_R1_20 0x2914u
+#define JBED_ITERATE_CMP_R0_20 0x2814u
 #define JBED_ITERATE_CMP_R1_LOW ((uint16_t) (0x2900u | JBED_NATIVE_JBED_RUN_LOW_QUANTUM))
+#define JBED_ITERATE_CMP_R0_LOW ((uint16_t) (0x2800u | JBED_NATIVE_JBED_RUN_LOW_QUANTUM))
 
 static int g_patched_startup_jbed_run_quantum;
 static int g_patched_low_jbed_run_quantum;
@@ -197,6 +200,7 @@ Java_com_esmertec_android_jbed_service_JbedEngine_nativeEnableLowSchedulerQuantu
     (void) clazz;
     int wrapper_ok;
     int guard_ok;
+    int body_ok;
 
     if (g_patched_low_jbed_run_quantum) return;
 
@@ -215,9 +219,13 @@ Java_com_esmertec_android_jbed_service_JbedEngine_nativeEnableLowSchedulerQuantu
                                          JBED_ITERATE_CMP_R1_20,
                                          JBED_ITERATE_CMP_R1_LOW,
                                          "Jbed_iterate low-quantum guard");
-    if (wrapper_ok && guard_ok) {
+    body_ok = patch_thumb16_instruction(JBED_ITERATE_RUN_BODY_QUANTUM_CMP_OFFSET,
+                                        JBED_ITERATE_CMP_R0_20,
+                                        JBED_ITERATE_CMP_R0_LOW,
+                                        "Jbed_iterate run-body quantum gate");
+    if (wrapper_ok && guard_ok && body_ok) {
         g_patched_low_jbed_run_quantum = 1;
-        LOGI("lowered libjbedvm scheduler quantum after foreground: Jbed_run(%u) -> Jbed_run(%u), guard >=20 -> >=%u",
+        LOGI("lowered libjbedvm scheduler quantum after foreground: Jbed_run(%u) -> Jbed_run(%u), guard/body >=20 -> >=%u",
              JBED_NATIVE_JBED_RUN_STARTUP_QUANTUM, JBED_NATIVE_JBED_RUN_LOW_QUANTUM,
              JBED_NATIVE_JBED_RUN_LOW_QUANTUM);
     }

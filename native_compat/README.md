@@ -78,9 +78,10 @@ be a full renderer; Jbed's Surface-buffer rendering can then be tested.
 - uses a staged scheduler patch: bootstrap runs the original `nativeJbedRun`
   wrapper at `Jbed_run(20)`, then the cloned `JNIEnv` intercepts the legacy
   foreground `vmStateChange` `CallBooleanMethod` before it returns to the VM and
-  lowers the wrapper to `Jbed_run(1)` plus the matching `Jbed_iterate`
-  minimum-quantum assertion guard from 20 to 1. Java repeats this low-quantum
-  patch from the `StackOverflowError` fallback as a safety net and resets the
+  lowers the wrapper to `Jbed_run(1)`, patches the matching `Jbed_iterate`
+  minimum-quantum assertion guard from 20 to 1, and patches the later
+  scheduled-execution gate from `quantum < 20` to `quantum < 1`. Java repeats
+  this low-quantum patch from the `StackOverflowError` fallback as a safety net and resets the
   native-call/scheduler flags skipped when ART throws through the old native
   frame. This keeps execution inside the proprietary VM while minimizing
   scheduler stack pressure; it is not a complete fix for the proprietary
