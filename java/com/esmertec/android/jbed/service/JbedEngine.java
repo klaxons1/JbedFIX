@@ -351,7 +351,10 @@ public class JbedEngine implements JbedConstants {
         private int mViewWidth;
 
         public JbedThread() {
-            super("JbedThread");
+            // The 2011 VM schedules its own Java-isolate frames through this
+            // Android thread. ART's default ~1 MiB stack overflows during AMS
+            // bootstrap; use a bounded but practical legacy VM stack.
+            super(null, null, "JbedThread", 4L * 1024L * 1024L);
             this.mViewWidth = -1;
             this.mViewHeight = -1;
             this.mBytesPerPixel = -1;

@@ -121,10 +121,10 @@ static jobject JNICALL hooked_call_static_object_method(JNIEnv *env, jclass claz
             jbyte zero_roots[5] = {0, 0, 0, 0, 0};
             LOGE("JbedFileManager.getRoots returned null (exception=%d); using an empty root list",
                  (*env)->ExceptionCheck(env));
-            /* Preserve ART's diagnostic for the unexpected Java exception,
-             * then give the 2011 VM a valid zero-root payload. Its native
-             * parser reads five header bytes even when the root count is 0. */
-            (*env)->ExceptionDescribe(env);
+            /* Avoid ExceptionDescribe here: rendering a stack trace consumes
+             * the already constrained VM thread stack. Give the 2011 VM a
+             * valid zero-root payload; its parser reads five header bytes
+             * even when the root count is 0. */
             (*env)->ExceptionClear(env);
             empty_roots = (*env)->NewByteArray(env, (jsize) sizeof(zero_roots));
             if (empty_roots != NULL) {
