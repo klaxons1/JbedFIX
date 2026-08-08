@@ -43,6 +43,12 @@
 #define JBED_FATAL_ERROR_SP_OFFSET 0x3200f4u
 #define JBED_FATAL_ERROR_PENDING_OFFSET 0x3200f8u
 #define JBED_VM_NATIVE_ACTIVE_OFFSET 0x320160u
+#define JBED_AMS_UPCALL_QUEUE_OFFSET 0x31edc0u
+#define JBED_EVENT_HANDLER_TABLE_OFFSET 0x320068u
+#define JBED_CURRENT_SCHEDULED_OFFSET 0x3200a8u
+#define JBED_SCHEDULED_COUNT_OFFSET 0x320228u
+#define JBED_WAITING_SCHEDULED_COUNT_OFFSET 0x32022cu
+#define JBED_UPCALL_QUEUE_LIST_OFFSET 0x320320u
 
 /* NDK's C jni.h names this structure JNINativeInterface (without the
  * trailing underscore used by some platform headers). */
@@ -88,6 +94,7 @@ static jbed_request_local_install_fn g_jbed_request_local_install;
 static jbed_upcall_poll_fn g_jbed_upcall_poll;
 
 static void clear_pending_exception(JNIEnv *env);
+static void dump_scheduler_state(const char *label);
 
 static int locate_jbedvm(struct dl_phdr_info *info, size_t size, void *data) {
     (void) size;
@@ -241,6 +248,49 @@ Java_com_esmertec_android_jbed_service_JbedEngine_nativeRecoverAfterStackOverflo
     }
     LOGI("reset libjbedvm native scheduler flags after StackOverflow: callState=0x%08x",
          call_state_base);
+    dump_scheduler_state("after-overflow-recover");
+}
+
+static uint32_t read_u32(uintptr_t offset) {
+    return *(uint32_t *) (g_jbed_base + offset);
+}
+
+static uint8_t read_u8(uintptr_t offset) {
+    return *(uint8_t *) (g_jbed_base + offset);
+}
+
+static void dump_upcall_queue(const char *label, const char *name, uint32_t queue_ptr) {
+    int index = 0;
+    while (queue_ptr != 0 && index < 4) {
+        uint32_t *q = (uint32_t *) queue_ptr;
+        LOGI("%s %s[%d]=%p next=%p prio=%u read=%u write=%u cap=%u tmpWrite=%d tmpRead=%d",
+             label, name, index, (void *) queue_ptr, (void *) q[0], q[1], q[2], q[3], q[4],
+             (int32_t) q[5], (int32_t) q[6]);
+        queue_ptr = q[0];
+        ++index;
+    }
+    if (index == 0) {
+        LOGI("%s %s=<null>", label, name);
+    }
+}
+
+static void dump_scheduler_state(const char *label) {
+    ensure_jbed_base();
+    if (g_jbed_base == 0) return;
+
+    uint32_t call_state_base = read_u32(JBED_NATIVE_CALL_STATE_BASE_OFFSET);
+    uint32_t call_state_adr = read_u32(JBED_NATIVE_CALL_STATE_ADR_OFFSET);
+    uint32_t call_state_frame = read_u32(JBED_NATIVE_CALL_STATE_FRAME_OFFSET);
+    uint32_t ams_queue = read_u32(JBED_AMS_UPCALL_QUEUE_OFFSET);
+    uint32_t queue_list = read_u32(JBED_UPCALL_QUEUE_LIST_OFFSET);
+    LOGI("%s scheduler: active=%u callBase=0x%08x callAdr=0x%08x callFrame=0x%08x "
+         "eventTable=0x%08x current=0x%08x scheduled=%u waiting=%u amsQueue=0x%08x queues=0x%08x",
+         label, read_u8(JBED_VM_NATIVE_ACTIVE_OFFSET), call_state_base, call_state_adr,
+         call_state_frame, read_u32(JBED_EVENT_HANDLER_TABLE_OFFSET),
+         read_u32(JBED_CURRENT_SCHEDULED_OFFSET), read_u32(JBED_SCHEDULED_COUNT_OFFSET),
+         read_u32(JBED_WAITING_SCHEDULED_COUNT_OFFSET), ams_queue, queue_list);
+    dump_upcall_queue(label, "amsQueue", ams_queue);
+    dump_upcall_queue(label, "queueList", queue_list);
 }
 
 static jbed_request_install_fn resolve_jbed_request_install(void) {
@@ -301,19 +351,23 @@ Java_com_esmertec_android_jbed_ams_AmsConnection_nativeRequestLocalInstall(JNIEn
     utf = (*env)->GetStringUTFChars(env, url, NULL);
     if (utf == NULL) return JNI_FALSE;
 
+    dump_scheduler_state("before-direct-install");
     if (request_install != NULL) {
         LOGI("direct native install upcall: %s", utf);
         request_install(utf);
+        dump_scheduler_state("after-requestInstall");
     }
     if (!(*env)->ExceptionCheck(env) && request_local_install != NULL) {
         LOGI("direct native local-install upcall: %s", utf);
         request_local_install((char *) utf, "");
+        dump_scheduler_state("after-requestLocalInstall");
     }
     if (!(*env)->ExceptionCheck(env)) {
         jbed_upcall_poll_fn upcall_poll = resolve_jbed_upcall_poll();
         if (upcall_poll != NULL) {
             int poll_result = upcall_poll();
             LOGI("direct native install upcall poll result=%d", poll_result);
+            dump_scheduler_state("after-upcall-poll");
         }
     }
     if ((*env)->ExceptionCheck(env)) {
