@@ -76,8 +76,10 @@ be a full renderer; Jbed's Surface-buffer rendering can then be tested.
   legacy static callbacks (`JbedMidpManager.getString`, `JbedFileManager.getRoots`);
 - patches libjbedvm's original `JbedEngine.nativeJbedRun()` Thumb wrapper in
   memory so it calls `Jbed_run(20)` instead of its hard-coded `Jbed_run(50)`.
-  This keeps execution inside the proprietary VM while lowering the scheduler
-  quantum; it is not a complete fix for the proprietary scheduler.
+  `20` is the VM's minimum accepted scheduler quantum; lower values trip an
+  internal assertion. This keeps execution inside the proprietary VM while
+  lowering the scheduler quantum; it is not a complete fix for the proprietary
+  scheduler.
 
 ## Surface software bridge
 

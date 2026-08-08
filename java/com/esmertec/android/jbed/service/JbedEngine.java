@@ -351,10 +351,10 @@ public class JbedEngine implements JbedConstants {
         private int mViewWidth;
 
         public JbedThread() {
-            // Diagnostic headroom for the legacy native VM. The actual stack-pressure
-            // workaround is the libjbedcompat nativeJbedRun binary patch, which lowers
-            // the Jbed_run scheduler quantum instead of growing this stack indefinitely.
-            super(null, null, "JbedThread", 8L * 1024L * 1024L);
+            // Diagnostic headroom for the legacy native VM. Quantum 20 reaches the
+            // NativeAms foreground state but still overflows an 8MiB ART host stack,
+            // so give the old interpreter more room while the scheduler path is traced.
+            super(null, null, "JbedThread", 16L * 1024L * 1024L);
             this.mViewWidth = -1;
             this.mViewHeight = -1;
             this.mBytesPerPixel = -1;
@@ -373,6 +373,16 @@ public class JbedEngine implements JbedConstants {
                         wait();
                     }
                 } catch (Exception e) {
+                }
+            }
+        }
+
+        private void unblockStartupWaiterAfterNativeOverflow() {
+            synchronized (this) {
+                if (!this.mIsVmInitialized) {
+                    Log.w(JbedEngine.TAG, "nativeJbedRun overflowed after foreground transition; unblocking AMS startup wait");
+                    this.mIsVmInitialized = true;
+                    notifyAll();
                 }
             }
         }
@@ -429,6 +439,7 @@ public class JbedEngine implements JbedConstants {
                         delay = JbedEngine.this.nativeJbedRun();
                     } catch (StackOverflowError e) {
                         Log.e(JbedEngine.TAG, "StackOverflow in nativeJbedRun, delay fallback 100ms", e);
+                        unblockStartupWaiterAfterNativeOverflow();
                         delay = 100;
                     }
                     if (delay >= 10 && !JbedEngine.this.mShutdownVM) {
