@@ -77,10 +77,11 @@ be a full renderer; Jbed's Surface-buffer rendering can then be tested.
   `JbedFileManager.getRoots` returns a synthesized one-root `sdcard/` payload;
 - uses a staged scheduler patch: bootstrap runs the original `nativeJbedRun`
   wrapper at `Jbed_run(20)`, then Java calls back after foreground transition
-  to lower the wrapper to `Jbed_run(1)` and patch the matching `Jbed_iterate`
-  minimum-quantum assertion guard from 20 to 1. This keeps execution inside the
-  proprietary VM while minimizing scheduler stack pressure; it is not a complete
-  fix for the proprietary scheduler.
+  (or after the post-foreground `StackOverflowError` fallback) to lower the
+  wrapper to `Jbed_run(1)` and patch the matching `Jbed_iterate` minimum-quantum
+  assertion guard from 20 to 1. This keeps execution inside the proprietary VM
+  while minimizing scheduler stack pressure; it is not a complete fix for the
+  proprietary scheduler.
 
 ## Surface software bridge
 

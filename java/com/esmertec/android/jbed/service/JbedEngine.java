@@ -440,7 +440,12 @@ public class JbedEngine implements JbedConstants {
                     try {
                         delay = JbedEngine.this.nativeJbedRun();
                     } catch (StackOverflowError e) {
-                        Log.e(JbedEngine.TAG, "StackOverflow in nativeJbedRun, delay fallback 100ms", e);
+                        Log.e(JbedEngine.TAG, "StackOverflow in nativeJbedRun, enabling low scheduler quantum and using delay fallback 100ms", e);
+                        try {
+                            nativeEnableLowSchedulerQuantum();
+                        } catch (Throwable hookError) {
+                            Log.w(JbedEngine.TAG, "unable to enable low scheduler quantum after nativeJbedRun overflow", hookError);
+                        }
                         unblockStartupWaiterAfterNativeOverflow();
                         delay = 100;
                     }
