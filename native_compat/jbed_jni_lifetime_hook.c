@@ -1,3 +1,5 @@
+#define _GNU_SOURCE
+
 /*
  * ART JNI/native compatibility hooks for the 2011 Jbed VM.
  *
@@ -18,13 +20,13 @@
 #include <android/log.h>
 #include <errno.h>
 #include <dlfcn.h>
-#include <link.h>
 #include <stdint.h>
 #include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
+#include <sys/system_properties.h>
 #include <unistd.h>
 
 #define LOG_TAG "jbed-jni-compat"
@@ -100,19 +102,39 @@ static jbed_upcall_poll_fn g_jbed_upcall_poll;
 static void clear_pending_exception(JNIEnv *env);
 static void dump_scheduler_state(const char *label);
 
-static int locate_jbedvm(struct dl_phdr_info *info, size_t size, void *data) {
-    (void) size;
-    (void) data;
-    if (info->dlpi_name && strstr(info->dlpi_name, "libjbedvm.so")) {
-        g_jbed_base = (uintptr_t) info->dlpi_addr;
-        return 1;
-    }
-    return 0;
+static int get_android_api_level(void) {
+    char sdk[PROP_VALUE_MAX];
+    int len = __system_property_get("ro.build.version.sdk", sdk);
+    if (len <= 0) return 0;
+    return atoi(sdk);
+}
+
+static int use_modern_art_scheduler_workarounds(void) {
+    int api_level = get_android_api_level();
+    return api_level == 0 || api_level >= 21;
 }
 
 static void ensure_jbed_base(void) {
-    if (g_jbed_base == 0) {
-        dl_iterate_phdr(locate_jbedvm, NULL);
+    void *handle;
+    void *symbol;
+    Dl_info info;
+
+    if (g_jbed_base != 0) return;
+
+    handle = dlopen("libjbedvm.so", RTLD_NOW);
+    if (handle == NULL) {
+        LOGE("dlopen(libjbedvm.so) failed while locating base: %s", dlerror());
+        return;
+    }
+
+    symbol = dlsym(handle, "Jbed_run");
+    if (symbol == NULL) {
+        symbol = dlsym(handle, "JNI_OnLoad");
+    }
+    if (symbol != NULL && dladdr(symbol, &info) != 0 && info.dli_fbase != NULL) {
+        g_jbed_base = (uintptr_t) info.dli_fbase;
+    } else {
+        LOGE("dladdr(libjbedvm.so) failed while locating base");
     }
 }
 
@@ -178,6 +200,13 @@ static int patch_thumb16_instruction_from_either(uintptr_t offset, uint16_t expe
 static void patch_native_jbed_run_startup_quantum(void) {
     if (g_patched_startup_jbed_run_quantum) return;
 
+    if (!use_modern_art_scheduler_workarounds()) {
+        g_patched_startup_jbed_run_quantum = 1;
+        LOGI("leaving legacy Jbed_run(50) scheduler quantum unchanged on Android API %d",
+             get_android_api_level());
+        return;
+    }
+
     ensure_jbed_base();
     if (g_jbed_base == 0) {
         LOGE("libjbedvm.so is not loaded; cannot patch nativeJbedRun startup quantum");
@@ -203,6 +232,13 @@ Java_com_esmertec_android_jbed_service_JbedEngine_nativeEnableLowSchedulerQuantu
     int body_ok;
 
     if (g_patched_low_jbed_run_quantum) return;
+
+    if (!use_modern_art_scheduler_workarounds()) {
+        g_patched_low_jbed_run_quantum = 1;
+        LOGI("leaving low scheduler quantum patch disabled on Android API %d",
+             get_android_api_level());
+        return;
+    }
 
     ensure_jbed_base();
     if (g_jbed_base == 0) {
@@ -405,6 +441,11 @@ Java_com_esmertec_android_jbed_ams_AmsConnection_nativeRequestLocalInstall(JNIEn
     jbed_request_local_install_fn request_local_install;
 
     if (url == NULL) return JNI_FALSE;
+    if (!use_modern_art_scheduler_workarounds()) {
+        LOGI("letting legacy Java AMS event path handle local install on Android API %d",
+             get_android_api_level());
+        return JNI_FALSE;
+    }
     clear_pending_exception(env);
     request_install = resolve_jbed_request_install();
     request_local_install = resolve_jbed_request_local_install();

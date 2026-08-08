@@ -59,7 +59,10 @@ android {
     buildToolsVersion '34.0.0'
 
     defaultConfig {
-        minSdk 21
+        // Android 4.4.2 is API 19. Keep this low enough to install on KitKat
+        // test devices while retaining targetSdk 22 for Android 11 text-reloc
+        // compatibility policy.
+        minSdk 19
         // libjbedvm.so has text relocations from its Android 2.x build. Keep
         // the legacy target level so Android's linker applies its legacy-app
         // compatibility policy instead of enforcing the API-23+ rejection.

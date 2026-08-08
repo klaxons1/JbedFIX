@@ -34,7 +34,7 @@ for **armeabi-v7a / 32-bit ARM**, because the Jbed VM is an ELF32 ARM library.
 
 ```bash
 "$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/clang" \
-  --target=armv7a-linux-androideabi21 \
+  --target=armv7a-linux-androideabi19 \
   -fPIC -shared -O2 \
   -Wl,-soname,libdrm1.so \
   -o lib/armeabi/libdrm1.so native_compat/libdrm1.c
@@ -69,7 +69,10 @@ be a full renderer; Jbed's Surface-buffer rendering can then be tested.
 ## Jbed JNI/native scheduler compatibility hook
 
 `jbed_jni_lifetime_hook.c` builds `libjbedcompat.so`, loaded after the original
-`libjbedvm.so`. It currently provides targeted ART workarounds:
+`libjbedvm.so`. The shims are built for Android API 19 so the APK can install
+on Android 4.4.2/KitKat. Scheduler-quantum binary patches are disabled on
+pre-Lollipop devices and left to the legacy VM path; ART/Android 5+ keeps the
+staged scheduler workarounds. It currently provides targeted ART workarounds:
 
 - clones the active `JNIEnv` table long enough to promote libjbedvm's saved
   `JbedEngine` local reference to a global reference and to bypass unsafe

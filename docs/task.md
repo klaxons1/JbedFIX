@@ -62,6 +62,8 @@ GitHub Actions builds currently pass and upload an APK artifact. The workflow st
 
 `build.gradle` now invokes `buildDrmCompatibilityShim` before `mergeReleaseNativeLibs` so generated ARM32 libraries are packaged before the APK is assembled.
 
+The app now keeps `minSdk 19` so the APK can be installed on Android 4.4.2/KitKat test devices, while retaining `targetSdk 22` for Android 11 compatibility experiments.
+
 The target SDK was lowered from 28 to 22 because Android 11's linker allows this legacy-target app to load an ELF with text relocations:
 
 ```text
