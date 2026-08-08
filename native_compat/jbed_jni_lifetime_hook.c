@@ -39,6 +39,7 @@
 static const struct JNINativeInterface *g_original_table;
 static struct JNINativeInterface *g_hook_table;
 static jmethodID (*g_original_get_method_id)(JNIEnv *, jclass, const char *, const char *);
+static jmethodID g_vm_state_change_method;
 static jmethodID g_midp_get_string_method;
 static jmethodID g_file_get_roots_method;
 
@@ -233,11 +234,78 @@ static jmethodID JNICALL hooked_get_method_id(JNIEnv *env, jclass clazz,
     jmethodID result = g_original_get_method_id(env, clazz, name, signature);
     if (name != NULL && signature != NULL &&
         strcmp(name, "vmStateChange") == 0 && strcmp(signature, "(ZIII)Z") == 0) {
+        g_vm_state_change_method = result;
         promote_engine_reference(env);
         /* Keep this cloned table active: the VM later performs unsafe static
          * JbedMidpManager string callbacks on the same JbedThread. */
     }
     return result;
+}
+
+static void maybe_enable_low_quantum_for_vm_state(JNIEnv *env, jmethodID method,
+                                                   jboolean commit, jint old_state,
+                                                   jint new_state, jint reason) {
+    (void) old_state;
+    (void) reason;
+    if (g_vm_state_change_method != NULL && method == g_vm_state_change_method &&
+        commit && new_state == 3 && !g_patched_low_jbed_run_quantum) {
+        LOGI("vmStateChange foreground commit intercepted; lowering scheduler quantum before returning to VM");
+        Java_com_esmertec_android_jbed_service_JbedEngine_nativeEnableLowSchedulerQuantum(env, NULL);
+    }
+}
+
+static jboolean JNICALL hooked_call_boolean_method(JNIEnv *env, jobject obj, jmethodID method, ...) {
+    va_list args;
+    jboolean result;
+
+    clear_pending_exception(env);
+    va_start(args, method);
+    if (g_vm_state_change_method != NULL && method == g_vm_state_change_method) {
+        va_list inspect;
+        jboolean commit;
+        jint old_state;
+        jint new_state;
+        jint reason;
+
+        va_copy(inspect, args);
+        commit = (jboolean) va_arg(inspect, int);
+        old_state = va_arg(inspect, jint);
+        new_state = va_arg(inspect, jint);
+        reason = va_arg(inspect, jint);
+        va_end(inspect);
+        maybe_enable_low_quantum_for_vm_state(env, method, commit, old_state, new_state, reason);
+    }
+    result = g_original_table->CallBooleanMethodV(env, obj, method, args);
+    va_end(args);
+    return result;
+}
+
+static jboolean JNICALL hooked_call_boolean_method_v(JNIEnv *env, jobject obj, jmethodID method, va_list args) {
+    clear_pending_exception(env);
+    if (g_vm_state_change_method != NULL && method == g_vm_state_change_method) {
+        va_list inspect;
+        jboolean commit;
+        jint old_state;
+        jint new_state;
+        jint reason;
+
+        va_copy(inspect, args);
+        commit = (jboolean) va_arg(inspect, int);
+        old_state = va_arg(inspect, jint);
+        new_state = va_arg(inspect, jint);
+        reason = va_arg(inspect, jint);
+        va_end(inspect);
+        maybe_enable_low_quantum_for_vm_state(env, method, commit, old_state, new_state, reason);
+    }
+    return g_original_table->CallBooleanMethodV(env, obj, method, args);
+}
+
+static jboolean JNICALL hooked_call_boolean_method_a(JNIEnv *env, jobject obj, jmethodID method, const jvalue *args) {
+    clear_pending_exception(env);
+    if (g_vm_state_change_method != NULL && method == g_vm_state_change_method && args != NULL) {
+        maybe_enable_low_quantum_for_vm_state(env, method, args[0].z, args[1].i, args[2].i, args[3].i);
+    }
+    return g_original_table->CallBooleanMethodA(env, obj, method, args);
 }
 
 static jmethodID JNICALL hooked_get_static_method_id(JNIEnv *env, jclass clazz,
@@ -383,6 +451,9 @@ Java_com_esmertec_android_jbed_service_JbedEngine_nativeInstallJniLifetimeHook(J
     g_hook_table->FindClass = hooked_find_class;
     g_hook_table->GetMethodID = hooked_get_method_id;
     g_hook_table->GetStaticMethodID = hooked_get_static_method_id;
+    g_hook_table->CallBooleanMethod = hooked_call_boolean_method;
+    g_hook_table->CallBooleanMethodV = hooked_call_boolean_method_v;
+    g_hook_table->CallBooleanMethodA = hooked_call_boolean_method_a;
     g_hook_table->CallStaticObjectMethod = hooked_call_static_object_method;
     g_hook_table->CallStaticObjectMethodV = hooked_call_static_object_method_v;
     g_hook_table->CallStaticObjectMethodA = hooked_call_static_object_method_a;
@@ -407,6 +478,7 @@ Java_com_esmertec_android_jbed_service_JbedEngine_nativeReleaseJniLifetimeHook(J
     }
     g_original_table = NULL;
     g_original_get_method_id = NULL;
+    g_vm_state_change_method = NULL;
     g_midp_get_string_method = NULL;
     g_file_get_roots_method = NULL;
     g_jbed_base = 0;

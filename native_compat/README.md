@@ -76,12 +76,13 @@ be a full renderer; Jbed's Surface-buffer rendering can then be tested.
   legacy static callbacks. `JbedMidpManager.getString` returns `"<unknown>"`;
   `JbedFileManager.getRoots` returns a synthesized one-root `sdcard/` payload;
 - uses a staged scheduler patch: bootstrap runs the original `nativeJbedRun`
-  wrapper at `Jbed_run(20)`, then Java calls back after foreground transition
-  (or after the post-foreground `StackOverflowError` fallback) to lower the
-  wrapper to `Jbed_run(1)` and patch the matching `Jbed_iterate` minimum-quantum
-  assertion guard from 20 to 1. This keeps execution inside the proprietary VM
-  while minimizing scheduler stack pressure; it is not a complete fix for the
-  proprietary scheduler.
+  wrapper at `Jbed_run(20)`, then the cloned `JNIEnv` intercepts the legacy
+  foreground `vmStateChange` `CallBooleanMethod` before it returns to the VM and
+  lowers the wrapper to `Jbed_run(1)` plus the matching `Jbed_iterate`
+  minimum-quantum assertion guard from 20 to 1. Java repeats this low-quantum
+  patch from the `StackOverflowError` fallback as a safety net. This keeps
+  execution inside the proprietary VM while minimizing scheduler stack pressure;
+  it is not a complete fix for the proprietary scheduler.
 
 ## Surface software bridge
 
