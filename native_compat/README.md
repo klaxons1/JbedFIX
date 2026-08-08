@@ -85,16 +85,17 @@ be a full renderer; Jbed's Surface-buffer rendering can then be tested.
   frame. This keeps execution inside the proprietary VM while minimizing
   scheduler stack pressure; it is not a complete fix for the proprietary
   scheduler;
-- registers an `AmsConnection.nativeRequestLocalInstall()` bridge that calls the
-  exported `Jbed_ams_event_requestLocalInstall()` upcall when Java selects a
-  local JAR/JAD. `AmsConnection` enqueues this call onto `JbedThread`; calling it
-  directly from the Binder thread crashes because the old VM expects Jbed-thread
-  native state. The bridge supplies an empty secondary JAD URL argument because
-  the exported function's vararg formatting path calls `strlen()` on that second
-  native argument for JAR installs, then immediately calls `Jbed_upcall_poll()`
-  to bypass a stalled native scheduler poll. This is a diagnostic bypass for
-  cases where the original Java event queue is populated but the native AMS
-  scheduler does not reach `NativeAms.nativeGetEvent()` after stack overflow.
+- registers an `AmsConnection.nativeRequestLocalInstall()` bridge for local
+  JAR/JAD selection. `AmsConnection` enqueues this call onto `JbedThread`;
+  calling it directly from the Binder thread crashes because the old VM expects
+  Jbed-thread native state. The bridge calls both exported native entry points,
+  `Jbed_ams_event_requestInstall(url)` and
+  `Jbed_ams_event_requestLocalInstall(url, "")`, then immediately calls
+  `Jbed_upcall_poll()` to bypass a stalled native scheduler poll. The empty
+  secondary JAD URL avoids `strlen(NULL)` in the local-install vararg formatter.
+  This is a diagnostic bypass for cases where the original Java event queue is
+  populated but the native AMS scheduler does not reach `NativeAms.nativeGetEvent()`
+  after stack overflow.
 
 ## Surface software bridge
 

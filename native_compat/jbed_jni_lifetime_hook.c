@@ -80,8 +80,10 @@ static jobject g_promoted_engine;
 static int g_patched_startup_jbed_run_quantum;
 static int g_patched_low_jbed_run_quantum;
 
+typedef const char *(*jbed_request_install_fn)(const char *url);
 typedef void (*jbed_request_local_install_fn)(char *url, char *jad_url);
 typedef int (*jbed_upcall_poll_fn)(void);
+static jbed_request_install_fn g_jbed_request_install;
 static jbed_request_local_install_fn g_jbed_request_local_install;
 static jbed_upcall_poll_fn g_jbed_upcall_poll;
 
@@ -241,6 +243,20 @@ Java_com_esmertec_android_jbed_service_JbedEngine_nativeRecoverAfterStackOverflo
          call_state_base);
 }
 
+static jbed_request_install_fn resolve_jbed_request_install(void) {
+    if (g_jbed_request_install != NULL) return g_jbed_request_install;
+
+    void *handle = dlopen("libjbedvm.so", RTLD_NOW);
+    if (handle != NULL) {
+        g_jbed_request_install =
+                (jbed_request_install_fn) dlsym(handle, "Jbed_ams_event_requestInstall");
+    }
+    if (g_jbed_request_install == NULL) {
+        LOGE("unable to resolve Jbed_ams_event_requestInstall");
+    }
+    return g_jbed_request_install;
+}
+
 static jbed_request_local_install_fn resolve_jbed_request_local_install(void) {
     if (g_jbed_request_local_install != NULL) return g_jbed_request_local_install;
 
@@ -273,26 +289,35 @@ Java_com_esmertec_android_jbed_ams_AmsConnection_nativeRequestLocalInstall(JNIEn
                                                                             jstring url) {
     (void) clazz;
     const char *utf;
+    jbed_request_install_fn request_install;
     jbed_request_local_install_fn request_local_install;
 
     if (url == NULL) return JNI_FALSE;
     clear_pending_exception(env);
+    request_install = resolve_jbed_request_install();
     request_local_install = resolve_jbed_request_local_install();
-    if (request_local_install == NULL) return JNI_FALSE;
+    if (request_install == NULL && request_local_install == NULL) return JNI_FALSE;
 
     utf = (*env)->GetStringUTFChars(env, url, NULL);
     if (utf == NULL) return JNI_FALSE;
-    LOGI("direct native local-install upcall: %s", utf);
-    request_local_install((char *) utf, "");
+
+    if (request_install != NULL) {
+        LOGI("direct native install upcall: %s", utf);
+        request_install(utf);
+    }
+    if (!(*env)->ExceptionCheck(env) && request_local_install != NULL) {
+        LOGI("direct native local-install upcall: %s", utf);
+        request_local_install((char *) utf, "");
+    }
     if (!(*env)->ExceptionCheck(env)) {
         jbed_upcall_poll_fn upcall_poll = resolve_jbed_upcall_poll();
         if (upcall_poll != NULL) {
             int poll_result = upcall_poll();
-            LOGI("direct native local-install upcall poll result=%d", poll_result);
+            LOGI("direct native install upcall poll result=%d", poll_result);
         }
     }
     if ((*env)->ExceptionCheck(env)) {
-        LOGI("clearing pending JNI exception after direct local-install upcall");
+        LOGI("clearing pending JNI exception after direct install upcall");
         (*env)->ExceptionClear(env);
     }
     (*env)->ReleaseStringUTFChars(env, url, utf);
@@ -587,6 +612,7 @@ Java_com_esmertec_android_jbed_service_JbedEngine_nativeReleaseJniLifetimeHook(J
     g_jbed_base = 0;
     g_patched_startup_jbed_run_quantum = 0;
     g_patched_low_jbed_run_quantum = 0;
+    g_jbed_request_install = NULL;
     g_jbed_request_local_install = NULL;
     g_jbed_upcall_poll = NULL;
 }
