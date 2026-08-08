@@ -78,8 +78,14 @@ static void clear_pending_exception(JNIEnv *env) {
     }
 }
 
+static jclass JNICALL hooked_find_class(JNIEnv *env, const char *name) {
+    clear_pending_exception(env);
+    return g_original_table->FindClass(env, name);
+}
+
 static jmethodID JNICALL hooked_get_method_id(JNIEnv *env, jclass clazz,
                                                const char *name, const char *signature) {
+    clear_pending_exception(env);
     jmethodID result = g_original_get_method_id(env, clazz, name, signature);
     if (name != NULL && signature != NULL &&
         strcmp(name, "vmStateChange") == 0 && strcmp(signature, "(ZIII)Z") == 0) {
@@ -177,6 +183,7 @@ Java_com_esmertec_android_jbed_service_JbedEngine_nativeInstallJniLifetimeHook(J
         return;
     }
     memcpy(g_hook_table, g_original_table, sizeof(*g_hook_table));
+    g_hook_table->FindClass = hooked_find_class;
     g_hook_table->GetMethodID = hooked_get_method_id;
     g_hook_table->GetStaticMethodID = hooked_get_static_method_id;
     g_hook_table->CallStaticObjectMethod = hooked_call_static_object_method;
