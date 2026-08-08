@@ -190,7 +190,7 @@ Scheduler.setForeground from null to com.jbed.ams.NativeAms
 
 `JbedFileManager.getRoots()` is reached through the old native JNI bridge but returns null with a pending Java exception on this ART runtime. Its precise failure did not safely produce a Java stack trace: attempting `ExceptionDescribe()` itself hit the already constrained Jbed thread stack.
 
-A deliberately limited compatibility fallback in `libjbedcompat.so` now clears that pending exception and returns the valid five-byte **zero-root** payload expected by the native parser (`c0daa81`). This lets `FileSystemCallHandler.register` complete, but does **not** provide a usable SD-card/FileConnection implementation. Separately, `JbedFileManager` now maps legacy `/mnt/sdcard` to Android's actual legacy external-storage path when the normal Java method can run (`043ce2f`).
+The compatibility shim now bypasses the two unsafe legacy static JNI callbacks entirely (`088a580`): it supplies `"<unknown>"` for native i18n and a valid five-byte **zero-root** payload for `getRoots`, without entering Android Java. This lets `FileSystemCallHandler.register` complete, but does **not** provide a usable SD-card/FileConnection implementation. Separately, `JbedFileManager` maps legacy `/mnt/sdcard` to Android's actual legacy external-storage path when its normal Java method can run (`043ce2f`).
 
 ### Current active blocker: Jbed thread stack
 
@@ -228,6 +228,7 @@ The previous `tools/collect-jbed-log.ps1` helper may also be used. Verify the AP
 ### Relevant recent commits
 
 ```text
+088a580 Bypass recursive legacy static JNI callbacks
 0393f61 Increase Jbed VM thread stack on ART
 c0daa81 Provide empty roots when legacy file bridge fails
 5cc09d5 Trace legacy file system JNI startup
