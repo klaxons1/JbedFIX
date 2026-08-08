@@ -42,6 +42,13 @@ tasks.named('preBuild').configure {
     dependsOn(tasks.named('buildDrmCompatibilityShim'))
 }
 
+// Native libraries are merged before APK packaging. Explicitly wire the shim
+// task here as well: relying on preBuild alone is not sufficient on every AGP
+// task graph, and would allow mergeReleaseNativeLibs to scan lib/ too early.
+tasks.matching { it.name == 'mergeReleaseNativeLibs' || it.name == 'mergeDebugNativeLibs' }.configureEach {
+    dependsOn(tasks.named('buildDrmCompatibilityShim'))
+}
+
 android {
     namespace 'com.esmertec.android.jbed'
     compileSdk 34
