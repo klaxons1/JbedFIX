@@ -39,6 +39,11 @@ import java.util.List;
 /* JADX INFO: loaded from: classes.dex */
 public class JbedService extends Service implements JbedConstants {
     public static final String TAG = "jbedservice";
+
+    private static native void nativePrepareMidpClassReferenceHook();
+
+    private static native void nativePromoteMidpClassReference();
+
     public AmsConnection mAmsConnection;
     private JbedEngine mJbedEngine;
     private IJbedUiListener mUiEventListener;
@@ -158,6 +163,7 @@ public class JbedService extends Service implements JbedConstants {
             // the packaged libcutils compatibility shim.
             System.loadLibrary(JbedConstants.JBED_NATIVE_LIB);
             System.loadLibrary("jbedcompat");
+            nativePrepareMidpClassReferenceHook();
         } catch (UnsatisfiedLinkError ule) {
             Log.e(TAG, "WARNING: Could not load jbed native lib jbedvm", ule);
         }
@@ -200,6 +206,7 @@ public class JbedService extends Service implements JbedConstants {
         this.mLifecycleListeners.add(new PushJbedAlarmManager());
         this.mLifecycleListeners.add(new JbedLapiManager(this.mJbedEngine.mHandler));
         JbedMidpManager midpManager = new JbedMidpManager(this.mJbedEngine.mHandler);
+        nativePromoteMidpClassReference();
         this.mLifecycleListeners.add(midpManager);
         JbedLcduiManager lcduiManager = new JbedLcduiManager(this.mJbedEngine.mHandler);
         this.mLifecycleListeners.add(lcduiManager);
