@@ -34,6 +34,16 @@
 /* dword_31C864 in the original ELF; its first LOAD segment has vaddr zero. */
 #define JBED_ENGINE_LOCAL_REF_OFFSET 0x31c864u
 
+#define JBED_NATIVE_CALL_STATE_ADR_OFFSET 0x3200c8u
+#define JBED_NATIVE_CALL_STATE_BASE_OFFSET 0x3200ccu
+#define JBED_NATIVE_CALL_STATE_LIMIT_OFFSET 0x3200d0u
+#define JBED_NATIVE_CALL_STATE_FRAME_OFFSET 0x3200d4u
+#define JBED_STACK_OVERFLOW_DELTA_OFFSET 0x3200ecu
+#define JBED_FATAL_ERROR_PC_OFFSET 0x3200f0u
+#define JBED_FATAL_ERROR_SP_OFFSET 0x3200f4u
+#define JBED_FATAL_ERROR_PENDING_OFFSET 0x3200f8u
+#define JBED_VM_NATIVE_ACTIVE_OFFSET 0x320160u
+
 /* NDK's C jni.h names this structure JNINativeInterface (without the
  * trailing underscore used by some platform headers). */
 static const struct JNINativeInterface *g_original_table;
@@ -199,6 +209,34 @@ Java_com_esmertec_android_jbed_service_JbedEngine_nativeEnableLowSchedulerQuantu
              JBED_NATIVE_JBED_RUN_STARTUP_QUANTUM, JBED_NATIVE_JBED_RUN_LOW_QUANTUM,
              JBED_NATIVE_JBED_RUN_LOW_QUANTUM);
     }
+}
+
+JNIEXPORT void JNICALL
+Java_com_esmertec_android_jbed_service_JbedEngine_nativeRecoverAfterStackOverflow(JNIEnv *env, jclass clazz) {
+    (void) env;
+    (void) clazz;
+    ensure_jbed_base();
+    if (g_jbed_base == 0) {
+        LOGE("libjbedvm.so is not loaded; cannot recover native scheduler state");
+        return;
+    }
+
+    uint32_t call_state_base = *(uint32_t *) (g_jbed_base + JBED_NATIVE_CALL_STATE_BASE_OFFSET);
+    *(uint8_t *) (g_jbed_base + JBED_VM_NATIVE_ACTIVE_OFFSET) = 0;
+    *(uint32_t *) (g_jbed_base + JBED_STACK_OVERFLOW_DELTA_OFFSET) = 0;
+    *(uint32_t *) (g_jbed_base + JBED_FATAL_ERROR_PC_OFFSET) = 0;
+    *(uint32_t *) (g_jbed_base + JBED_FATAL_ERROR_SP_OFFSET) = 0;
+    *(uint32_t *) (g_jbed_base + JBED_FATAL_ERROR_PENDING_OFFSET) = 0;
+    if (call_state_base != 0) {
+        *(uint32_t *) (g_jbed_base + JBED_NATIVE_CALL_STATE_FRAME_OFFSET) = call_state_base;
+        *(uint32_t *) (g_jbed_base + JBED_NATIVE_CALL_STATE_ADR_OFFSET) = call_state_base + 24u;
+    } else {
+        *(uint32_t *) (g_jbed_base + JBED_NATIVE_CALL_STATE_FRAME_OFFSET) = 0;
+        *(uint32_t *) (g_jbed_base + JBED_NATIVE_CALL_STATE_ADR_OFFSET) = 0;
+        *(uint32_t *) (g_jbed_base + JBED_NATIVE_CALL_STATE_LIMIT_OFFSET) = 0;
+    }
+    LOGI("reset libjbedvm native scheduler flags after StackOverflow: callState=0x%08x",
+         call_state_base);
 }
 
 static jbed_request_local_install_fn resolve_jbed_request_local_install(void) {
@@ -542,8 +580,9 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
         {"nativeInstallJniLifetimeHook", "()V", (void *) Java_com_esmertec_android_jbed_service_JbedEngine_nativeInstallJniLifetimeHook},
         {"nativeReleaseJniLifetimeHook", "()V", (void *) Java_com_esmertec_android_jbed_service_JbedEngine_nativeReleaseJniLifetimeHook},
         {"nativeEnableLowSchedulerQuantum", "()V", (void *) Java_com_esmertec_android_jbed_service_JbedEngine_nativeEnableLowSchedulerQuantum},
+        {"nativeRecoverAfterStackOverflow", "()V", (void *) Java_com_esmertec_android_jbed_service_JbedEngine_nativeRecoverAfterStackOverflow},
     };
-    if ((*env)->RegisterNatives(env, engine, methods, 3) != JNI_OK) return JNI_ERR;
+    if ((*env)->RegisterNatives(env, engine, methods, 4) != JNI_OK) return JNI_ERR;
 
     jclass ams_connection = (*env)->FindClass(env, "com/esmertec/android/jbed/ams/AmsConnection");
     if (ams_connection == NULL) return JNI_ERR;

@@ -102,6 +102,9 @@ public class JbedEngine implements JbedConstants {
     /** Lowers the VM scheduler quantum after NativeAms has reached foreground. */
     private static native void nativeEnableLowSchedulerQuantum();
 
+    /** Resets legacy VM native-call flags after ART reports StackOverflowError. */
+    private static native void nativeRecoverAfterStackOverflow();
+
     static {
         VMCHANGE_ALLOW_MAPS.put(2, 22);
         VMCHANGE_ALLOW_MAPS.put(1, 31);
@@ -446,11 +449,12 @@ public class JbedEngine implements JbedConstants {
                     try {
                         delay = JbedEngine.this.nativeJbedRun();
                     } catch (StackOverflowError e) {
-                        Log.e(JbedEngine.TAG, "StackOverflow in nativeJbedRun, enabling low scheduler quantum and using delay fallback 100ms", e);
+                        Log.e(JbedEngine.TAG, "StackOverflow in nativeJbedRun, recovering native scheduler state and using delay fallback 100ms", e);
                         try {
+                            nativeRecoverAfterStackOverflow();
                             nativeEnableLowSchedulerQuantum();
                         } catch (Throwable hookError) {
-                            Log.w(JbedEngine.TAG, "unable to enable low scheduler quantum after nativeJbedRun overflow", hookError);
+                            Log.w(JbedEngine.TAG, "unable to recover native scheduler state after nativeJbedRun overflow", hookError);
                         }
                         unblockStartupWaiterAfterNativeOverflow();
                         delay = 100;

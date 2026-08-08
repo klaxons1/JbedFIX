@@ -80,9 +80,11 @@ be a full renderer; Jbed's Surface-buffer rendering can then be tested.
   foreground `vmStateChange` `CallBooleanMethod` before it returns to the VM and
   lowers the wrapper to `Jbed_run(1)` plus the matching `Jbed_iterate`
   minimum-quantum assertion guard from 20 to 1. Java repeats this low-quantum
-  patch from the `StackOverflowError` fallback as a safety net. This keeps
-  execution inside the proprietary VM while minimizing scheduler stack pressure;
-  it is not a complete fix for the proprietary scheduler;
+  patch from the `StackOverflowError` fallback as a safety net and resets the
+  native-call/scheduler flags skipped when ART throws through the old native
+  frame. This keeps execution inside the proprietary VM while minimizing
+  scheduler stack pressure; it is not a complete fix for the proprietary
+  scheduler;
 - registers an `AmsConnection.nativeRequestLocalInstall()` bridge that calls the
   exported `Jbed_ams_event_requestLocalInstall()` upcall when Java selects a
   local JAR/JAD. `AmsConnection` enqueues this call onto `JbedThread`; calling it
