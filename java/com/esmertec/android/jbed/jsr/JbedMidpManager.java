@@ -212,22 +212,23 @@ public class JbedMidpManager implements JbedService.LifecycleListener, JbedConst
     }
 
     public static String getString(int mouduleId, int jbedId) {
-        int retId = -1;
         try {
             if (I18N_GETSTRINGID == null) {
                 I18N_GETSTRINGID = Class.forName("com.esmertec.android.jbed.util.I18N").getDeclaredMethod("getStringID", Integer.TYPE, Integer.TYPE);
             }
-            Integer retIDObj = (Integer) I18N_GETSTRINGID.invoke(null, new Integer(mouduleId), new Integer(jbedId));
-            retId = retIDObj.intValue();
-        } catch (Exception e) {
-            Log.e(TAG, "ERROR: can't invoke method I18N.getStringID");
-        }
-        if (retId == -1) {
-            Log.w(TAG, "ERROR: i18n,fail to get string  mouduleId = " + mouduleId + "  jbedId = " + jbedId);
+            Integer retIDObj = (Integer) I18N_GETSTRINGID.invoke(null, Integer.valueOf(mouduleId), Integer.valueOf(jbedId));
+            int retId = retIDObj != null ? retIDObj.intValue() : -1;
+            if (retId == -1 || INSTANCE == null || INSTANCE.mContext == null) {
+                Log.w(TAG, "i18n lookup unavailable: module=" + mouduleId + " id=" + jbedId);
+                return UNKNOWN_STRING;
+            }
+            return INSTANCE.mContext.getResources().getString(retId).replace("$s", "");
+        } catch (Throwable e) {
+            // Native libjbedvm calls strlen() on this JNI result. Never allow
+            // a Java exception or null result to cross that boundary.
+            Log.e(TAG, "i18n lookup failed: module=" + mouduleId + " id=" + jbedId, e);
             return UNKNOWN_STRING;
         }
-        Resources resources = INSTANCE.mContext.getResources();
-        return resources.getString(retId).replace("$s", "");
     }
 
     public static String getLocaleString() {
