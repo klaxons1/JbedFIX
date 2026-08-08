@@ -19,6 +19,7 @@
 #include <dlfcn.h>
 #include <link.h>
 #include <stdint.h>
+#include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -34,6 +35,7 @@
 static const struct JNINativeInterface *g_original_table;
 static struct JNINativeInterface *g_hook_table;
 static jmethodID (*g_original_get_method_id)(JNIEnv *, jclass, const char *, const char *);
+static jmethodID g_midp_get_string_method;
 
 static const struct JNINativeInterface *g_midp_original_table;
 static struct JNINativeInterface *g_midp_hook_table;
@@ -79,8 +81,37 @@ static jmethodID JNICALL hooked_get_method_id(JNIEnv *env, jclass clazz,
     if (name != NULL && signature != NULL &&
         strcmp(name, "vmStateChange") == 0 && strcmp(signature, "(ZIII)Z") == 0) {
         promote_engine_reference(env);
-        /* The old native initializer has passed its only unsafe lookup. */
-        *env = g_original_table;
+        /* Keep this cloned table active: the VM later performs unsafe static
+         * JbedMidpManager string callbacks on the same JbedThread. */
+    }
+    return result;
+}
+
+static jmethodID JNICALL hooked_get_static_method_id(JNIEnv *env, jclass clazz,
+                                                      const char *name, const char *signature) {
+    jmethodID result = g_original_table->GetStaticMethodID(env, clazz, name, signature);
+    if (name != NULL && signature != NULL &&
+        strcmp(name, "getString") == 0 && strcmp(signature, "(II)Ljava/lang/String;") == 0) {
+        g_midp_get_string_method = result;
+        LOGI("intercepted JbedMidpManager.getString method lookup: %p", result);
+    }
+    return result;
+}
+
+static jobject JNICALL hooked_call_static_object_method(JNIEnv *env, jclass clazz, jmethodID method, ...) {
+    va_list args;
+    va_start(args, method);
+    jobject result = g_original_table->CallStaticObjectMethodV(env, clazz, method, args);
+    va_end(args);
+
+    if (method == g_midp_get_string_method && result == NULL) {
+        if ((*env)->ExceptionCheck(env)) {
+            LOGE("JbedMidpManager.getString threw; replacing with fallback string");
+            (*env)->ExceptionClear(env);
+        } else {
+            LOGE("JbedMidpManager.getString returned null; replacing with fallback string");
+        }
+        return (*env)->NewStringUTF(env, "<unknown>");
     }
     return result;
 }
@@ -146,6 +177,8 @@ Java_com_esmertec_android_jbed_service_JbedEngine_nativeInstallJniLifetimeHook(J
     }
     memcpy(g_hook_table, g_original_table, sizeof(*g_hook_table));
     g_hook_table->GetMethodID = hooked_get_method_id;
+    g_hook_table->GetStaticMethodID = hooked_get_static_method_id;
+    g_hook_table->CallStaticObjectMethod = hooked_call_static_object_method;
     *env = g_hook_table;
     LOGI("installed one-shot JNI lifetime hook for libjbedvm at %p", (void *) g_jbed_base);
 }
@@ -167,6 +200,7 @@ Java_com_esmertec_android_jbed_service_JbedEngine_nativeReleaseJniLifetimeHook(J
     }
     g_original_table = NULL;
     g_original_get_method_id = NULL;
+    g_midp_get_string_method = NULL;
     if (g_promoted_midp_class != NULL) {
         (*env)->DeleteGlobalRef(env, g_promoted_midp_class);
         g_promoted_midp_class = NULL;
