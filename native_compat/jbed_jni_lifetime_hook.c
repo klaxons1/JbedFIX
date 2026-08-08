@@ -70,6 +70,9 @@ static jobject g_promoted_engine;
 static int g_patched_startup_jbed_run_quantum;
 static int g_patched_low_jbed_run_quantum;
 
+typedef void (*jbed_request_local_install_fn)(char *url);
+static jbed_request_local_install_fn g_jbed_request_local_install;
+
 static int locate_jbedvm(struct dl_phdr_info *info, size_t size, void *data) {
     (void) size;
     (void) data;
@@ -194,6 +197,39 @@ Java_com_esmertec_android_jbed_service_JbedEngine_nativeEnableLowSchedulerQuantu
              JBED_NATIVE_JBED_RUN_STARTUP_QUANTUM, JBED_NATIVE_JBED_RUN_LOW_QUANTUM,
              JBED_NATIVE_JBED_RUN_LOW_QUANTUM);
     }
+}
+
+static jbed_request_local_install_fn resolve_jbed_request_local_install(void) {
+    if (g_jbed_request_local_install != NULL) return g_jbed_request_local_install;
+
+    void *handle = dlopen("libjbedvm.so", RTLD_NOW);
+    if (handle != NULL) {
+        g_jbed_request_local_install =
+                (jbed_request_local_install_fn) dlsym(handle, "Jbed_ams_event_requestLocalInstall");
+    }
+    if (g_jbed_request_local_install == NULL) {
+        LOGE("unable to resolve Jbed_ams_event_requestLocalInstall");
+    }
+    return g_jbed_request_local_install;
+}
+
+JNIEXPORT jboolean JNICALL
+Java_com_esmertec_android_jbed_ams_AmsConnection_nativeRequestLocalInstall(JNIEnv *env, jclass clazz,
+                                                                            jstring url) {
+    (void) clazz;
+    const char *utf;
+    jbed_request_local_install_fn request_local_install;
+
+    if (url == NULL) return JNI_FALSE;
+    request_local_install = resolve_jbed_request_local_install();
+    if (request_local_install == NULL) return JNI_FALSE;
+
+    utf = (*env)->GetStringUTFChars(env, url, NULL);
+    if (utf == NULL) return JNI_FALSE;
+    LOGI("direct native local-install upcall: %s", utf);
+    request_local_install((char *) utf);
+    (*env)->ReleaseStringUTFChars(env, url, utf);
+    return JNI_TRUE;
 }
 
 static void promote_engine_reference(JNIEnv *env) {
@@ -484,6 +520,7 @@ Java_com_esmertec_android_jbed_service_JbedEngine_nativeReleaseJniLifetimeHook(J
     g_jbed_base = 0;
     g_patched_startup_jbed_run_quantum = 0;
     g_patched_low_jbed_run_quantum = 0;
+    g_jbed_request_local_install = NULL;
 }
 
 /* Explicit registration avoids relying on ART's cross-library native symbol
@@ -505,10 +542,17 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
     };
     if ((*env)->RegisterNatives(env, engine, methods, 3) != JNI_OK) return JNI_ERR;
 
+    jclass ams_connection = (*env)->FindClass(env, "com/esmertec/android/jbed/ams/AmsConnection");
+    if (ams_connection == NULL) return JNI_ERR;
+    JNINativeMethod ams_methods[] = {
+        {"nativeRequestLocalInstall", "(Ljava/lang/String;)Z", (void *) Java_com_esmertec_android_jbed_ams_AmsConnection_nativeRequestLocalInstall},
+    };
+    if ((*env)->RegisterNatives(env, ams_connection, ams_methods, 1) != JNI_OK) return JNI_ERR;
+
     /* The experimental JbedService MIDP-class hook was removed from Java.
      * Do not register methods that are no longer declared: ART treats that
      * as an error and rejects the entire compatibility library in JNI_OnLoad.
      * The active JbedEngine hook also handles the string callback fallback. */
-    LOGI("registered ART JbedEngine JNI compatibility methods (lifetime + staged scheduler quantum patch)");
+    LOGI("registered ART JbedEngine/AmsConnection JNI compatibility methods (lifetime + staged scheduler quantum patch)");
     return JNI_VERSION_1_6;
 }

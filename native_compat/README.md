@@ -69,7 +69,7 @@ be a full renderer; Jbed's Surface-buffer rendering can then be tested.
 ## Jbed JNI/native scheduler compatibility hook
 
 `jbed_jni_lifetime_hook.c` builds `libjbedcompat.so`, loaded after the original
-`libjbedvm.so`. It currently provides two targeted ART workarounds:
+`libjbedvm.so`. It currently provides targeted ART workarounds:
 
 - clones the active `JNIEnv` table long enough to promote libjbedvm's saved
   `JbedEngine` local reference to a global reference and to bypass unsafe
@@ -82,7 +82,12 @@ be a full renderer; Jbed's Surface-buffer rendering can then be tested.
   minimum-quantum assertion guard from 20 to 1. Java repeats this low-quantum
   patch from the `StackOverflowError` fallback as a safety net. This keeps
   execution inside the proprietary VM while minimizing scheduler stack pressure;
-  it is not a complete fix for the proprietary scheduler.
+  it is not a complete fix for the proprietary scheduler;
+- registers an `AmsConnection.nativeRequestLocalInstall()` bridge that calls the
+  exported `Jbed_ams_event_requestLocalInstall()` upcall directly when Java
+  selects a local JAR/JAD. This is a diagnostic bypass for cases where the
+  original Java event queue is populated but the native AMS scheduler does not
+  reach `NativeAms.nativeGetEvent()` after stack overflow.
 
 ## Surface software bridge
 

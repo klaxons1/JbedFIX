@@ -212,6 +212,8 @@ public class AmsConnection extends IJbedAmsConnection.Stub implements AmsConstan
         EVENT_RUN
     }
 
+    private static native boolean nativeRequestLocalInstall(String url);
+
     public AmsConnection(Handler handler) {
         this.mHandler = handler;
         INSTANCE = this;
@@ -315,6 +317,18 @@ public class AmsConnection extends IJbedAmsConnection.Stub implements AmsConstan
         AmsEvent e2 = new AmsEvent(eventId, result, data);
         Log.i(TAG, "deliverEventToJbedVm() " + e2.toString());
         this.mEventQueue.add(e2);
+        if (eventId == 5 && data != null) {
+            String installUrl = new String(data).trim();
+            try {
+                if (nativeRequestLocalInstall(installUrl)) {
+                    Log.i(TAG, "direct native local-install upcall queued for " + installUrl);
+                } else {
+                    Log.w(TAG, "direct native local-install upcall was not queued for " + installUrl);
+                }
+            } catch (Throwable t) {
+                Log.w(TAG, "direct native local-install upcall failed for " + installUrl, t);
+            }
+        }
         this.mHandler.obtainMessage(5, 41, 0).sendToTarget();
     }
 
