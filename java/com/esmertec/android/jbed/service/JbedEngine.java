@@ -363,9 +363,10 @@ public class JbedEngine implements JbedConstants {
         private int mViewWidth;
 
         public JbedThread() {
-            // Diagnostic headroom for the legacy native VM while libjbedcompat
-            // lowers the scheduler quantum and assertion guard to reduce stack pressure.
-            super(null, null, "JbedThread", 16L * 1024L * 1024L);
+            // Diagnostic headroom for the legacy native VM. The scheduler now reaches
+            // the install handler but still overflows a 16MiB ART host stack, so use
+            // a large stack to distinguish finite deep recursion from an infinite loop.
+            super(null, null, "JbedThread", 64L * 1024L * 1024L);
             this.mViewWidth = -1;
             this.mViewHeight = -1;
             this.mBytesPerPixel = -1;
