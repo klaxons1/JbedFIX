@@ -6,15 +6,17 @@ def drmShimOutput = file('lib/armeabi/libdrm1.so')
 def utilsShimOutput = file('lib/armeabi/libutils.so')
 def skiaShimOutput = file('lib/armeabi/libskia.so')
 def cutilsShimOutput = file('lib/armeabi/libcutils.so')
+def uiShimOutput = file('lib/armeabi/libui.so')
+def surfaceShimOutput = file('lib/armeabi/libsurfaceflinger_client.so')
 def ndkVersionForDrmShim = '26.3.11579264'
 
 tasks.register('buildDrmCompatibilityShim') {
     group = 'build'
     description = 'Builds the ARM32 libdrm1 compatibility shim needed by the legacy Jbed VM.'
-    outputs.files(drmShimOutput, utilsShimOutput, skiaShimOutput, cutilsShimOutput)
+    outputs.files(drmShimOutput, utilsShimOutput, skiaShimOutput, cutilsShimOutput, uiShimOutput, surfaceShimOutput)
 
     doLast {
-        if (drmShimOutput.exists() && utilsShimOutput.exists() && skiaShimOutput.exists() && cutilsShimOutput.exists()) {
+        if (drmShimOutput.exists() && utilsShimOutput.exists() && skiaShimOutput.exists() && cutilsShimOutput.exists() && uiShimOutput.exists() && surfaceShimOutput.exists()) {
             logger.lifecycle("Using existing native compatibility shims")
             return
         }

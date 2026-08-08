@@ -66,6 +66,15 @@ not dereference legacy C++ object layouts, while text drawing and metrics are
 currently no-ops. This gets the linker past `libskia.so` without claiming to
 be a full renderer; Jbed's Surface-buffer rendering can then be tested.
 
-The next load attempt will likely expose more legacy private dependencies such
-as `libsurfaceflinger_client.so`, `libui.so`, and `libcutils.so`. Those APIs
-are substantially more difficult to shim, especially surface management.
+## Surface software bridge
+
+The `main` branch reference commit `1b9e561` includes an Android 2.x
+`libsurfaceflinger_client.so` and its Hex-Rays output. It confirms the legacy
+`SurfaceInfo` ABI used by Jbed: width, height, stride, usage, format and a
+pixel-buffer pointer. `libsurface_compat.c` and `libui_compat.c` implement the
+small symbol subset imported by Jbed using a 480x800 RGB_565 software buffer.
+They deliberately avoid Android 11's private SurfaceFlinger ABI. The current
+bridge permits VM initialisation and framebuffer writes; presenting this buffer
+on a modern Java Surface is a later step.
+
+The next load attempt may expose additional unavailable legacy framework APIs.

@@ -41,4 +41,12 @@ mkdir -p lib/armeabi
   -Wl,-soname,libcutils.so \
   -o lib/armeabi/libcutils.so native_compat/empty_legacy_library.c
 
-echo "Built libdrm1.so, libutils.so, libskia.so, and libcutils.so"
+# Software compatibility path for the pre-Honeycomb Surface API used by Jbed.
+"$clang" --target=armv7a-linux-androideabi21 -fPIC -shared -O2 \
+  -Wl,-soname,libui.so \
+  -o lib/armeabi/libui.so native_compat/libui_compat.c
+"$clang" --target=armv7a-linux-androideabi21 -fPIC -shared -O2 \
+  -Wl,-soname,libsurfaceflinger_client.so \
+  -o lib/armeabi/libsurfaceflinger_client.so native_compat/libsurface_compat.c
+
+echo "Built Jbed native compatibility libraries"
