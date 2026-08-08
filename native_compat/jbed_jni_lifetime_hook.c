@@ -80,7 +80,7 @@ static jobject g_promoted_engine;
 static int g_patched_startup_jbed_run_quantum;
 static int g_patched_low_jbed_run_quantum;
 
-typedef void (*jbed_request_local_install_fn)(char *url);
+typedef void (*jbed_request_local_install_fn)(char *url, char *jad_url);
 static jbed_request_local_install_fn g_jbed_request_local_install;
 
 static void clear_pending_exception(JNIEnv *env);
@@ -268,7 +268,7 @@ Java_com_esmertec_android_jbed_ams_AmsConnection_nativeRequestLocalInstall(JNIEn
     utf = (*env)->GetStringUTFChars(env, url, NULL);
     if (utf == NULL) return JNI_FALSE;
     LOGI("direct native local-install upcall: %s", utf);
-    request_local_install((char *) utf);
+    request_local_install((char *) utf, "");
     (*env)->ReleaseStringUTFChars(env, url, utf);
     return JNI_TRUE;
 }
