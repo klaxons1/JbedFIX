@@ -163,26 +163,50 @@ This puts PNG symbols in the linker's dependency group while resolving `libjbedv
 
 ## Latest observed runtime status
 
-The latest device log showed that target-SDK compatibility permits text relocations and that the PNG dependency problem has been passed. The next error is from the Skia compatibility layer:
+The linker phase has now completed successfully on the Android 11 test device:
+
+- Android 11 allows `libjbedvm.so` text relocations because target SDK is 22.
+- The service connects.
+- `JbedEngine` starts its native VM thread.
+- `nativeInitializeSubsystems()` completes sufficiently to log the command line/settings.
+- The first `nativeJbedRun()` call enters the real VM.
+
+The latest runtime failure occurs immediately in the first VM iteration:
 
 ```text
-cannot locate symbol "_ZNK7SkPaint11measureTextEPKvjP6SkRectf"
-referenced by libjbedvm.so
+JbedEngine: Jbed Thread Started
+JbedEngine: jbed.settings=...
+from int com.esmertec.android.jbed.service.JbedEngine.nativeJbedRun()
+pc ... libjbedvm.so (Java_android_jbed_service_JbedEngine_nativeJbedRun+12)
 ```
 
-The prior shim omitted the final `float` argument from the mangled signature. This was corrected in the latest commit:
+`Java_android_jbed_service_JbedEngine_nativeJbedRun()` is only a thin wrapper:
+
+```c
+int Java_android_jbed_service_JbedEngine_nativeJbedRun() {
+    return Jbed_run(50);
+}
+```
+
+The actual fault is consequently inside `Jbed_run()` / the proprietary VM initialization it invokes. ART's primary JNI-abort or signal line was not present in the collected log; only its subsequent Java/native stack was captured. Do not infer a specific fault from the wrapper address alone.
+
+The previous Skia ABI mismatch was fixed in:
 
 ```text
 870f647 Match legacy SkPaint measureText ABI
 ```
 
-The expected symbol now exported by `native_compat/libskia_compat.c` is:
+The next agent should collect a fresh complete failure using the `crash` buffer and look specifically for lines immediately before the `from int ... nativeJbedRun()` message:
 
-```text
-_ZNK7SkPaint11measureTextEPKvjP6SkRectf
+```bash
+adb logcat -c
+adb shell am force-stop com.esmertec.android.jbed
+adb shell monkey -p com.esmertec.android.jbed 1
+adb logcat -d -b crash -v threadtime
+adb logcat -d -b main -v threadtime | grep -Ei 'JNI DETECTED|JNI ERROR|Fatal signal|Abort message|nativeJbedRun|jbed.native'
 ```
 
-Install and test the workflow APK built from commit `870f647` before changing anything else.
+On Windows PowerShell, use `Select-String` instead of `grep`.
 
 ## Important native reference in `main`
 
@@ -232,13 +256,14 @@ A no-op surface shim is not a complete emulator renderer.
 ## Recommended next steps for the next agent
 
 1. **Do not reintroduce targetSdk >= 23.** Text relocations will make the VM impossible to load on Android 11.
-2. Download and install the workflow artifact for commit `870f647`.
-3. Collect only this concise device log section:
+2. Download and install the newest workflow artifact, then collect the native VM crash from both `main` and `crash` log buffers.
+3. The meaningful section now begins at:
 
    ```text
-   jbedservice: jbedvm becomes 'libjbedvm.so'
-   ... first UnsatisfiedLinkError / native crash / VM start line ...
+   JbedEngine: Jbed Thread Started
    ```
+
+   and must include any preceding `JNI DETECTED ERROR`, `Abort message`, or `Fatal signal` line.
 
 4. If a new missing old C++ symbol is reported, compare it exactly against:
 
