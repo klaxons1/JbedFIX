@@ -11,6 +11,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.graphics.PixelFormat;
+import android.graphics.Point;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
@@ -261,7 +262,9 @@ public class AmsActivity extends ListActivity implements AmsConstants {
                 PixelFormat pixFormat = new PixelFormat();
                 PixelFormat.getPixelFormatInfo(4, pixFormat);
                 try {
-                    AmsActivity.this.getApp().mJbedService.startVm(AmsActivity.this.getWindowManager().getDefaultDisplay().getWidth(), AmsActivity.this.getWindowManager().getDefaultDisplay().getHeight(), pixFormat.bytesPerPixel, AmsActivity.this.getWindowManager().getDefaultDisplay().getWidth(), AmsActivity.this.getWindowManager().getDefaultDisplay().getHeight(), false, false);
+                    Point displaySize = new Point();
+                    AmsActivity.this.getWindowManager().getDefaultDisplay().getSize(displaySize);
+                    AmsActivity.this.getApp().mJbedService.startVm(displaySize.x, displaySize.y, pixFormat.bytesPerPixel, displaySize.x, displaySize.y, false, false);
                     AmsActivity.this.mIsServiceConnected = true;
                     AmsActivity.this.mHandler.obtainMessage(10002).sendToTarget();
                     AmsActivity.this.mHandler.obtainMessage(10013).sendToTarget();

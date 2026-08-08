@@ -3,6 +3,7 @@ package com.esmertec.android.jbed.service;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.Point;
 import android.os.Handler;
 import android.os.Message;
 import android.util.Log;
@@ -377,8 +378,10 @@ public class JbedEngine implements JbedConstants {
         public void setScreenInfo(int viewWidth, int viewHeight, int bytesPerPixel, int viewFullScreenWidth, int viewFullScreenHeight, boolean isVmRunning, boolean forceSizeChanged) {
             WindowManager windowManager = (WindowManager) JbedEngine.this.mContext.getSystemService("window");
             Display display = windowManager.getDefaultDisplay();
-            int screenHeight = display.getHeight();
-            int screenWidth = display.getWidth();
+            Point displaySize = new Point();
+            display.getSize(displaySize);
+            int screenHeight = displaySize.y;
+            int screenWidth = displaySize.x;
             final int maxSquareLength = Math.max(screenHeight, screenWidth);
             if (viewWidth <= 0 || viewHeight <= 0 || viewFullScreenWidth <= 0 || viewFullScreenHeight <= 0) {
                 throw new IllegalArgumentException("setScreenInfo() invalid screen size!!!!");

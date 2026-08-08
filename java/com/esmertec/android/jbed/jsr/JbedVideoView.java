@@ -476,7 +476,6 @@ public class JbedVideoView extends SurfaceView implements MediaController.MediaP
         this.mVideoWidth = 0;
         this.mVideoHeight = 0;
         getHolder().addCallback(this.mSHCallback);
-        getHolder().setType(3);
         setFocusable(true);
         setFocusableInTouchMode(true);
         requestFocus();
