@@ -828,6 +828,7 @@ public class BasicEventHandler {
                     }
                 }
             }
+            LogTag.amsDebug("AmsEventHandler", "scan local MIDlet files under " + root.getPath());
             File[] files = root.listFiles(new FileFilter() { // from class: com.esmertec.android.jbed.ams.BasicEventHandler.AndroidListLocallInstallEventHandler.6
                 @Override // java.io.FileFilter
                 public boolean accept(File f) {
@@ -849,6 +850,8 @@ public class BasicEventHandler {
                     LogTag.amsDebug("AmsEventHandler", "Add a midlet file " + files[i2].getPath());
                     mLocalInsallFiles.add(new FileEntry(files[i2]));
                 }
+            } else {
+                LogTag.amsWarning("AmsEventHandler", "unable to list local MIDlet files under " + root.getPath());
             }
         }
 
