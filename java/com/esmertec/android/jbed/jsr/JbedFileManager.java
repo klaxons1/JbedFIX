@@ -204,9 +204,14 @@ public class JbedFileManager implements JbedService.LifecycleListener {
                     + " pathsBytes=" + paths.length);
             return bo.toByteArray();
         } catch (IOException e) {
-            Log.e(TAG, " failed to get the roots");
-            e.printStackTrace();
-            throw new IllegalArgumentException("failed to get the roots.");
+            Log.e(TAG, "failed to serialize J2ME file roots", e);
+            throw new IllegalArgumentException("failed to get the roots.", e);
+        } catch (Throwable e2) {
+            // This method is called through the legacy VM's JNI bridge. Keep
+            // the original failure contract, but retain the Java cause in
+            // logcat instead of making the native RuntimeException opaque.
+            Log.e(TAG, "failed to build J2ME file roots", e2);
+            throw new IllegalArgumentException("failed to get the roots.", e2);
         }
     }
 }

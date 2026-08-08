@@ -36,6 +36,7 @@ static const struct JNINativeInterface *g_original_table;
 static struct JNINativeInterface *g_hook_table;
 static jmethodID (*g_original_get_method_id)(JNIEnv *, jclass, const char *, const char *);
 static jmethodID g_midp_get_string_method;
+static jmethodID g_file_get_roots_method;
 
 static uintptr_t g_jbed_base;
 static jobject g_promoted_engine;
@@ -91,6 +92,10 @@ static jmethodID JNICALL hooked_get_static_method_id(JNIEnv *env, jclass clazz,
             LOGI("intercepted JbedMidpManager.getString method lookup: %p", result);
         }
         g_midp_get_string_method = result;
+    } else if (name != NULL && signature != NULL &&
+               strcmp(name, "getRoots") == 0 && strcmp(signature, "()[B") == 0) {
+        LOGI("intercepted JbedFileManager.getRoots method lookup: %p", result);
+        g_file_get_roots_method = result;
     }
     return result;
 }
@@ -109,6 +114,15 @@ static jobject JNICALL hooked_call_static_object_method(JNIEnv *env, jclass claz
             LOGE("JbedMidpManager.getString returned null; replacing with fallback string");
         }
         return (*env)->NewStringUTF(env, "<unknown>");
+    }
+    if (method == g_file_get_roots_method) {
+        if (result == NULL) {
+            LOGE("JbedFileManager.getRoots returned null (exception=%d)",
+                 (*env)->ExceptionCheck(env));
+        } else {
+            LOGI("JbedFileManager.getRoots returned %d-byte payload",
+                 (*env)->GetArrayLength(env, (jarray) result));
+        }
     }
     return result;
 }
