@@ -42,6 +42,11 @@ mkdir -p lib/armeabi
   -Wl,-soname,libpng.so \
   -o lib/armeabi/libpng.so native_compat/libpng_compat.c
 
+# ART JNI local-reference lifetime bridge for the original VM.
+"$clang" --target=armv7a-linux-androideabi21 -fPIC -shared -O2 \
+  -Wl,-soname,libjbedcompat.so \
+  -o lib/armeabi/libjbedcompat.so native_compat/jbed_jni_lifetime_hook.c -ldl
+
 # This VM has no unresolved libcutils symbols; it still carries the old
 # DT_NEEDED entry. Its libpng dependency makes PNG symbols available while
 # resolving libjbedvm.so.

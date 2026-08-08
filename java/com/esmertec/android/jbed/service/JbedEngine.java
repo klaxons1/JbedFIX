@@ -92,6 +92,12 @@ public class JbedEngine implements JbedConstants {
 
     public native void nativeUpdateSystemTime();
 
+    /** Installs the ART JNI local-reference lifetime workaround for libjbedvm. */
+    private static native void nativeInstallJniLifetimeHook();
+
+    /** Releases the global JNI reference created by the compatibility hook. */
+    private static native void nativeReleaseJniLifetimeHook();
+
     static {
         VMCHANGE_ALLOW_MAPS.put(2, 22);
         VMCHANGE_ALLOW_MAPS.put(1, 31);
@@ -403,6 +409,7 @@ public class JbedEngine implements JbedConstants {
         @Override // java.lang.Thread, java.lang.Runnable
         public void run() {
             LogTag.serviceDebug(JbedEngine.TAG, "Jbed Thread Started");
+            nativeInstallJniLifetimeHook();
             JbedEngine.this.nativeInitializeSubsystems(JbedEngine.this.getCommandLine(), 50);
             JbedEngine.this.mHandler.obtainMessage(2).sendToTarget();
             do {
@@ -433,6 +440,7 @@ public class JbedEngine implements JbedConstants {
             } while (JbedEngine.this.mRestartVM);
             LogTag.serviceDebug(JbedEngine.TAG, "--------- JBED SHUT DOWN ---------");
             JbedEngine.this.nativeFinalizeSubsystems();
+            nativeReleaseJniLifetimeHook();
             JbedEngine.this.mHandler.obtainMessage(1).sendToTarget();
             JbedEngine.this.broadcastVmState(false);
         }

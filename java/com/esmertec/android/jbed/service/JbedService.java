@@ -157,6 +157,7 @@ public class JbedService extends Service implements JbedConstants {
             // libpng is brought into the VM's linker dependency group through
             // the packaged libcutils compatibility shim.
             System.loadLibrary(JbedConstants.JBED_NATIVE_LIB);
+            System.loadLibrary("jbedcompat");
         } catch (UnsatisfiedLinkError ule) {
             Log.e(TAG, "WARNING: Could not load jbed native lib jbedvm", ule);
         }
