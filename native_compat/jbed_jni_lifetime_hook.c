@@ -101,41 +101,30 @@ static jmethodID JNICALL hooked_get_static_method_id(JNIEnv *env, jclass clazz,
 }
 
 static jobject JNICALL hooked_call_static_object_method(JNIEnv *env, jclass clazz, jmethodID method, ...) {
+    /* Both callbacks recursively enter Android Java from the legacy VM. ART
+     * already reports StackOverflowError before their Java bodies execute.
+     * The VM treats i18n as optional and accepts a zero-root FileConnection
+     * setup, so bypass these two unsafe calls entirely rather than entering
+     * the failing bridge and then attempting to recover its exception. */
+    if (g_midp_get_string_method != NULL && method == g_midp_get_string_method) {
+        return (*env)->NewStringUTF(env, "<unknown>");
+    }
+    if (g_file_get_roots_method != NULL && method == g_file_get_roots_method) {
+        jbyteArray empty_roots;
+        jbyte zero_roots[5] = {0, 0, 0, 0, 0};
+        LOGI("bypassing legacy JbedFileManager.getRoots with an empty root list");
+        empty_roots = (*env)->NewByteArray(env, (jsize) sizeof(zero_roots));
+        if (empty_roots != NULL) {
+            (*env)->SetByteArrayRegion(env, empty_roots, 0,
+                                        (jsize) sizeof(zero_roots), zero_roots);
+        }
+        return empty_roots;
+    }
+
     va_list args;
     va_start(args, method);
     jobject result = g_original_table->CallStaticObjectMethodV(env, clazz, method, args);
     va_end(args);
-
-    if (method == g_midp_get_string_method && result == NULL) {
-        if ((*env)->ExceptionCheck(env)) {
-            LOGE("JbedMidpManager.getString threw; replacing with fallback string");
-            (*env)->ExceptionClear(env);
-        } else {
-            LOGE("JbedMidpManager.getString returned null; replacing with fallback string");
-        }
-        return (*env)->NewStringUTF(env, "<unknown>");
-    }
-    if (method == g_file_get_roots_method) {
-        if (result == NULL) {
-            jbyteArray empty_roots;
-            jbyte zero_roots[5] = {0, 0, 0, 0, 0};
-            LOGE("JbedFileManager.getRoots returned null (exception=%d); using an empty root list",
-                 (*env)->ExceptionCheck(env));
-            /* Avoid ExceptionDescribe here: rendering a stack trace consumes
-             * the already constrained VM thread stack. Give the 2011 VM a
-             * valid zero-root payload; its parser reads five header bytes
-             * even when the root count is 0. */
-            (*env)->ExceptionClear(env);
-            empty_roots = (*env)->NewByteArray(env, (jsize) sizeof(zero_roots));
-            if (empty_roots != NULL) {
-                (*env)->SetByteArrayRegion(env, empty_roots, 0,
-                                            (jsize) sizeof(zero_roots), zero_roots);
-            }
-            return empty_roots;
-        }
-        LOGI("JbedFileManager.getRoots returned %d-byte payload",
-             (*env)->GetArrayLength(env, (jarray) result));
-    }
     return result;
 }
 
