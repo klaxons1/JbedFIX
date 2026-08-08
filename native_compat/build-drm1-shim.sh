@@ -35,4 +35,10 @@ mkdir -p lib/armeabi
   -Wl,-soname,libskia.so \
   -o lib/armeabi/libskia.so native_compat/libskia_compat.c
 
-echo "Built libdrm1.so, libutils.so, and libskia.so"
+# This VM has no unresolved libcutils symbols; it still carries the old
+# DT_NEEDED entry, so provide a valid empty compatibility library.
+"$clang" --target=armv7a-linux-androideabi21 -fPIC -shared -O2 \
+  -Wl,-soname,libcutils.so \
+  -o lib/armeabi/libcutils.so native_compat/empty_legacy_library.c
+
+echo "Built libdrm1.so, libutils.so, libskia.so, and libcutils.so"
