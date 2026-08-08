@@ -33,8 +33,8 @@ void sk_paint_set_underline(void *self, int enabled) asm("_ZN7SkPaint16setUnderl
 void sk_paint_set_underline(void *self, int enabled) { (void)self; (void)enabled; }
 void sk_paint_set_color(void *self, uint32_t color) asm("_ZN7SkPaint8setColorEj");
 void sk_paint_set_color(void *self, uint32_t color) { (void)self; (void)color; }
-float sk_paint_measure_text(const void *self, const void *text, uint32_t length, void *bounds) asm("_ZNK7SkPaint11measureTextEPKvjP6SkRect");
-float sk_paint_measure_text(const void *self, const void *text, uint32_t length, void *bounds) { (void)self; (void)text; (void)length; (void)bounds; return 0.0f; }
+float sk_paint_measure_text(const void *self, const void *text, uint32_t length, void *bounds, float scale) asm("_ZNK7SkPaint11measureTextEPKvjP6SkRectf");
+float sk_paint_measure_text(const void *self, const void *text, uint32_t length, void *bounds, float scale) { (void)self; (void)text; (void)length; (void)bounds; (void)scale; return 0.0f; }
 float sk_paint_get_metrics(const void *self, void *metrics, float scale) asm("_ZNK7SkPaint14getFontMetricsEPNS_11FontMetricsEf");
 float sk_paint_get_metrics(const void *self, void *metrics, float scale) { (void)self; (void)metrics; (void)scale; return 0.0f; }
 
