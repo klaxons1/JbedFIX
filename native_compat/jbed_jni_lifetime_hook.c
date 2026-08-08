@@ -37,11 +37,6 @@ static struct JNINativeInterface *g_hook_table;
 static jmethodID (*g_original_get_method_id)(JNIEnv *, jclass, const char *, const char *);
 static jmethodID g_midp_get_string_method;
 
-static const struct JNINativeInterface *g_midp_original_table;
-static struct JNINativeInterface *g_midp_hook_table;
-static jclass (*g_original_find_class)(JNIEnv *, const char *);
-static jclass g_promoted_midp_class;
-
 static uintptr_t g_jbed_base;
 static jobject g_promoted_engine;
 
@@ -118,47 +113,6 @@ static jobject JNICALL hooked_call_static_object_method(JNIEnv *env, jclass claz
     return result;
 }
 
-static jclass JNICALL hooked_find_class(JNIEnv *env, const char *name) {
-    jclass result = g_original_find_class(env, name);
-    if (name != NULL && strcmp(name, "com/esmertec/android/jbed/jsr/JbedMidpManager") == 0) {
-        if (result != NULL && g_promoted_midp_class == NULL) {
-            g_promoted_midp_class = (jclass) (*env)->NewGlobalRef(env, result);
-            LOGI("captured global JbedMidpManager class reference");
-        }
-        *env = g_midp_original_table;
-    }
-    return result;
-}
-
-JNIEXPORT void JNICALL
-Java_com_esmertec_android_jbed_service_JbedService_nativePrepareMidpClassReferenceHook(JNIEnv *env, jclass clazz) {
-    (void) clazz;
-    if (g_midp_hook_table != NULL) return;
-    dl_iterate_phdr(locate_jbedvm, NULL);
-    if (g_jbed_base == 0) return;
-
-    g_midp_original_table = *env;
-    g_original_find_class = g_midp_original_table->FindClass;
-    g_midp_hook_table = malloc(sizeof(*g_midp_hook_table));
-    if (g_midp_hook_table == NULL) return;
-    memcpy(g_midp_hook_table, g_midp_original_table, sizeof(*g_midp_hook_table));
-    g_midp_hook_table->FindClass = hooked_find_class;
-    *env = g_midp_hook_table;
-    LOGI("installed JbedMidpManager class-reference hook");
-}
-
-JNIEXPORT void JNICALL
-Java_com_esmertec_android_jbed_service_JbedService_nativePromoteMidpClassReference(JNIEnv *env, jclass clazz) {
-    (void) env;
-    (void) clazz;
-    if (g_promoted_midp_class == NULL || g_jbed_base == 0) {
-        LOGE("JbedMidpManager class reference was not captured");
-        return;
-    }
-    *((jclass *) (g_jbed_base + 0x31c8a4u)) = g_promoted_midp_class;
-    LOGI("promoted legacy JbedMidpManager JNI class reference");
-}
-
 JNIEXPORT void JNICALL
 Java_com_esmertec_android_jbed_service_JbedEngine_nativeInstallJniLifetimeHook(JNIEnv *env, jclass clazz) {
     (void) clazz;
@@ -203,17 +157,6 @@ Java_com_esmertec_android_jbed_service_JbedEngine_nativeReleaseJniLifetimeHook(J
     g_original_table = NULL;
     g_original_get_method_id = NULL;
     g_midp_get_string_method = NULL;
-    if (g_promoted_midp_class != NULL) {
-        (*env)->DeleteGlobalRef(env, g_promoted_midp_class);
-        g_promoted_midp_class = NULL;
-    }
-    if (g_midp_hook_table != NULL) {
-        if (*env == g_midp_hook_table) *env = g_midp_original_table;
-        free(g_midp_hook_table);
-        g_midp_hook_table = NULL;
-    }
-    g_midp_original_table = NULL;
-    g_original_find_class = NULL;
     g_jbed_base = 0;
 }
 
@@ -232,13 +175,10 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
     };
     if ((*env)->RegisterNatives(env, engine, methods, 2) != JNI_OK) return JNI_ERR;
 
-    jclass service = (*env)->FindClass(env, "com/esmertec/android/jbed/service/JbedService");
-    if (service == NULL) return JNI_ERR;
-    JNINativeMethod service_methods[] = {
-        {"nativePrepareMidpClassReferenceHook", "()V", (void *) Java_com_esmertec_android_jbed_service_JbedService_nativePrepareMidpClassReferenceHook},
-        {"nativePromoteMidpClassReference", "()V", (void *) Java_com_esmertec_android_jbed_service_JbedService_nativePromoteMidpClassReference},
-    };
-    if ((*env)->RegisterNatives(env, service, service_methods, 2) != JNI_OK) return JNI_ERR;
-    LOGI("registered ART JNI lifetime compatibility methods");
+    /* The experimental JbedService MIDP-class hook was removed from Java.
+     * Do not register methods that are no longer declared: ART treats that
+     * as an error and rejects the entire compatibility library in JNI_OnLoad.
+     * The active JbedEngine hook also handles the string callback fallback. */
+    LOGI("registered ART JbedEngine JNI lifetime compatibility methods");
     return JNI_VERSION_1_6;
 }
