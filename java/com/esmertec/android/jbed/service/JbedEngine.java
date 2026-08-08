@@ -351,9 +351,8 @@ public class JbedEngine implements JbedConstants {
         private int mViewWidth;
 
         public JbedThread() {
-            // Diagnostic headroom for the legacy native VM. Quantum 20 reaches the
-            // NativeAms foreground state but still overflows an 8MiB ART host stack,
-            // so give the old interpreter more room while the scheduler path is traced.
+            // Diagnostic headroom for the legacy native VM while libjbedcompat
+            // lowers the scheduler quantum and assertion guard to reduce stack pressure.
             super(null, null, "JbedThread", 16L * 1024L * 1024L);
             this.mViewWidth = -1;
             this.mViewHeight = -1;

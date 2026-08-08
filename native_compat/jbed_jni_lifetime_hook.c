@@ -52,15 +52,20 @@ static jobject g_promoted_engine;
  * Java loop gets a chance to wait. Instead of replacing the JNI method with a
  * cross-library callback, patch the original Thumb wrapper's immediate from 50
  * to a smaller value in-place. libjbedvm asserts that this quantum is at
- * least 20 during bootstrap, so 20 is the lowest safe diagnostic value. This
- * keeps execution inside libjbedvm's own wrapper while lowering the scheduler
- * quantum.
+ * least 20, but Android 11 still overflows the ART host stack at 20. Patch
+ * both the wrapper immediate and the matching Thumb `cmp r1,#20` guard in
+ * Jbed_iterate so we can test a one-step scheduler quantum without tripping
+ * the VM's fatal assertion path.
  */
 #define JBED_NATIVE_JBED_RUN_MOV_IMM_OFFSET 0x0a0ac2u
 #define JBED_NATIVE_JBED_RUN_LEGACY_QUANTUM 50u
-#define JBED_NATIVE_JBED_RUN_TARGET_QUANTUM 20u
+#define JBED_NATIVE_JBED_RUN_TARGET_QUANTUM 1u
 #define JBED_NATIVE_JBED_RUN_MOV_R0_LEGACY ((uint16_t) (0x2000u | JBED_NATIVE_JBED_RUN_LEGACY_QUANTUM))
 #define JBED_NATIVE_JBED_RUN_MOV_R0_TARGET ((uint16_t) (0x2000u | JBED_NATIVE_JBED_RUN_TARGET_QUANTUM))
+
+#define JBED_ITERATE_MIN_QUANTUM_CMP_OFFSET 0x0f1718u
+#define JBED_ITERATE_CMP_R1_20 0x2914u
+#define JBED_ITERATE_CMP_R1_TARGET ((uint16_t) (0x2900u | JBED_NATIVE_JBED_RUN_TARGET_QUANTUM))
 
 static int g_patched_jbed_run_quantum;
 
@@ -80,7 +85,45 @@ static void ensure_jbed_base(void) {
     }
 }
 
+static int patch_thumb16_instruction(uintptr_t offset, uint16_t expected, uint16_t replacement,
+                                      const char *description) {
+    uint16_t *instruction = (uint16_t *) (g_jbed_base + offset);
+    uint16_t current = *instruction;
+    long page_size_long;
+    size_t page_size;
+    uintptr_t page;
+
+    if (current == replacement) {
+        LOGI("%s patch already active", description);
+        return 1;
+    }
+    if (current != expected) {
+        LOGE("unexpected %s instruction 0x%04x at %p; not patching",
+             description, current, instruction);
+        return 0;
+    }
+
+    page_size_long = sysconf(_SC_PAGESIZE);
+    page_size = page_size_long > 0 ? (size_t) page_size_long : 4096u;
+    page = ((uintptr_t) instruction) & ~(uintptr_t) (page_size - 1u);
+    if (mprotect((void *) page, page_size, PROT_READ | PROT_WRITE | PROT_EXEC) != 0) {
+        LOGE("mprotect RWX failed while patching %s: errno=%d", description, errno);
+        return 0;
+    }
+
+    *instruction = replacement;
+    __builtin___clear_cache((char *) instruction, (char *) instruction + sizeof(*instruction));
+
+    if (mprotect((void *) page, page_size, PROT_READ | PROT_EXEC) != 0) {
+        LOGE("mprotect RX restore failed after %s patch: errno=%d", description, errno);
+    }
+    return 1;
+}
+
 static void patch_native_jbed_run_quantum(void) {
+    int wrapper_ok;
+    int guard_ok;
+
     if (g_patched_jbed_run_quantum) return;
 
     ensure_jbed_base();
@@ -89,36 +132,20 @@ static void patch_native_jbed_run_quantum(void) {
         return;
     }
 
-    uint16_t *instruction = (uint16_t *) (g_jbed_base + JBED_NATIVE_JBED_RUN_MOV_IMM_OFFSET);
-    uint16_t current = *instruction;
-    if (current == JBED_NATIVE_JBED_RUN_MOV_R0_TARGET) {
+    wrapper_ok = patch_thumb16_instruction(JBED_NATIVE_JBED_RUN_MOV_IMM_OFFSET,
+                                           JBED_NATIVE_JBED_RUN_MOV_R0_LEGACY,
+                                           JBED_NATIVE_JBED_RUN_MOV_R0_TARGET,
+                                           "nativeJbedRun quantum");
+    guard_ok = patch_thumb16_instruction(JBED_ITERATE_MIN_QUANTUM_CMP_OFFSET,
+                                         JBED_ITERATE_CMP_R1_20,
+                                         JBED_ITERATE_CMP_R1_TARGET,
+                                         "Jbed_iterate minimum-quantum guard");
+    if (wrapper_ok && guard_ok) {
         g_patched_jbed_run_quantum = 1;
-        LOGI("libjbedvm nativeJbedRun quantum patch already active");
-        return;
+        LOGI("patched libjbedvm scheduler quantum: Jbed_run(%u) -> Jbed_run(%u), guard >=20 -> >=%u",
+             JBED_NATIVE_JBED_RUN_LEGACY_QUANTUM, JBED_NATIVE_JBED_RUN_TARGET_QUANTUM,
+             JBED_NATIVE_JBED_RUN_TARGET_QUANTUM);
     }
-    if (current != JBED_NATIVE_JBED_RUN_MOV_R0_LEGACY) {
-        LOGE("unexpected nativeJbedRun quantum instruction 0x%04x at %p; not patching",
-             current, instruction);
-        return;
-    }
-
-    long page_size_long = sysconf(_SC_PAGESIZE);
-    size_t page_size = page_size_long > 0 ? (size_t) page_size_long : 4096u;
-    uintptr_t page = ((uintptr_t) instruction) & ~(uintptr_t) (page_size - 1u);
-    if (mprotect((void *) page, page_size, PROT_READ | PROT_WRITE | PROT_EXEC) != 0) {
-        LOGE("mprotect RWX failed while patching nativeJbedRun: errno=%d", errno);
-        return;
-    }
-
-    *instruction = JBED_NATIVE_JBED_RUN_MOV_R0_TARGET;
-    __builtin___clear_cache((char *) instruction, (char *) instruction + sizeof(*instruction));
-
-    if (mprotect((void *) page, page_size, PROT_READ | PROT_EXEC) != 0) {
-        LOGE("mprotect RX restore failed after nativeJbedRun patch: errno=%d", errno);
-    }
-    g_patched_jbed_run_quantum = 1;
-    LOGI("patched libjbedvm nativeJbedRun quantum: Jbed_run(%u) -> Jbed_run(%u)",
-         JBED_NATIVE_JBED_RUN_LEGACY_QUANTUM, JBED_NATIVE_JBED_RUN_TARGET_QUANTUM);
 }
 
 static void promote_engine_reference(JNIEnv *env) {
