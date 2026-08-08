@@ -10,7 +10,8 @@ def uiShimOutput = file('lib/armeabi/libui.so')
 def surfaceShimOutput = file('lib/armeabi/libsurfaceflinger_client.so')
 def pngShimOutput = file('lib/armeabi/libpng.so')
 def jbedCompatOutput = file('lib/armeabi/libjbedcompat.so')
-def ndkVersionForDrmShim = '26.3.11579264'
+// NDK r25 still supports API-19 ARM32 targets used for Android 4.4.2 tests.
+def ndkVersionForDrmShim = '25.2.9519653'
 
 tasks.register('buildDrmCompatibilityShim') {
     group = 'build'
