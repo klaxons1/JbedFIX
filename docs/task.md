@@ -188,7 +188,43 @@ int Java_android_jbed_service_JbedEngine_nativeJbedRun() {
 }
 ```
 
-The actual fault is consequently inside `Jbed_run()` / the proprietary VM initialization it invokes. ART's primary JNI-abort or signal line was not present in the collected log; only its subsequent Java/native stack was captured. Do not infer a specific fault from the wrapper address alone.
+The primary ART failure was subsequently captured and is now known exactly:
+
+```text
+JNI DETECTED ERROR IN APPLICATION: use of invalid jobject 0xc200299c
+from int com.esmertec.android.jbed.service.JbedEngine.nativeJbedRun()
+```
+
+This is an Android 2.x JNI lifetime bug in the proprietary VM, not a missing linker symbol. `docs/libjbedvm.so.c` identifies the bad flow:
+
+1. `Java_android_jbed_service_JbedEngine_nativeInitializeSubsystems()` receives the Java `JbedEngine` object as JNI parameter `a2`.
+2. It saves that **local JNI reference** directly in global native storage:
+
+   ```c
+   dword_31C864 = a2;
+   ```
+
+3. The native method returns, making `a2` invalid on modern ART.
+4. On the first `Jbed_run()`, `JbniS_com_jbed_runtime_Main_notifyStateChange()` invokes callback `sub_A0264()`.
+5. `sub_A0264()` calls `CallBooleanMethod` using the stale `dword_31C864` object reference, which ART rejects.
+
+The relevant decompiled callback is:
+
+```c
+return (*env)->CallBooleanMethod(
+    env, dword_31C864, dword_31C868, commit, oldState, newState, reason);
+```
+
+Dalvik-era JNI represented references in a way that let this unsafe pattern survive. ART uses checked/indirect JNI references and aborts immediately.
+
+A real fix now requires an ARM32 binary patch to `libjbedvm.so`:
+
+- replace/augment the `dword_31C864 = a2` path with `NewGlobalRef(a2)`;
+- store that global ref instead of the local ref;
+- call `DeleteGlobalRef` when the VM finalizes;
+- keep the existing callback ABI unchanged.
+
+A compatibility shim loaded after the original method returns cannot reliably fix this because the local reference has already expired. The patch must occur inside the original native initialization method or through a carefully designed in-method interception.
 
 The previous Skia ABI mismatch was fixed in:
 
@@ -256,16 +292,15 @@ A no-op surface shim is not a complete emulator renderer.
 ## Recommended next steps for the next agent
 
 1. **Do not reintroduce targetSdk >= 23.** Text relocations will make the VM impossible to load on Android 11.
-2. Download and install the newest workflow artifact, then collect the native VM crash from both `main` and `crash` log buffers.
-3. The meaningful section now begins at:
+2. The next technical task is **not another linker shim**. Implement and test an ARM32 patch that promotes the saved `JbedEngine` JNI local reference to a global reference during `Java_android_jbed_service_JbedEngine_nativeInitializeSubsystems()`.
+3. Preserve a rollback copy of `libjbedvm.so`; this is proprietary binary patching. Confirm the patched library still has the expected ELF32 ARM layout and symbols.
+4. Once the JNI global-reference patch is applied, collect the native VM crash from both `main` and `crash` buffers. The meaningful section begins at:
 
    ```text
    JbedEngine: Jbed Thread Started
    ```
 
-   and must include any preceding `JNI DETECTED ERROR`, `Abort message`, or `Fatal signal` line.
-
-4. If a new missing old C++ symbol is reported, compare it exactly against:
+5. If a new missing old C++ symbol is reported, compare it exactly against:
 
    ```bash
    readelf -Ws lib/armeabi/libjbedvm.so | grep ' UND '
