@@ -210,9 +210,13 @@ public class JbedSettings {
                 commandList.add(command);
             }
         }
-        File selectorFile = new File("/data/data/com.esmertec.android.jbed/Installed/selector.utf");
+        File selectorFile = new File(this.mBaseDir + "selector.utf");
         File preInstallFolder = new File(JbedProvider.Settings.DEFAULT_PREINSTALL_DIR);
-        if (!selectorFile.exists() && preInstallFolder.exists()) {
+        String[] preinstallEntries = preInstallFolder.list();
+        // The recovered APK has no PreInstall assets. The legacy VM crashes
+        // while registering its file-system handler when asked to preinstall
+        // from an empty directory, so request this mode only when work exists.
+        if (!selectorFile.exists() && preinstallEntries != null && preinstallEntries.length > 0) {
             LogTag.serviceDebug(TAG, "need to do preinstall");
             commandList.add("-preinstall");
             commandList.add(JbedProvider.Settings.DEFAULT_PREINSTALL_DIR);

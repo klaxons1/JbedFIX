@@ -92,8 +92,10 @@ static jmethodID JNICALL hooked_get_static_method_id(JNIEnv *env, jclass clazz,
     jmethodID result = g_original_table->GetStaticMethodID(env, clazz, name, signature);
     if (name != NULL && signature != NULL &&
         strcmp(name, "getString") == 0 && strcmp(signature, "(II)Ljava/lang/String;") == 0) {
+        if (g_midp_get_string_method == NULL) {
+            LOGI("intercepted JbedMidpManager.getString method lookup: %p", result);
+        }
         g_midp_get_string_method = result;
-        LOGI("intercepted JbedMidpManager.getString method lookup: %p", result);
     }
     return result;
 }
