@@ -50,14 +50,14 @@ static jobject g_promoted_engine;
  * thread stack during the first zero-delay NativeAms scheduler pass before the
  * Java loop gets a chance to wait. Instead of replacing the JNI method with a
  * cross-library callback, patch the original Thumb wrapper's immediate from 50
- * to a smaller non-zero value in-place. Quantum 1 reaches libjbedvm's
- * fatal-error path during bootstrap on the Android 11 test device, so use 10
- * as the next conservative diagnostic value. This keeps execution inside
- * libjbedvm's own wrapper while lowering the scheduler quantum.
+ * to a smaller value in-place. libjbedvm asserts that this quantum is at
+ * least 20 during bootstrap, so 20 is the lowest safe diagnostic value. This
+ * keeps execution inside libjbedvm's own wrapper while lowering the scheduler
+ * quantum.
  */
 #define JBED_NATIVE_JBED_RUN_MOV_IMM_OFFSET 0x0a0ac2u
 #define JBED_NATIVE_JBED_RUN_LEGACY_QUANTUM 50u
-#define JBED_NATIVE_JBED_RUN_TARGET_QUANTUM 10u
+#define JBED_NATIVE_JBED_RUN_TARGET_QUANTUM 20u
 #define JBED_NATIVE_JBED_RUN_MOV_R0_LEGACY ((uint16_t) (0x2000u | JBED_NATIVE_JBED_RUN_LEGACY_QUANTUM))
 #define JBED_NATIVE_JBED_RUN_MOV_R0_TARGET ((uint16_t) (0x2000u | JBED_NATIVE_JBED_RUN_TARGET_QUANTUM))
 

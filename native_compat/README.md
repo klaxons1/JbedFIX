@@ -75,7 +75,7 @@ be a full renderer; Jbed's Surface-buffer rendering can then be tested.
   `JbedEngine` local reference to a global reference and to bypass unsafe
   legacy static callbacks (`JbedMidpManager.getString`, `JbedFileManager.getRoots`);
 - patches libjbedvm's original `JbedEngine.nativeJbedRun()` Thumb wrapper in
-  memory so it calls `Jbed_run(10)` instead of its hard-coded `Jbed_run(50)`.
+  memory so it calls `Jbed_run(20)` instead of its hard-coded `Jbed_run(50)`.
   This keeps execution inside the proprietary VM while lowering the scheduler
   quantum; it is not a complete fix for the proprietary scheduler.
 
