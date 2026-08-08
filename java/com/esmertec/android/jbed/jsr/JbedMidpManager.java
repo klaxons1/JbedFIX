@@ -222,7 +222,9 @@ public class JbedMidpManager implements JbedService.LifecycleListener, JbedConst
                 Log.w(TAG, "i18n lookup unavailable: module=" + mouduleId + " id=" + jbedId);
                 return UNKNOWN_STRING;
             }
-            return INSTANCE.mContext.getResources().getString(retId).replace("$s", "");
+            String value = INSTANCE.mContext.getResources().getString(retId).replace("$s", "");
+            Log.i(TAG, "native i18n lookup: module=" + mouduleId + " id=" + jbedId + " resource=" + retId + " value=" + value);
+            return value;
         } catch (Throwable e) {
             // Native libjbedvm calls strlen() on this JNI result. Never allow
             // a Java exception or null result to cross that boundary.
