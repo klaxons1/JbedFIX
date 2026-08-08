@@ -47,7 +47,17 @@ configuration packages `lib/armeabi/libdrm1.so` automatically.
 ### Expected result
 
 This does **not** make the VM Android 11-compatible. It only lets the loader
-advance past `libdrm1.so`. The next load attempt will likely expose more legacy
-private dependencies such as `libsurfaceflinger_client.so`, `libui.so`,
-`libskia.so`, `libutils.so`, and `libcutils.so`. Those APIs are substantially
-more difficult to shim, especially rendering and surface-management code.
+advance past `libdrm1.so`.
+
+## libutils shim
+
+The same script also builds a minimal `libutils.so`. Inspection of this VM
+shows it imports only `android::RefBase::incStrong` and `decStrong` from that
+library. The shim exports no-op ARM32 versions of those two symbols. This is a
+controlled leak, but is sufficient to advance the linker without pretending to
+implement the rest of old `libutils`.
+
+The next load attempt will likely expose more legacy private dependencies such
+as `libsurfaceflinger_client.so`, `libui.so`, `libskia.so`, and `libcutils.so`.
+Those APIs are substantially more difficult to shim, especially rendering and
+surface-management code.

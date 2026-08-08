@@ -17,8 +17,15 @@ esac
 clang="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/$host_tag/bin/clang"
 test -x "$clang"
 mkdir -p lib/armeabi
+
 "$clang" --target=armv7a-linux-androideabi21 -fPIC -shared -O2 \
   -Wl,-soname,libdrm1.so \
   -o lib/armeabi/libdrm1.so native_compat/libdrm1.c
 
-echo "Built lib/armeabi/libdrm1.so"
+# libutils is private on Android 11. This shim only supplies the two RefBase
+# retain/release symbols imported by this particular Jbed VM.
+"$clang" --target=armv7a-linux-androideabi21 -fPIC -shared -nostdlib \
+  -Wl,-soname,libutils.so \
+  -o lib/armeabi/libutils.so native_compat/libutils_compat.S
+
+echo "Built lib/armeabi/libdrm1.so and lib/armeabi/libutils.so"
