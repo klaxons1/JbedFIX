@@ -3,6 +3,7 @@ package com.esmertec.android.jbed.service;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.Point;
 import android.os.Handler;
 import android.os.Message;
 import android.util.Log;
@@ -92,6 +93,12 @@ public class JbedEngine implements JbedConstants {
 
     public native void nativeUpdateSystemTime();
 
+    /** Installs the ART JNI local-reference lifetime workaround for libjbedvm. */
+    private static native void nativeInstallJniLifetimeHook();
+
+    /** Releases the global JNI reference created by the compatibility hook. */
+    private static native void nativeReleaseJniLifetimeHook();
+
     static {
         VMCHANGE_ALLOW_MAPS.put(2, 22);
         VMCHANGE_ALLOW_MAPS.put(1, 31);
@@ -103,12 +110,6 @@ public class JbedEngine implements JbedConstants {
     public JbedEngine(final Service s) {
         this.mContext = s;
         this.mHandler = new Handler() { // from class: com.esmertec.android.jbed.service.JbedEngine.1
-            static final /* synthetic */ boolean $assertionsDisabled;
-
-            static {
-                $assertionsDisabled = !JbedEngine.class.desiredAssertionStatus();
-            }
-
             @Override // android.os.Handler
             public void handleMessage(Message msg) {
                 switch (msg.what) {
@@ -133,7 +134,7 @@ public class JbedEngine implements JbedConstants {
                         }
                         return;
                     case 3:
-                        if (!$assertionsDisabled && msg.obj == null) {
+                        if (msg.obj == null) {
                             throw new AssertionError();
                         }
                         ((Runnable) msg.obj).run();
@@ -160,7 +161,7 @@ public class JbedEngine implements JbedConstants {
                         JbedEngine.this.requestVmState(2, msg.arg1);
                         return;
                     case 9:
-                        new ToastVmBlocker().run();
+                        new ToastVmBlocker(JbedEngine.this).run();
                         return;
                 }
             }
@@ -350,7 +351,10 @@ public class JbedEngine implements JbedConstants {
         private int mViewWidth;
 
         public JbedThread() {
-            super("JbedThread");
+            // The 2011 VM schedules its own Java-isolate frames through this
+            // Android thread. ART's default ~1 MiB stack overflows during AMS
+            // bootstrap; use a bounded but practical legacy VM stack.
+            super(null, null, "JbedThread", 4L * 1024L * 1024L);
             this.mViewWidth = -1;
             this.mViewHeight = -1;
             this.mBytesPerPixel = -1;
@@ -377,8 +381,10 @@ public class JbedEngine implements JbedConstants {
         public void setScreenInfo(int viewWidth, int viewHeight, int bytesPerPixel, int viewFullScreenWidth, int viewFullScreenHeight, boolean isVmRunning, boolean forceSizeChanged) {
             WindowManager windowManager = (WindowManager) JbedEngine.this.mContext.getSystemService("window");
             Display display = windowManager.getDefaultDisplay();
-            int screenHeight = display.getHeight();
-            int screenWidth = display.getWidth();
+            Point displaySize = new Point();
+            display.getSize(displaySize);
+            int screenHeight = displaySize.y;
+            int screenWidth = displaySize.x;
             final int maxSquareLength = Math.max(screenHeight, screenWidth);
             if (viewWidth <= 0 || viewHeight <= 0 || viewFullScreenWidth <= 0 || viewFullScreenHeight <= 0) {
                 throw new IllegalArgumentException("setScreenInfo() invalid screen size!!!!");
@@ -409,6 +415,7 @@ public class JbedEngine implements JbedConstants {
         @Override // java.lang.Thread, java.lang.Runnable
         public void run() {
             LogTag.serviceDebug(JbedEngine.TAG, "Jbed Thread Started");
+            nativeInstallJniLifetimeHook();
             JbedEngine.this.nativeInitializeSubsystems(JbedEngine.this.getCommandLine(), 50);
             JbedEngine.this.mHandler.obtainMessage(2).sendToTarget();
             do {
@@ -439,6 +446,7 @@ public class JbedEngine implements JbedConstants {
             } while (JbedEngine.this.mRestartVM);
             LogTag.serviceDebug(JbedEngine.TAG, "--------- JBED SHUT DOWN ---------");
             JbedEngine.this.nativeFinalizeSubsystems();
+            nativeReleaseJniLifetimeHook();
             JbedEngine.this.mHandler.obtainMessage(1).sendToTarget();
             JbedEngine.this.broadcastVmState(false);
         }

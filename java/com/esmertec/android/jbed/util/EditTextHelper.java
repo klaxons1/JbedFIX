@@ -57,7 +57,6 @@ public class EditTextHelper implements JbedConstants {
                 }
                 l = TextKeyListener.getInstance(autotext, capitalize);
                 break;
-                break;
             case 5:
                 l = DigitsKeyListener.getInstance(true, true);
                 break;

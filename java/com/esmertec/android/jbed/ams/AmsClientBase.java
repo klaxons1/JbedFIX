@@ -72,7 +72,7 @@ public class AmsClientBase implements AmsConstants {
         this.mHandler = handler;
         this.mFactory = factory;
         this.mId = (int) id;
-        this.mStub = new StubImpl();
+        this.mStub = new StubImpl(this);
     }
 
     private boolean processSerialEvent(int eventId, int result, byte[] data) {

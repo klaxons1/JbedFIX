@@ -61,15 +61,9 @@ public class JbedFileManager implements JbedService.LifecycleListener {
                 if (JbedFileManager.this.mHandler != null) {
                     Message msg = JbedFileManager.this.mHandler.obtainMessage(3);
                     msg.obj = new Runnable() { // from class: com.esmertec.android.jbed.jsr.JbedFileManager.1.1
-                        static final /* synthetic */ boolean $assertionsDisabled;
-
-                        static {
-                            $assertionsDisabled = !JbedFileManager.class.desiredAssertionStatus();
-                        }
-
                         @Override // java.lang.Runnable
                         public void run() {
-                            if (!$assertionsDisabled && intent.getData() == null) {
+                            if (intent.getData() == null) {
                                 throw new AssertionError();
                             }
                             Uri uri = intent.getData();
@@ -179,7 +173,11 @@ public class JbedFileManager implements JbedService.LifecycleListener {
         List<String> result = new ArrayList<>();
         String[] arr$ = rootPaths;
         for (String path : arr$) {
-            if (path.equals(EXTERNAL_STORAGE_NAME)) {
+            // The 2011 build compared the physical path with "sdcard/", so
+            // this branch could never run. /mnt/sdcard is not a usable app
+            // storage root on current Android; provide the platform's actual
+            // legacy external-storage path to the native FileConnection VM.
+            if (SDCARD_FOLDER_PATH.equals(path)) {
                 if (isExternalStorageReady()) {
                     result.add(Environment.getExternalStorageDirectory().getPath());
                 }
@@ -201,11 +199,19 @@ public class JbedFileManager implements JbedService.LifecycleListener {
             byte[] paths = getRootPaths();
             out.writeShort(paths.length);
             out.write(paths);
+            Log.i(TAG, "native root payload: state=" + Environment.getExternalStorageState()
+                    + " count=" + getRootCount() + " namesBytes=" + names.length
+                    + " pathsBytes=" + paths.length);
             return bo.toByteArray();
         } catch (IOException e) {
-            Log.e(TAG, " failed to get the roots");
-            e.printStackTrace();
-            throw new IllegalArgumentException("failed to get the roots.");
+            Log.e(TAG, "failed to serialize J2ME file roots", e);
+            throw new IllegalArgumentException("failed to get the roots.", e);
+        } catch (Throwable e2) {
+            // This method is called through the legacy VM's JNI bridge. Keep
+            // the original failure contract, but retain the Java cause in
+            // logcat instead of making the native RuntimeException opaque.
+            Log.e(TAG, "failed to build J2ME file roots", e2);
+            throw new IllegalArgumentException("failed to get the roots.", e2);
         }
     }
 }

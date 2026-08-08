@@ -1,6 +1,7 @@
 package com.esmertec.android.jbed;
 
 import android.content.Context;
+import android.content.ContentValues;
 import android.database.Cursor;
 import android.text.TextUtils;
 import android.util.Log;
@@ -110,49 +111,18 @@ public class JbedSettings {
         return this.mIsAMSListLaunch;
     }
 
-    /* JADX WARN: Bottom block not found for handler: all -> 0x002d */
-    /*
-        Code decompiled incorrectly, please refer to instructions dump.
-        To view partially-correct code enable 'Show inconsistent code' option in preferences
-    */
-    private void extractAssetFile(java.lang.String r8, java.lang.String r9) {
-        /*
-            r7 = this;
-            r2 = 0
-            android.content.Context r5 = r7.mContext     // Catch: java.io.IOException -> L25 java.lang.Throwable -> L2d
-            android.content.res.AssetManager r5 = r5.getAssets()     // Catch: java.io.IOException -> L25 java.lang.Throwable -> L2d
-            java.io.InputStream r2 = r5.open(r8)     // Catch: java.io.IOException -> L25 java.lang.Throwable -> L2d
-            java.io.FileOutputStream r3 = new java.io.FileOutputStream     // Catch: java.io.IOException -> L25 java.lang.Throwable -> L2d
-            r3.<init>(r9)     // Catch: java.io.IOException -> L25 java.lang.Throwable -> L2d
-            int r4 = r2.available()     // Catch: java.io.IOException -> L25 java.lang.Throwable -> L2d
-            byte[] r0 = new byte[r4]     // Catch: java.io.IOException -> L25 java.lang.Throwable -> L2d
-            r2.read(r0)     // Catch: java.io.IOException -> L25 java.lang.Throwable -> L2d
-            r3.write(r0)     // Catch: java.io.IOException -> L25 java.lang.Throwable -> L2d
-            r3.close()     // Catch: java.io.IOException -> L25 java.lang.Throwable -> L2d
-            if (r2 == 0) goto L24
-            r2.close()     // Catch: java.io.IOException -> L34
-        L24:
-            return
-        L25:
-            r5 = move-exception
-            r1 = r5
-            java.lang.RuntimeException r5 = new java.lang.RuntimeException     // Catch: java.lang.Throwable -> L2d
-            r5.<init>(r1)     // Catch: java.lang.Throwable -> L2d
-            throw r5     // Catch: java.lang.Throwable -> L2d
-        L2d:
-            r5 = move-exception
-            if (r2 == 0) goto L33
-            r2.close()     // Catch: java.io.IOException -> L36
-        L33:
-            throw r5
-        L34:
-            r5 = move-exception
-            goto L24
-        L36:
-            r6 = move-exception
-            goto L33
-        */
-        throw new UnsupportedOperationException("Method not decompiled: com.esmertec.android.jbed.JbedSettings.extractAssetFile(java.lang.String, java.lang.String):void");
+    /** Copies one bundled asset exactly once during the initial Jbed setup. */
+    private void extractAssetFile(String srcFile, String destFile) {
+        try (java.io.InputStream in = this.mContext.getAssets().open(srcFile);
+             FileOutputStream out = new FileOutputStream(destFile)) {
+            byte[] buffer = new byte[8192];
+            int count;
+            while ((count = in.read(buffer)) != -1) {
+                out.write(buffer, 0, count);
+            }
+        } catch (IOException e) {
+            throw new RuntimeException("Unable to extract asset " + srcFile, e);
+        }
     }
 
     private void extractAssetFiles(String srcFolder, String destFolder) {
@@ -171,6 +141,13 @@ public class JbedSettings {
 
     void syncCerts(String certDir) {
         String trustStoreName = System.getProperty("javax.net.ssl.trustStore");
+        // Android does not expose the JVM trust-store path used by the original
+        // Jbed build. File(String) rejects null, so treat this as an optional
+        // best-effort synchronization step rather than crashing the app.
+        if (TextUtils.isEmpty(trustStoreName)) {
+            LogTag.serviceDebug(TAG, "No javax.net.ssl.trustStore path; skipping legacy certificate sync");
+            return;
+        }
         File storeFile = new File(trustStoreName);
         if (!storeFile.exists()) {
             LogTag.serviceDebug(TAG, "WARNING: " + trustStoreName + " is not exit! do nothing! ");
@@ -233,9 +210,13 @@ public class JbedSettings {
                 commandList.add(command);
             }
         }
-        File selectorFile = new File("/data/data/com.esmertec.android.jbed/Installed/selector.utf");
+        File selectorFile = new File(this.mBaseDir + "selector.utf");
         File preInstallFolder = new File(JbedProvider.Settings.DEFAULT_PREINSTALL_DIR);
-        if (!selectorFile.exists() && preInstallFolder.exists()) {
+        String[] preinstallEntries = preInstallFolder.list();
+        // The recovered APK has no PreInstall assets. The legacy VM crashes
+        // while registering its file-system handler when asked to preinstall
+        // from an empty directory, so request this mode only when work exists.
+        if (!selectorFile.exists() && preinstallEntries != null && preinstallEntries.length > 0) {
             LogTag.serviceDebug(TAG, "need to do preinstall");
             commandList.add("-preinstall");
             commandList.add(JbedProvider.Settings.DEFAULT_PREINSTALL_DIR);
@@ -294,64 +275,29 @@ public class JbedSettings {
     }
 
     public void updateTckInfo(String tckUrl, boolean isRunTck) {
-        Cursor cursor = this.mContext.getContentResolver().query(JbedProvider.Settings.CONTENT_URI, null, null, null, null);
-        if (cursor == null) {
-            new IllegalStateException(JbedProvider.Settings.CONTENT_URI + " is invalid");
-        }
-        try {
-            if (cursor.moveToFirst()) {
-                if (!TextUtils.isEmpty(tckUrl)) {
-                    cursor.updateString(cursor.getColumnIndexOrThrow("tck_url"), tckUrl);
-                }
-                cursor.updateInt(cursor.getColumnIndexOrThrow("is_runtck"), isRunTck ? 1 : 0);
-                cursor.commitUpdates();
-            }
-            cursor.close();
-            loadSettinData();
-        } catch (Throwable th) {
-            cursor.close();
-            throw th;
-        }
+        ContentValues values = new ContentValues();
+        if (!TextUtils.isEmpty(tckUrl)) values.put(JbedProvider.Settings.TCK_URL_COLUMN, tckUrl);
+        values.put(JbedProvider.Settings.IS_RUNTCK_COLUMN, isRunTck ? 1 : 0);
+        this.mContext.getContentResolver().update(JbedProvider.Settings.CONTENT_URI, values, null, null);
+        loadSettinData();
     }
 
     public void updateSyncCertsInfo(long certsFileSize, long certsFileDate) {
-        Cursor cursor = this.mContext.getContentResolver().query(JbedProvider.Settings.CONTENT_URI, null, null, null, null);
-        if (cursor == null) {
-            new IllegalStateException(JbedProvider.Settings.CONTENT_URI + " is invalid");
-        }
-        try {
-            if (cursor.moveToFirst()) {
-                cursor.updateLong(cursor.getColumnIndexOrThrow(JbedProvider.Settings.SYNC_CERTS_SIZE_COLUMN), certsFileSize);
-                cursor.updateLong(cursor.getColumnIndexOrThrow(JbedProvider.Settings.SYNC_CERTS_DATE_COLUMN), certsFileDate);
-                cursor.commitUpdates();
-            }
-            cursor.close();
-            loadSettinData();
-        } catch (Throwable th) {
-            cursor.close();
-            throw th;
-        }
+        ContentValues values = new ContentValues();
+        values.put(JbedProvider.Settings.SYNC_CERTS_SIZE_COLUMN, certsFileSize);
+        values.put(JbedProvider.Settings.SYNC_CERTS_DATE_COLUMN, certsFileDate);
+        this.mContext.getContentResolver().update(JbedProvider.Settings.CONTENT_URI, values, null, null);
+        loadSettinData();
     }
 
     public void updateDirsInfo(String rootDir, String baseDir, String localInstallDir, String certsRootDir) {
-        Cursor cursor = this.mContext.getContentResolver().query(JbedProvider.Settings.CONTENT_URI, null, null, null, null);
-        if (cursor == null) {
-            new IllegalStateException(JbedProvider.Settings.CONTENT_URI + " is invalid");
-        }
-        try {
-            if (cursor.moveToFirst()) {
-                cursor.updateString(cursor.getColumnIndexOrThrow(JbedProvider.Settings.ROOT_DIR_COLUMN), rootDir);
-                cursor.updateString(cursor.getColumnIndexOrThrow(JbedProvider.Settings.BASE_DIR_COLUMN), baseDir);
-                cursor.updateString(cursor.getColumnIndexOrThrow(JbedProvider.Settings.LOCALINSTALL_DIR_COLUMN), localInstallDir);
-                cursor.updateString(cursor.getColumnIndexOrThrow(JbedProvider.Settings.CERTS_ROOT_DIR_COLUMN), certsRootDir);
-                cursor.commitUpdates();
-            }
-            cursor.close();
-            loadSettinData();
-        } catch (Throwable th) {
-            cursor.close();
-            throw th;
-        }
+        ContentValues values = new ContentValues();
+        values.put(JbedProvider.Settings.ROOT_DIR_COLUMN, rootDir);
+        values.put(JbedProvider.Settings.BASE_DIR_COLUMN, baseDir);
+        values.put(JbedProvider.Settings.LOCALINSTALL_DIR_COLUMN, localInstallDir);
+        values.put(JbedProvider.Settings.CERTS_ROOT_DIR_COLUMN, certsRootDir);
+        this.mContext.getContentResolver().update(JbedProvider.Settings.CONTENT_URI, values, null, null);
+        loadSettinData();
     }
 
     public String toString() {

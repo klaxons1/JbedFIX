@@ -311,7 +311,7 @@ public class JbedSelectorData implements Parcelable {
             }
         } catch (IOException e5) {
         } catch (Throwable th2) {
-            th = th2;
+            // Preserve the original best-effort failure behavior.
         }
         return res;
     }
@@ -413,49 +413,19 @@ public class JbedSelectorData implements Parcelable {
         return this.mVendor == null ? "" : this.mVendor;
     }
 
-    private String getTextByKey(String key) throws Throwable {
-        if (isMidlet()) {
-            return this.mParent.getTextByKey(key);
-        }
+    private String getTextByKey(String key) {
+        if (isMidlet()) return this.mParent.getTextByKey(key);
         File suiteUtfFile = new File(getInfoStoreRoot() + PROPERTIES_FILENAME);
-        DataInputStream in = null;
-        String res = null;
-        try {
-            DataInputStream in2 = new DataInputStream(new FileInputStream(suiteUtfFile));
-            try {
-                int size = in2.readInt();
-                for (int i = 0; i < size; i++) {
-                    String k = in2.readUTF();
-                    String v = in2.readUTF();
-                    if (k.equals(key)) {
-                        res = v;
-                        break;
-                    }
-                }
-                try {
-                    in2.close();
-                } catch (IOException e) {
-                }
-            } catch (IOException e2) {
-                in = in2;
-                try {
-                    in.close();
-                } catch (IOException e3) {
-                }
-            } catch (Throwable th) {
-                th = th;
-                in = in2;
-                try {
-                    in.close();
-                } catch (IOException e4) {
-                }
-                throw th;
+        try (DataInputStream in = new DataInputStream(new FileInputStream(suiteUtfFile))) {
+            for (int i = in.readInt(); i > 0; i--) {
+                String property = in.readUTF();
+                String value = in.readUTF();
+                if (key.equals(property)) return value;
             }
-        } catch (IOException e5) {
-        } catch (Throwable th2) {
-            th = th2;
+        } catch (IOException e) {
+            Log.w(TAG, "Unable to read MIDlet properties", e);
         }
-        return res;
+        return null;
     }
 
     public String getDeleteConfirmText() {
@@ -618,187 +588,46 @@ public class JbedSelectorData implements Parcelable {
         return !new File(fullPath).exists();
     }
 
-    public boolean isFullScreen() throws Throwable {
-        IOException e;
-        FileNotFoundException e2;
-        String LGEMIDletWidth = null;
-        String LGEMIDletHeight = null;
-        String LGEMIDletTargetLCDWidth = null;
-        String LGEMIDletTargetLCDHeight = null;
-        String infoFilePath = JbedProvider.Settings.DEFAULT_BASE_DIR + this.mRoot + "info_suite.utf";
-        File infoFile = new File(infoFilePath);
-        if (!infoFile.exists()) {
-            Log.e(TAG, infoFilePath + "does not exist");
-            return false;
-        }
-        DataInputStream in = null;
-        try {
-            try {
-                DataInputStream in2 = new DataInputStream(new FileInputStream(infoFile));
-                try {
-                    int size = in2.readInt();
-                    for (int i = 0; i < size; i++) {
-                        String key = in2.readUTF();
-                        String value = in2.readUTF();
-                        if (JbedConfig.getCustomerName().equals("TW")) {
-                            if (key.equals(KEY_FULL_SCREEN)) {
-                                boolean zEqualsIgnoreCase = value.equalsIgnoreCase("true");
-                                try {
-                                    in2.close();
-                                    return zEqualsIgnoreCase;
-                                } catch (IOException e3) {
-                                    return zEqualsIgnoreCase;
-                                }
-                            }
-                        } else if (JbedConfig.getCustomerName().equals("PK")) {
-                            if (key.equals(KEY_MIDLET_FULLSCREEN)) {
-                                boolean zEqualsIgnoreCase2 = value.equalsIgnoreCase("true");
-                                try {
-                                    in2.close();
-                                    return zEqualsIgnoreCase2;
-                                } catch (IOException e4) {
-                                    return zEqualsIgnoreCase2;
-                                }
-                            }
-                        } else {
-                            if (key.equals(KEY_DISPLAY_NAV_KEYPAD)) {
-                                if (value.equalsIgnoreCase(JbedProvider.Midlets.NO)) {
-                                    try {
-                                        in2.close();
-                                        return true;
-                                    } catch (IOException e5) {
-                                        return true;
-                                    }
-                                }
-                                try {
-                                    in2.close();
-                                    return false;
-                                } catch (IOException e6) {
-                                    return false;
-                                }
-                            }
-                            if (key.equals(KEY_LGE_MIDLET_WIDTH)) {
-                                LGEMIDletWidth = value;
-                            }
-                            if (key.equals(KEY_LGE_MIDLET_HEIGHT)) {
-                                LGEMIDletHeight = value;
-                            }
-                            if (key.equals(KEY_LGE_MIDLET_TARGETLCD_WIDTH)) {
-                                LGEMIDletTargetLCDWidth = value;
-                            }
-                            if (key.equals(KEY_LGE_MIDLET_TARGETLCD_HEIGHT)) {
-                                LGEMIDletTargetLCDHeight = value;
-                            }
-                        }
-                    }
-                    try {
-                        in2.close();
-                    } catch (IOException e7) {
-                    }
-                    return ("480".equals(LGEMIDletWidth) && "320".equals(LGEMIDletHeight)) || ("480".equals(LGEMIDletTargetLCDWidth) && "320".equals(LGEMIDletTargetLCDHeight)) || (("320".equals(LGEMIDletWidth) && "480".equals(LGEMIDletHeight)) || ("320".equals(LGEMIDletTargetLCDWidth) && "480".equals(LGEMIDletTargetLCDHeight)));
-                } catch (FileNotFoundException e8) {
-                    e2 = e8;
-                    Log.e(TAG, " selectorFile.toString() isn't exist ", e2);
-                    throw new IllegalStateException(infoFilePath + " isn't exist");
-                } catch (IOException e9) {
-                    e = e9;
-                    in = in2;
-                    Log.e(TAG, " failed to read selector file", e);
-                    try {
-                        in.close();
-                        return false;
-                    } catch (IOException e10) {
-                        return false;
-                    }
-                } catch (Throwable th) {
-                    th = th;
-                    in = in2;
-                    try {
-                        in.close();
-                    } catch (IOException e11) {
-                    }
-                    throw th;
-                }
-            } catch (FileNotFoundException e12) {
-                e2 = e12;
-            } catch (IOException e13) {
-                e = e13;
+    private String getInfoSuiteValue(String wantedKey) {
+        File infoFile = new File(JbedProvider.Settings.DEFAULT_BASE_DIR + this.mRoot + "info_suite.utf");
+        try (DataInputStream in = new DataInputStream(new FileInputStream(infoFile))) {
+            for (int i = in.readInt(); i > 0; i--) {
+                String key = in.readUTF();
+                String value = in.readUTF();
+                if (wantedKey.equals(key)) return value;
             }
-        } catch (Throwable th2) {
-            th = th2;
+        } catch (IOException e) {
+            Log.w(TAG, "Unable to read MIDlet display settings", e);
         }
+        return null;
     }
 
-    public boolean isAutoRun() throws Throwable {
-        IOException e;
-        FileNotFoundException e2;
-        boolean zEqualsIgnoreCase;
-        String infoFilePath = JbedProvider.Settings.DEFAULT_BASE_DIR + this.mRoot + "info_suite.utf";
-        File infoFile = new File(infoFilePath);
-        if (!infoFile.exists()) {
-            Log.e(TAG, infoFilePath + "does not exist");
-            return false;
+    public boolean isFullScreen() {
+        String value;
+        if ("TW".equals(JbedConfig.getCustomerName())) {
+            value = getInfoSuiteValue(KEY_FULL_SCREEN);
+            return "true".equalsIgnoreCase(value);
         }
-        DataInputStream in = null;
-        try {
-            try {
-                DataInputStream in2 = new DataInputStream(new FileInputStream(infoFile));
-                try {
-                    int size = in2.readInt();
-                    try {
-                        for (int i = 0; i < size; i++) {
-                            String key = in2.readUTF();
-                            String value = in2.readUTF();
-                            if (key.equals(KEY_LGE_MIDLET_AUTOLANCH_AFTER_INSTALL)) {
-                                zEqualsIgnoreCase = value.equalsIgnoreCase("YES");
-                                try {
-                                    in2.close();
-                                } catch (IOException e3) {
-                                }
-                            } else if (key.equals(KEY_3G_MIDLET_AFTER_OTA_INSTALL_START)) {
-                                zEqualsIgnoreCase = value.equalsIgnoreCase("YES");
-                                try {
-                                    in2.close();
-                                } catch (IOException e4) {
-                                }
-                            }
-                            return zEqualsIgnoreCase;
-                        }
-                        in2.close();
-                    } catch (IOException e5) {
-                    }
-                    zEqualsIgnoreCase = false;
-                    return zEqualsIgnoreCase;
-                } catch (FileNotFoundException e6) {
-                    e2 = e6;
-                    Log.e(TAG, " selectorFile.toString() isn't exist ", e2);
-                    throw new IllegalStateException(infoFilePath + " isn't exist");
-                } catch (IOException e7) {
-                    e = e7;
-                    in = in2;
-                    Log.e(TAG, " failed to read selector file", e);
-                    try {
-                        in.close();
-                    } catch (IOException e8) {
-                    }
-                    return false;
-                } catch (Throwable th) {
-                    th = th;
-                    in = in2;
-                    try {
-                        in.close();
-                    } catch (IOException e9) {
-                    }
-                    throw th;
-                }
-            } catch (FileNotFoundException e10) {
-                e2 = e10;
-            } catch (IOException e11) {
-                e = e11;
-            }
-        } catch (Throwable th2) {
-            th = th2;
+        if ("PK".equals(JbedConfig.getCustomerName())) {
+            value = getInfoSuiteValue(KEY_MIDLET_FULLSCREEN);
+            return "true".equalsIgnoreCase(value);
         }
+        value = getInfoSuiteValue(KEY_DISPLAY_NAV_KEYPAD);
+        if (value != null) return JbedProvider.Midlets.NO.equalsIgnoreCase(value);
+        String width = getInfoSuiteValue(KEY_LGE_MIDLET_WIDTH);
+        String height = getInfoSuiteValue(KEY_LGE_MIDLET_HEIGHT);
+        String targetWidth = getInfoSuiteValue(KEY_LGE_MIDLET_TARGETLCD_WIDTH);
+        String targetHeight = getInfoSuiteValue(KEY_LGE_MIDLET_TARGETLCD_HEIGHT);
+        return ("480".equals(width) && "320".equals(height))
+                || ("480".equals(targetWidth) && "320".equals(targetHeight))
+                || ("320".equals(width) && "480".equals(height))
+                || ("320".equals(targetWidth) && "480".equals(targetHeight));
+    }
+
+    public boolean isAutoRun() {
+        String value = getInfoSuiteValue(KEY_LGE_MIDLET_AUTOLANCH_AFTER_INSTALL);
+        if (value == null) value = getInfoSuiteValue(KEY_3G_MIDLET_AFTER_OTA_INSTALL_START);
+        return "YES".equalsIgnoreCase(value);
     }
 
     public void clearState() {
@@ -898,64 +727,8 @@ public class JbedSelectorData implements Parcelable {
         return false;
     }
 
-    public String getScaleProperty() throws Throwable {
-        IOException e;
-        FileNotFoundException e2;
-        String infoFilePath = JbedProvider.Settings.DEFAULT_BASE_DIR + this.mRoot + "info_suite.utf";
-        File infoFile = new File(infoFilePath);
-        if (!infoFile.exists()) {
-            Log.e(TAG, infoFilePath + "does not exist");
-            return null;
-        }
-        DataInputStream in = null;
-        String res = null;
-        try {
-            try {
-                DataInputStream in2 = new DataInputStream(new FileInputStream(infoFile));
-                try {
-                    int size = in2.readInt();
-                    for (int i = 0; i < size; i++) {
-                        String key = in2.readUTF();
-                        String value = in2.readUTF();
-                        if (key.equals(KEY_SCALE_UP)) {
-                            res = value;
-                            break;
-                        }
-                    }
-                    try {
-                        in2.close();
-                    } catch (IOException e3) {
-                    }
-                    return res;
-                } catch (FileNotFoundException e4) {
-                    e2 = e4;
-                    Log.e(TAG, " selectorFile.toString() isn't exist ", e2);
-                    throw new IllegalStateException(infoFilePath + " isn't exist");
-                } catch (IOException e5) {
-                    e = e5;
-                    in = in2;
-                    Log.e(TAG, " failed to read selector file", e);
-                    try {
-                        in.close();
-                    } catch (IOException e6) {
-                    }
-                    return null;
-                } catch (Throwable th) {
-                    th = th;
-                    in = in2;
-                    try {
-                        in.close();
-                    } catch (IOException e7) {
-                    }
-                    throw th;
-                }
-            } catch (FileNotFoundException e8) {
-                e2 = e8;
-            } catch (IOException e9) {
-                e = e9;
-            }
-        } catch (Throwable th2) {
-            th = th2;
-        }
+    public String getScaleProperty() {
+        return getInfoSuiteValue(KEY_SCALE_UP);
     }
+
 }

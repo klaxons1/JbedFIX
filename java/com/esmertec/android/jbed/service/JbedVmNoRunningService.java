@@ -8,6 +8,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.ServiceConnection;
 import android.graphics.PixelFormat;
+import android.graphics.Point;
 import android.net.Uri;
 import android.os.Environment;
 import android.os.IBinder;
@@ -131,7 +132,9 @@ public class JbedVmNoRunningService extends Service {
                             PixelFormat pixFormat = new PixelFormat();
                             PixelFormat.getPixelFormatInfo(4, pixFormat);
                             Display d = ((WindowManager) JbedVmNoRunningService.this.getSystemService("window")).getDefaultDisplay();
-                            jbedService.startVm(d.getWidth(), d.getHeight(), pixFormat.bytesPerPixel, d.getWidth(), d.getHeight(), false, false);
+                            Point displaySize = new Point();
+                            d.getSize(displaySize);
+                            jbedService.startVm(displaySize.x, displaySize.y, pixFormat.bytesPerPixel, displaySize.x, displaySize.y, false, false);
                             IJbedAmsConnection amsConn = jbedService.openAmsConnection();
                             amsConn.setPowerOnMidlets(powerOnMidlets);
                             for (JbedSelectorData m : powerOnMidlets) {

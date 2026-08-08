@@ -85,11 +85,8 @@ class JbedMmsMessagePart {
         if (this.mPduPart == null) {
             this.mPduPart = new PduPart();
         }
-        try {
-            this.mPduPart.setCharset(CharacterSets.getMibEnumValue(this.mHeaderFields[3].toLowerCase()));
-        } catch (UnsupportedEncodingException e) {
-            this.mPduPart.setCharset(106);
-        }
+        int charset = CharacterSets.getMibEnumValue(this.mHeaderFields[3].toLowerCase());
+        this.mPduPart.setCharset(charset == 0 ? 106 : charset);
         this.mPduPart.setContentId(this.mHeaderFields[0].getBytes());
         this.mPduPart.setContentType(this.mHeaderFields[1].getBytes());
         this.mPduPart.setContentLocation(this.mHeaderFields[2].getBytes());
@@ -184,10 +181,7 @@ class JbedMmsMessagePart {
                 }
                 result = os.toByteArray();
             } catch (IOException e) {
-                Log.e(JbedMmsManager.TAG, "failed to find " + this.mPduPart.getDataUri().toString(), e);
-                return null;
-            } catch (FileNotFoundException e2) {
-                Log.e(JbedMmsManager.TAG, "failed to find " + this.mPduPart.getDataUri().toString(), e2);
+                Log.e(JbedMmsManager.TAG, "failed to read " + this.mPduPart.getDataUri().toString(), e);
                 return null;
             } finally {
                 if (is != null) {

@@ -77,9 +77,6 @@ public class JbedAppActivity extends Activity implements JbedConstants {
                     break;
                 case 120000:
                     LogTag.appDebug(JbedAppActivity.TAG, "get EVENT_SURFACE_CREATED from JbedView");
-                    Surface.openTransaction();
-                    JbedAppActivity.this.mJbedView.getHolder().getSurface().setLayer(1001);
-                    Surface.closeTransaction();
                     return;
                 case JbedView.EVENT_ON_SURFACE_DESTROYED /* 120001 */:
                     LogTag.appDebug(JbedAppActivity.TAG, "get EVENT_SURFACE_DESTROYED from JbedView");

@@ -39,13 +39,13 @@ public class JbedProgressDialog extends AlertDialog {
     private Handler mViewUpdateHandler;
 
     public JbedProgressDialog(Context context) {
-        this(context, R.style.Widget.Holo.ScrollView);
+        this(context, android.R.style.Theme_DeviceDefault_Dialog);
     }
 
     public JbedProgressDialog(Context context, int theme) {
         super(context, theme);
         this.mProgressStyle = 0;
-        this.mJbedContext = new ContextThemeWrapper(context, theme == 0 ? R.style.Theme.Dialog : theme);
+        this.mJbedContext = new ContextThemeWrapper(context, theme == 0 ? android.R.style.Theme_DeviceDefault_Dialog : theme);
     }
 
     public static JbedProgressDialog show(Context context, CharSequence title, CharSequence message) {

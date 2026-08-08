@@ -38,6 +38,7 @@ public class JbedVideoView extends SurfaceView implements MediaController.MediaP
     public static Rect mDefaultLocation = new Rect(0, 0, 1, 1);
     private MediaPlayer.OnBufferingUpdateListener mBufferingUpdateListener;
     private Camera mCamera;
+    private final Context mContext;
     private byte[] mCameraData;
     private final byte[] mCameraMutex;
     private MediaPlayer.OnCompletionListener mCompletionListener;
@@ -78,6 +79,7 @@ public class JbedVideoView extends SurfaceView implements MediaController.MediaP
     /* JADX WARN: 'super' call moved to the top of the method (can break code semantics) */
     public JbedVideoView(Context context) {
         super(context);
+        this.mContext = context;
         this.mVideoSizeReady = false;
         this.mutex = new Object();
         this.mSurfaceHolder = null;
@@ -254,6 +256,7 @@ public class JbedVideoView extends SurfaceView implements MediaController.MediaP
     /* JADX WARN: 'super' call moved to the top of the method (can break code semantics) */
     public JbedVideoView(Context context, AttributeSet attrs, int defStyle) {
         super(context, attrs, defStyle);
+        this.mContext = context;
         this.mVideoSizeReady = false;
         this.mutex = new Object();
         this.mSurfaceHolder = null;
@@ -473,7 +476,6 @@ public class JbedVideoView extends SurfaceView implements MediaController.MediaP
         this.mVideoWidth = 0;
         this.mVideoHeight = 0;
         getHolder().addCallback(this.mSHCallback);
-        getHolder().setType(3);
         setFocusable(true);
         setFocusableInTouchMode(true);
         requestFocus();
@@ -720,8 +722,14 @@ public class JbedVideoView extends SurfaceView implements MediaController.MediaP
         return 0;
     }
 
+    /** Frame extraction was a hidden MediaPlayer API; it is unavailable on current Android SDKs. */
     public Bitmap getFrameAt(int pos) {
-        return this.mMediaPlayer.getFrameAt(pos);
+        return null;
+    }
+
+    @Override
+    public int getAudioSessionId() {
+        return this.mMediaPlayer != null ? this.mMediaPlayer.getAudioSessionId() : 0;
     }
 
     public boolean openCamera() {
@@ -864,9 +872,10 @@ public class JbedVideoView extends SurfaceView implements MediaController.MediaP
                     throw th;
                 }
             } catch (Throwable th2) {
-                th = th2;
+                throw th2;
             }
         } catch (Exception e5) {
+            return -1;
         }
     }
 

@@ -46,46 +46,14 @@ public class JbedConfig {
     }
 
     /* JADX INFO: Access modifiers changed from: private */
-    public static Properties getProperties(File file) throws Throwable {
+    public static Properties getProperties(File file) {
         Properties result = new Properties();
-        InputStream in = null;
-        try {
-            try {
-                InputStream in2 = new FileInputStream(file);
-                try {
-                    result.load(in2);
-                    if (in2 != null) {
-                        try {
-                            in2.close();
-                        } catch (IOException e) {
-                        }
-                    }
-                } catch (IOException e2) {
-                    in = in2;
-                    if (Log.isLoggable(TAG, 5)) {
-                        Log.w(TAG, "WARNNING: fail to open actual config file " + file.getName());
-                    }
-                    if (in != null) {
-                        try {
-                            in.close();
-                        } catch (IOException e3) {
-                        }
-                    }
-                } catch (Throwable th) {
-                    th = th;
-                    in = in2;
-                    if (in != null) {
-                        try {
-                            in.close();
-                        } catch (IOException e4) {
-                        }
-                    }
-                    throw th;
-                }
-            } catch (Throwable th2) {
-                th = th2;
+        try (InputStream in = new FileInputStream(file)) {
+            result.load(in);
+        } catch (IOException e) {
+            if (Log.isLoggable(TAG, Log.WARN)) {
+                Log.w(TAG, "Failed to read config file " + file.getName(), e);
             }
-        } catch (IOException e5) {
         }
         return result;
     }

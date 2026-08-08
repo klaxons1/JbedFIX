@@ -107,9 +107,6 @@ public class JbedVideoClientImpl extends IJbedVideoClient.Stub {
         this.mVideoParent = videoParent;
         this.mFrameParent = frameParent;
         this.mSurface = this.mVideoView.getHolder().getSurface();
-        Surface.openTransaction();
-        this.mSurface.setLayer(JbedConstants.VIDEO_VIEW_SURFACE_LAYER);
-        Surface.closeTransaction();
         this.mState = new JbedVideoPlayerState();
     }
 

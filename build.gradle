@@ -2,6 +2,57 @@ plugins {
     id 'com.android.application' version '8.5.2'
 }
 
+def drmShimOutput = file('lib/armeabi/libdrm1.so')
+def utilsShimOutput = file('lib/armeabi/libutils.so')
+def skiaShimOutput = file('lib/armeabi/libskia.so')
+def cutilsShimOutput = file('lib/armeabi/libcutils.so')
+def uiShimOutput = file('lib/armeabi/libui.so')
+def surfaceShimOutput = file('lib/armeabi/libsurfaceflinger_client.so')
+def pngShimOutput = file('lib/armeabi/libpng.so')
+def jbedCompatOutput = file('lib/armeabi/libjbedcompat.so')
+def ndkVersionForDrmShim = '26.3.11579264'
+
+tasks.register('buildDrmCompatibilityShim') {
+    group = 'build'
+    description = 'Builds the ARM32 libdrm1 compatibility shim needed by the legacy Jbed VM.'
+    outputs.files(drmShimOutput, utilsShimOutput, skiaShimOutput, cutilsShimOutput, uiShimOutput, surfaceShimOutput, pngShimOutput, jbedCompatOutput)
+
+    doLast {
+        if (drmShimOutput.exists() && utilsShimOutput.exists() && skiaShimOutput.exists() && cutilsShimOutput.exists() && uiShimOutput.exists() && surfaceShimOutput.exists() && pngShimOutput.exists() && jbedCompatOutput.exists()) {
+            logger.lifecycle("Using existing native compatibility shims")
+            return
+        }
+
+        def sdkRoot = System.getenv('ANDROID_HOME') ?: System.getenv('ANDROID_SDK_ROOT')
+        if (sdkRoot == null) {
+            throw new GradleException('ANDROID_HOME or ANDROID_SDK_ROOT is required to build libdrm1.so')
+        }
+        def sdkManager = file("${sdkRoot}/cmdline-tools/latest/bin/sdkmanager")
+        if (!sdkManager.canExecute()) {
+            throw new GradleException("Android sdkmanager not found at ${sdkManager}; install Android command-line tools first")
+        }
+
+        exec {
+            commandLine 'bash', '-c', "yes | '${sdkManager.absolutePath}' --install 'ndk;${ndkVersionForDrmShim}'"
+        }
+        exec {
+            environment 'ANDROID_NDK_HOME', "${sdkRoot}/ndk/${ndkVersionForDrmShim}"
+            commandLine 'bash', 'native_compat/build-drm1-shim.sh'
+        }
+    }
+}
+
+tasks.named('preBuild').configure {
+    dependsOn(tasks.named('buildDrmCompatibilityShim'))
+}
+
+// Native libraries are merged before APK packaging. Explicitly wire the shim
+// task here as well: relying on preBuild alone is not sufficient on every AGP
+// task graph, and would allow mergeReleaseNativeLibs to scan lib/ too early.
+tasks.matching { it.name == 'mergeReleaseNativeLibs' || it.name == 'mergeDebugNativeLibs' }.configureEach {
+    dependsOn(tasks.named('buildDrmCompatibilityShim'))
+}
+
 android {
     namespace 'com.esmertec.android.jbed'
     compileSdk 34
@@ -9,7 +60,10 @@ android {
 
     defaultConfig {
         minSdk 21
-        targetSdk 28
+        // libjbedvm.so has text relocations from its Android 2.x build. Keep
+        // the legacy target level so Android's linker applies its legacy-app
+        // compatibility policy instead of enforcing the API-23+ rejection.
+        targetSdk 22
         versionCode 1
         versionName '1.0'
     }

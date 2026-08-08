@@ -320,7 +320,7 @@ public class JbedSelector {
                     e = e9;
                 }
             } catch (Throwable th2) {
-                th = th2;
+                throw new IllegalStateException("Failed to read selector data", th2);
             }
         }
     }

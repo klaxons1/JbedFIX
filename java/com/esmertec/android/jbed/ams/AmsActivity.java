@@ -11,6 +11,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.graphics.PixelFormat;
+import android.graphics.Point;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
@@ -147,7 +148,7 @@ public class AmsActivity extends ListActivity implements AmsConstants {
                                 AmsActivity.this.getAmsClient().requestRunEvent(AmsActivity.this.mCurSelectedItem.mRoot, AmsActivity.this.mCurSelectedItem.mNo);
                                 return;
                             } else {
-                                AmsActivity.this.showWarningDialog(AmsActivity.this.getString(R.string.AMS_WARNING), AmsActivity.this.getString(android.R.string.accessibility_system_action_dpad_center_label));
+                                AmsActivity.this.showWarningDialog(AmsActivity.this.getString(R.string.AMS_WARNING), AmsActivity.this.getString(R.string.AMS_NO_ENOUGH_MEMORY));
                                 return;
                             }
                         }
@@ -261,7 +262,9 @@ public class AmsActivity extends ListActivity implements AmsConstants {
                 PixelFormat pixFormat = new PixelFormat();
                 PixelFormat.getPixelFormatInfo(4, pixFormat);
                 try {
-                    AmsActivity.this.getApp().mJbedService.startVm(AmsActivity.this.getWindowManager().getDefaultDisplay().getWidth(), AmsActivity.this.getWindowManager().getDefaultDisplay().getHeight(), pixFormat.bytesPerPixel, AmsActivity.this.getWindowManager().getDefaultDisplay().getWidth(), AmsActivity.this.getWindowManager().getDefaultDisplay().getHeight(), false, false);
+                    Point displaySize = new Point();
+                    AmsActivity.this.getWindowManager().getDefaultDisplay().getSize(displaySize);
+                    AmsActivity.this.getApp().mJbedService.startVm(displaySize.x, displaySize.y, pixFormat.bytesPerPixel, displaySize.x, displaySize.y, false, false);
                     AmsActivity.this.mIsServiceConnected = true;
                     AmsActivity.this.mHandler.obtainMessage(10002).sendToTarget();
                     AmsActivity.this.mHandler.obtainMessage(10013).sendToTarget();
@@ -455,7 +458,7 @@ public class AmsActivity extends ListActivity implements AmsConstants {
                 if (hasEnoughFreeMemory()) {
                     getAmsClient().requestRunEvent(this.mCurSelectedItem.mRoot, this.mCurSelectedItem.mNo);
                 } else {
-                    showWarningDialog(getString(R.string.AMS_WARNING), getString(android.R.string.accessibility_system_action_dpad_center_label));
+                    showWarningDialog(getString(R.string.AMS_WARNING), getString(R.string.AMS_NO_ENOUGH_MEMORY));
                 }
                 break;
             case R.id.remove_menu_item /* 2131230796 */:
@@ -847,8 +850,7 @@ public class AmsActivity extends ListActivity implements AmsConstants {
                 menuItemFlagMap.put(Integer.valueOf(R.id.list_certificates_item), 17936);
                 menuItemFlagMap.put(Integer.valueOf(R.id.storage_setting_item), 17936);
                 menuItemFlagMap.put(Integer.valueOf(R.id.tasks_menu_item), 17936);
-                return;
-            }
+            } else {
             menuItemFlagMap.put(Integer.valueOf(R.id.move_to_folder_item), 1050128);
             menuItemFlagMap.put(Integer.valueOf(R.id.remove_multiple_menu_item), 1050128);
             menuItemFlagMap.put(Integer.valueOf(R.id.info_menu_item), 1544);
@@ -860,6 +862,7 @@ public class AmsActivity extends ListActivity implements AmsConstants {
             menuItemFlagMap.put(Integer.valueOf(R.id.list_certificates_item), Integer.valueOf(TOP_ALL));
             menuItemFlagMap.put(Integer.valueOf(R.id.storage_setting_item), Integer.valueOf(ALL));
             menuItemFlagMap.put(Integer.valueOf(R.id.tasks_menu_item), Integer.valueOf(ALL));
+            }
         }
 
         /* JADX INFO: Access modifiers changed from: private */
