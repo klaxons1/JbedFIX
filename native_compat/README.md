@@ -57,7 +57,15 @@ library. The shim exports no-op ARM32 versions of those two symbols. This is a
 controlled leak, but is sufficient to advance the linker without pretending to
 implement the rest of old `libutils`.
 
+## libskia shim
+
+`libskia_compat.c` supplies the exact small legacy Skia symbol set imported by
+this VM: Paint configuration/metrics, Bitmap configuration, and Canvas text
+operations. It is a safe first-stage compatibility layer: object operations do
+not dereference legacy C++ object layouts, while text drawing and metrics are
+currently no-ops. This gets the linker past `libskia.so` without claiming to
+be a full renderer; Jbed's Surface-buffer rendering can then be tested.
+
 The next load attempt will likely expose more legacy private dependencies such
-as `libsurfaceflinger_client.so`, `libui.so`, `libskia.so`, and `libcutils.so`.
-Those APIs are substantially more difficult to shim, especially rendering and
-surface-management code.
+as `libsurfaceflinger_client.so`, `libui.so`, and `libcutils.so`. Those APIs
+are substantially more difficult to shim, especially surface management.

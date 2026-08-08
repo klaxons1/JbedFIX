@@ -28,4 +28,11 @@ mkdir -p lib/armeabi
   -Wl,-soname,libutils.so \
   -o lib/armeabi/libutils.so native_compat/libutils_compat.S
 
-echo "Built lib/armeabi/libdrm1.so and lib/armeabi/libutils.so"
+# The VM imports a small pre-Honeycomb Skia C++ ABI. This first-stage bridge
+# provides safe symbol-compatible operations while the modern rendering bridge
+# is developed separately.
+"$clang" --target=armv7a-linux-androideabi21 -fPIC -shared -O2 \
+  -Wl,-soname,libskia.so \
+  -o lib/armeabi/libskia.so native_compat/libskia_compat.c
+
+echo "Built libdrm1.so, libutils.so, and libskia.so"
