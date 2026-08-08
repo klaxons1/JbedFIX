@@ -71,6 +71,13 @@ static void promote_engine_reference(JNIEnv *env) {
     LOGI("promoted legacy JbedEngine JNI reference to a global reference");
 }
 
+static void clear_pending_exception(JNIEnv *env) {
+    if ((*env)->ExceptionCheck(env)) {
+        LOGI("clearing pending JNI exception before unsafe legacy callback");
+        (*env)->ExceptionClear(env);
+    }
+}
+
 static jmethodID JNICALL hooked_get_method_id(JNIEnv *env, jclass clazz,
                                                const char *name, const char *signature) {
     jmethodID result = g_original_get_method_id(env, clazz, name, signature);
@@ -85,6 +92,7 @@ static jmethodID JNICALL hooked_get_method_id(JNIEnv *env, jclass clazz,
 
 static jmethodID JNICALL hooked_get_static_method_id(JNIEnv *env, jclass clazz,
                                                       const char *name, const char *signature) {
+    clear_pending_exception(env);
     jmethodID result = g_original_table->GetStaticMethodID(env, clazz, name, signature);
     if (name != NULL && signature != NULL &&
         strcmp(name, "getString") == 0 && strcmp(signature, "(II)Ljava/lang/String;") == 0) {
@@ -100,25 +108,25 @@ static jmethodID JNICALL hooked_get_static_method_id(JNIEnv *env, jclass clazz,
     return result;
 }
 
+static jobject make_empty_roots(JNIEnv *env) {
+    jbyteArray empty_roots;
+    jbyte zero_roots[5] = {0, 0, 0, 0, 0};
+    LOGI("bypassing legacy JbedFileManager.getRoots with an empty root list");
+    empty_roots = (*env)->NewByteArray(env, (jsize) sizeof(zero_roots));
+    if (empty_roots != NULL) {
+        (*env)->SetByteArrayRegion(env, empty_roots, 0,
+                                    (jsize) sizeof(zero_roots), zero_roots);
+    }
+    return empty_roots;
+}
+
 static jobject JNICALL hooked_call_static_object_method(JNIEnv *env, jclass clazz, jmethodID method, ...) {
-    /* Both callbacks recursively enter Android Java from the legacy VM. ART
-     * already reports StackOverflowError before their Java bodies execute.
-     * The VM treats i18n as optional and accepts a zero-root FileConnection
-     * setup, so bypass these two unsafe calls entirely rather than entering
-     * the failing bridge and then attempting to recover its exception. */
+    clear_pending_exception(env);
     if (g_midp_get_string_method != NULL && method == g_midp_get_string_method) {
         return (*env)->NewStringUTF(env, "<unknown>");
     }
     if (g_file_get_roots_method != NULL && method == g_file_get_roots_method) {
-        jbyteArray empty_roots;
-        jbyte zero_roots[5] = {0, 0, 0, 0, 0};
-        LOGI("bypassing legacy JbedFileManager.getRoots with an empty root list");
-        empty_roots = (*env)->NewByteArray(env, (jsize) sizeof(zero_roots));
-        if (empty_roots != NULL) {
-            (*env)->SetByteArrayRegion(env, empty_roots, 0,
-                                        (jsize) sizeof(zero_roots), zero_roots);
-        }
-        return empty_roots;
+        return make_empty_roots(env);
     }
 
     va_list args;
@@ -126,6 +134,28 @@ static jobject JNICALL hooked_call_static_object_method(JNIEnv *env, jclass claz
     jobject result = g_original_table->CallStaticObjectMethodV(env, clazz, method, args);
     va_end(args);
     return result;
+}
+
+static jobject JNICALL hooked_call_static_object_method_v(JNIEnv *env, jclass clazz, jmethodID method, va_list args) {
+    clear_pending_exception(env);
+    if (g_midp_get_string_method != NULL && method == g_midp_get_string_method) {
+        return (*env)->NewStringUTF(env, "<unknown>");
+    }
+    if (g_file_get_roots_method != NULL && method == g_file_get_roots_method) {
+        return make_empty_roots(env);
+    }
+    return g_original_table->CallStaticObjectMethodV(env, clazz, method, args);
+}
+
+static jobject JNICALL hooked_call_static_object_method_a(JNIEnv *env, jclass clazz, jmethodID method, const jvalue *args) {
+    clear_pending_exception(env);
+    if (g_midp_get_string_method != NULL && method == g_midp_get_string_method) {
+        return (*env)->NewStringUTF(env, "<unknown>");
+    }
+    if (g_file_get_roots_method != NULL && method == g_file_get_roots_method) {
+        return make_empty_roots(env);
+    }
+    return g_original_table->CallStaticObjectMethodA(env, clazz, method, args);
 }
 
 JNIEXPORT void JNICALL
@@ -150,6 +180,8 @@ Java_com_esmertec_android_jbed_service_JbedEngine_nativeInstallJniLifetimeHook(J
     g_hook_table->GetMethodID = hooked_get_method_id;
     g_hook_table->GetStaticMethodID = hooked_get_static_method_id;
     g_hook_table->CallStaticObjectMethod = hooked_call_static_object_method;
+    g_hook_table->CallStaticObjectMethodV = hooked_call_static_object_method_v;
+    g_hook_table->CallStaticObjectMethodA = hooked_call_static_object_method_a;
     *env = g_hook_table;
     LOGI("installed one-shot JNI lifetime hook for libjbedvm at %p", (void *) g_jbed_base);
 }
