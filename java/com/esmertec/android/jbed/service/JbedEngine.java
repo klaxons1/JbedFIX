@@ -353,8 +353,11 @@ public class JbedEngine implements JbedConstants {
         public JbedThread() {
             // The 2011 VM schedules its own Java-isolate frames through this
             // Android thread. ART's default ~1 MiB stack overflows during AMS
-            // bootstrap; use a bounded but practical legacy VM stack.
-            super(null, null, "JbedThread", 4L * 1024L * 1024L);
+            // bootstrap; diagnostic 8 MiB to expose whether 5136KB is a hard
+            // recursion limit or just host-stack limit. Production fix is
+            // to fix Jbed_iterate/scheduler zero-delay loop, not to keep
+            // growing the host stack.
+            super(null, null, "JbedThread", 8L * 1024L * 1024L);
             this.mViewWidth = -1;
             this.mViewHeight = -1;
             this.mBytesPerPixel = -1;
@@ -424,7 +427,13 @@ public class JbedEngine implements JbedConstants {
                 JbedEngine.this.nativeJbedRequestState(3);
                 while (!JbedEngine.this.mShutdownVM) {
                     JbedEngine.this.mEventPending = false;
-                    int delay = JbedEngine.this.nativeJbedRun();
+                    int delay;
+                    try {
+                        delay = JbedEngine.this.nativeJbedRun();
+                    } catch (StackOverflowError e) {
+                        Log.e(JbedEngine.TAG, "StackOverflow in nativeJbedRun, delay fallback 100ms", e);
+                        delay = 100;
+                    }
                     if (delay >= 10 && !JbedEngine.this.mShutdownVM) {
                         synchronized (this) {
                             if (!JbedEngine.this.mEventPending) {
