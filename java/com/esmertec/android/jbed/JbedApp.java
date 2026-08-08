@@ -23,6 +23,7 @@ import java.util.Map;
 
 /* JADX INFO: loaded from: classes.dex */
 public class JbedApp extends Application {
+    private static JbedApp sInstance;
     private static final int EVENT_APP_BASE = 99000;
     public static final int EVENT_SERVICE_CONNECTED = 99001;
     public static final int EVENT_SERVICE_DISCONNECTED = 99002;
@@ -57,8 +58,13 @@ public class JbedApp extends Application {
     @Override // android.app.Application
     public void onCreate() {
         super.onCreate();
+        sInstance = this;
         JbedSettings.getInstance(this);
         LogTag.appDebug(TAG, "onCreate");
+    }
+
+    public static JbedApp getInstance() {
+        return sInstance;
     }
 
     @Override // android.app.Application

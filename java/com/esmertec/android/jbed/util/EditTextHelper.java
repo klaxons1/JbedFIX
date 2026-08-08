@@ -1,8 +1,9 @@
 package com.esmertec.android.jbed.util;
 
 import android.text.InputFilter;
-import android.text.method.DialerKeyListener;
+import android.text.InputType;
 import android.text.method.DigitsKeyListener;
+import android.text.method.NumberKeyListener;
 import android.text.method.KeyListener;
 import android.text.method.PasswordTransformationMethod;
 import android.text.method.TextKeyListener;
@@ -22,10 +23,15 @@ public class EditTextHelper implements JbedConstants {
                 l = DigitsKeyListener.getInstance(true, false);
                 break;
             case 3:
-                l = new DialerKeyListener() { // from class: com.esmertec.android.jbed.util.EditTextHelper.1
-                    @Override // android.text.method.DialerKeyListener, android.text.method.NumberKeyListener
+                l = new NumberKeyListener() { // from class: com.esmertec.android.jbed.util.EditTextHelper.1
+                    @Override // android.text.method.NumberKeyListener
                     protected char[] getAcceptedChars() {
                         return new char[]{'0', '1', '2', '3', '4', '5', '6', '7', '8', '9'};
+                    }
+
+                    @Override // android.text.method.NumberKeyListener
+                    public int getInputType() {
+                        return InputType.TYPE_CLASS_PHONE;
                     }
                 };
                 break;

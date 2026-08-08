@@ -6,29 +6,21 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.net.Uri;
+import android.os.Build;
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
-import android.os.RemoteException;
-import android.os.ServiceManager;
-import android.telephony.PhoneNumberUtils;
-import android.telephony.gsm.SmsManager;
-import android.telephony.gsm.SmsMessage;
+import android.telephony.SmsManager;
+import android.telephony.SmsMessage;
 import android.text.TextUtils;
 import android.util.Log;
-import com.android.internal.telephony.EncodeException;
-import com.android.internal.telephony.GsmAlphabet;
-import com.android.internal.telephony.ISms;
-import com.android.internal.telephony.SmsHeader;
 import com.esmertec.android.jbed.JbedConstants;
-import com.esmertec.android.jbed.ams.AmsConstants;
 import com.esmertec.android.jbed.service.JbedService;
-import java.io.ByteArrayOutputStream;
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Random;
 
 /* JADX INFO: loaded from: classes.dex */
 public class JbedSmsManager extends BroadcastReceiver implements JbedService.LifecycleListener {
@@ -141,10 +133,9 @@ public class JbedSmsManager extends BroadcastReceiver implements JbedService.Lif
 
     private static int sendSms(int nativeContext, String dstAddr, int dstPort, byte[] payload, int type) throws UnsupportedEncodingException {
         JbedSmsSender.SmsData data;
-        SmsManager.getDefault();
         String text = getText(payload, type);
         Intent intent = new Intent(MESSAGE_SENT_ACTION);
-        intent.putExtra(NATIVE_CONTEXT_KEY, new Integer(nativeContext));
+        intent.putExtra(NATIVE_CONTEXT_KEY, Integer.valueOf(nativeContext));
         if (text == null) {
             data = new JbedSmsSender.BinarySmsData(dstAddr, dstPort, null, payload);
         } else {
@@ -179,6 +170,48 @@ public class JbedSmsManager extends BroadcastReceiver implements JbedService.Lif
         msg.sendToTarget();
     }
 
+    /* Detect the SMS data coding scheme from the raw PDU. Returns 1 = 7-bit,
+       2 = 8-bit, 3 = 16-bit (UCS-2), 0 = unknown. */
+    private static int getPduEncoding(byte[] pdu) {
+        if (pdu == null || pdu.length == 0) {
+            return 0;
+        }
+        try {
+            int i = 0;
+            int smscLen = pdu[i] & 255;
+            i += smscLen + 1;
+            if (i >= pdu.length) {
+                return 0;
+            }
+            i++;
+            if (i >= pdu.length) {
+                return 0;
+            }
+            int addrLen = pdu[i] & 255;
+            i += 2 + ((addrLen + 1) >> 1);
+            if (i >= pdu.length) {
+                return 0;
+            }
+            i++;
+            if (i >= pdu.length) {
+                return 0;
+            }
+            int dcs = pdu[i] & 255;
+            switch ((dcs >> 2) & 3) {
+                case 0:
+                    return 1;
+                case 1:
+                    return 2;
+                case 2:
+                    return 3;
+                default:
+                    return 0;
+            }
+        } catch (IndexOutOfBoundsException e) {
+            return 0;
+        }
+    }
+
     static class SmsReceiver extends BroadcastReceiver {
         private Handler mHandler;
         private int mPort;
@@ -189,11 +222,23 @@ public class JbedSmsManager extends BroadcastReceiver implements JbedService.Lif
         }
 
         private SmsMessage[] getMessagesFromIntent(Intent intent) {
-            Object[] messages = (Object[]) intent.getSerializableExtra("pdus");
+            Bundle extras = intent.getExtras();
+            if (extras == null) {
+                return new SmsMessage[0];
+            }
+            Object[] messages = (Object[]) extras.get("pdus");
+            if (messages == null) {
+                return new SmsMessage[0];
+            }
+            String format = extras.getString("format");
             int len = messages.length;
             SmsMessage[] msgs = new SmsMessage[len];
             for (int i = 0; i < len; i++) {
-                msgs[i] = SmsMessage.createFromPdu((byte[]) messages[i]);
+                if (Build.VERSION.SDK_INT >= 23) {
+                    msgs[i] = SmsMessage.createFromPdu((byte[]) messages[i], format);
+                } else {
+                    msgs[i] = SmsMessage.createFromPdu((byte[]) messages[i]);
+                }
             }
             return msgs;
         }
@@ -201,40 +246,51 @@ public class JbedSmsManager extends BroadcastReceiver implements JbedService.Lif
         @Override // android.content.BroadcastReceiver
         public void onReceive(Context context, Intent intent) {
             int encoding;
-            Intent SmsIntent = (Intent) intent.getExtra(JbedConstants.ACTION_JBED_PUSH_SMS);
+            Intent SmsIntent = (Intent) intent.getParcelableExtra(JbedConstants.ACTION_JBED_PUSH_SMS);
+            if (SmsIntent == null) {
+                return;
+            }
             Uri uri = SmsIntent.getData();
-            if (uri.getPort() == this.mPort) {
-                SmsMessage[] messages = getMessagesFromIntent(SmsIntent);
-                int len = messages.length;
-                byte[] payload = null;
-                int encoding2 = messages[0].mWrappedSmsMessage.encodingType;
-                if (encoding2 == 2 || encoding2 == 0) {
-                    encoding = 1;
-                    byte[][] userdata = new byte[len][];
-                    for (int i = 0; i < len; i++) {
-                        userdata[i] = messages[i].getUserData();
-                    }
-                    payload = mergeData(userdata);
-                    Log.i(JbedSmsManager.TAG, "onReceive get binary message =");
+            if (uri == null || uri.getPort() != this.mPort) {
+                return;
+            }
+            SmsMessage[] messages = getMessagesFromIntent(SmsIntent);
+            if (messages.length == 0 || messages[0] == null) {
+                return;
+            }
+            int len = messages.length;
+            byte[] payload = null;
+            int encoding2 = JbedSmsManager.getPduEncoding(messages[0].getPdu());
+            if (encoding2 == 2 || encoding2 == 0) {
+                encoding = 1;
+                byte[][] userdata = new byte[len][];
+                for (int i = 0; i < len; i++) {
+                    userdata[i] = messages[i].getUserData();
+                }
+                payload = mergeData(userdata);
+                Log.i(JbedSmsManager.TAG, "onReceive get binary message =");
+                if (payload != null) {
                     for (int i2 = 0; i2 < payload.length; i2++) {
                         Log.i(JbedSmsManager.TAG, "  data[" + i2 + "]= " + ((int) payload[i2]));
                     }
-                } else {
-                    encoding = 2;
-                    String messageText = "";
-                    for (SmsMessage smsMessage : messages) {
+                }
+            } else {
+                encoding = 2;
+                String messageText = "";
+                for (SmsMessage smsMessage : messages) {
+                    if (smsMessage.getMessageBody() != null) {
                         messageText = messageText + smsMessage.getMessageBody();
                     }
-                    try {
-                        payload = messageText.getBytes("UTF-16BE");
-                    } catch (UnsupportedEncodingException e) {
-                        Log.e(JbedSmsManager.TAG, "UnsupportedEncodingException");
-                    }
-                    Log.i(JbedSmsManager.TAG, "onReceive get text message =" + messageText);
                 }
-                for (NewMessageListener listener : JbedSmsManager.INSTANCE.mListeners) {
-                    listener.notifyNewSms(messages[0].getOriginatingAddress(), 0, this.mPort, encoding, messages[0].getTimestampMillis(), payload);
+                try {
+                    payload = messageText.getBytes("UTF-16BE");
+                } catch (UnsupportedEncodingException e) {
+                    Log.e(JbedSmsManager.TAG, "UnsupportedEncodingException");
                 }
+                Log.i(JbedSmsManager.TAG, "onReceive get text message =" + messageText);
+            }
+            for (NewMessageListener listener : JbedSmsManager.INSTANCE.mListeners) {
+                listener.notifyNewSms(messages[0].getOriginatingAddress(), 0, this.mPort, encoding, messages[0].getTimestampMillis(), payload);
             }
         }
 
@@ -245,64 +301,33 @@ public class JbedSmsManager extends BroadcastReceiver implements JbedService.Lif
             }
             int totalSize = 0;
             for (byte[] bArr : data) {
-                totalSize += bArr.length;
+                if (bArr != null) {
+                    totalSize += bArr.length;
+                }
             }
             byte[] ret = new byte[totalSize];
             int curPos = 0;
             for (int i = 0; i < segmentLen; i++) {
-                System.arraycopy(data[i], 0, ret, curPos, data[i].length);
-                curPos += data[i].length;
+                if (data[i] != null) {
+                    System.arraycopy(data[i], 0, ret, curPos, data[i].length);
+                    curPos += data[i].length;
+                }
             }
             return ret;
         }
     }
 
     static class JbedSmsSender {
-        private static final int MAX_USER_DATA_BYTES = 140;
         private static final int MAX_USER_DATA_BYTES_LONG_PORT_SMS = 128;
         private static final int MAX_USER_DATA_BYTES_PORT_SMS = 132;
-        private static final int MAX_USER_DATA_SEPTETS = 160;
-        private static final int MAX_USER_DATA_SEPTETS_LONG_PORT_SMS = 146;
-        private static final int MAX_USER_DATA_SEPTETS_PORT_SMS = 153;
+        private static final int MAX_USER_DATA_CHARS_LONG_PORT_SMS = 146;
+        private static final int MAX_USER_DATA_CHARS_PORT_SMS = 153;
 
         JbedSmsSender() {
         }
 
-        /* JADX INFO: Access modifiers changed from: private */
-        public static byte[] getConcatenatedData(int refId, int totalParts, int currentPart) {
-            byte[] data = {(byte) refId, (byte) totalParts, (byte) (currentPart + 1)};
-            return data;
-        }
-
-        /* JADX INFO: Access modifiers changed from: private */
-        public static void sendRawPdu(byte[] smsc, byte[] pdu, PendingIntent sentIntent, PendingIntent deliveryIntent, boolean bFirstOfAll, boolean bLastOfAll) {
-            try {
-                ISms simISms = ISms.Stub.asInterface(ServiceManager.getService("isms"));
-                if (simISms != null) {
-                    simISms.sendRawPdu(smsc, pdu, sentIntent, deliveryIntent, bFirstOfAll, bLastOfAll);
-                }
-            } catch (RemoteException e) {
-            }
-        }
-
-        /* JADX INFO: Access modifiers changed from: private */
-        public static ByteArrayOutputStream getSubmitPduHead(String scAddress, String destinationAddress, byte mtiByte, boolean statusReportRequested, SmsMessage.SubmitPdu ret) {
-            ByteArrayOutputStream bo = new ByteArrayOutputStream(180);
-            if (scAddress == null) {
-                ret.encodedScAddress = null;
-            } else {
-                ret.encodedScAddress = PhoneNumberUtils.networkPortionToCalledPartyBCDWithLength(scAddress);
-            }
-            if (statusReportRequested) {
-                mtiByte = (byte) (mtiByte | AmsConstants.PERM_ANSWER_ALWAYS);
-            }
-            bo.write(mtiByte);
-            bo.write(0);
-            byte[] daBytes = PhoneNumberUtils.networkPortionToCalledPartyBCD(destinationAddress);
-            bo.write(((daBytes.length - 1) * 2) - ((daBytes[daBytes.length - 1] & 240) == 240 ? 1 : 0));
-            bo.write(daBytes, 0, daBytes.length);
-            bo.write(0);
-            return bo;
+        private static void sendDataMessage(String dstAddr, int dstPort, byte[] data, PendingIntent sentIntent) {
+            SmsManager.getDefault().sendDataMessage(dstAddr, null, (short) dstPort, data, sentIntent, null);
         }
 
         private static abstract class SmsData {
@@ -310,39 +335,16 @@ public class JbedSmsManager extends BroadcastReceiver implements JbedService.Lif
             protected int mDstPort;
             protected String mSrcAddr;
 
-            abstract SmsMessage.SubmitPdu getSubmitPdu(int i, byte[] bArr);
-
-            public abstract void sendByDefault(List<PendingIntent> list);
+            public abstract int size();
 
             public abstract void sendSinglepartMessage(PendingIntent pendingIntent);
 
-            public abstract int size();
+            public abstract void sendMultipartMessage(List<PendingIntent> list);
 
             public SmsData(String dstAddr, int dstPort, String srcAddr) {
                 this.mDstAddr = dstAddr;
                 this.mDstPort = dstPort;
                 this.mSrcAddr = srcAddr;
-            }
-
-            public void sendMultipartMessage(List<PendingIntent> sentIntents) {
-                if (TextUtils.isEmpty(this.mDstAddr)) {
-                    throw new IllegalArgumentException("Invalid destinationAddress");
-                }
-                if (size() == 0) {
-                    throw new IllegalArgumentException("Invalid message body");
-                }
-                if (!hasPort()) {
-                    sendByDefault(sentIntents);
-                    return;
-                }
-                int sConcatenatedRef = new Random().nextInt(256);
-                int ref = (sConcatenatedRef + 1) & 255;
-                int count = size();
-                for (int i = 0; i < count; i++) {
-                    byte[] concatenatedInfo = JbedSmsSender.getConcatenatedData(ref, count, i);
-                    SmsMessage.SubmitPdu pdus = getSubmitPdu(i, concatenatedInfo);
-                    JbedSmsSender.sendRawPdu(pdus.encodedScAddress, pdus.encodedMessage, sentIntents.get(i), null, false, false);
-                }
             }
 
             boolean hasPort() {
@@ -355,72 +357,40 @@ public class JbedSmsManager extends BroadcastReceiver implements JbedService.Lif
 
             TextSmsData(String dstAddr, int dstPort, String srcAddr, String text) {
                 super(dstAddr, dstPort, srcAddr);
-                this.mData = divideMessageWithPort(text);
+                this.mData = divideMessage(text);
+            }
+
+            private List<String> divideMessage(String text) {
+                if (!hasPort()) {
+                    return SmsManager.getDefault().divideMessage(text);
+                }
+                List<String> result = new ArrayList<>();
+                if (text.length() == 0) {
+                    result.add("");
+                    return result;
+                }
+                int count = ((text.length() - 1) / JbedSmsSender.MAX_USER_DATA_CHARS_LONG_PORT_SMS) + 1;
+                int chunkSize = count > 1 ? JbedSmsSender.MAX_USER_DATA_CHARS_LONG_PORT_SMS : JbedSmsSender.MAX_USER_DATA_CHARS_PORT_SMS;
+                int start = 0;
+                while (start < text.length()) {
+                    int end = Math.min(start + chunkSize, text.length());
+                    result.add(text.substring(start, end));
+                    start = end;
+                }
+                return result;
+            }
+
+            private static byte[] toBytes(String text) {
+                try {
+                    return text.getBytes("UTF-16BE");
+                } catch (UnsupportedEncodingException e) {
+                    return text.getBytes();
+                }
             }
 
             @Override // com.esmertec.android.jbed.jsr.JbedSmsManager.JbedSmsSender.SmsData
             public int size() {
                 return this.mData.size();
-            }
-
-            private static int[] calculateLength(String messageBody) {
-                int[] ret = new int[4];
-                try {
-                    int septets = GsmAlphabet.countGsmSeptets(messageBody, true);
-                    ret[1] = septets;
-                    if (septets > JbedSmsSender.MAX_USER_DATA_SEPTETS_PORT_SMS) {
-                        ret[0] = (septets / JbedSmsSender.MAX_USER_DATA_SEPTETS_LONG_PORT_SMS) + 1;
-                        ret[2] = septets % JbedSmsSender.MAX_USER_DATA_SEPTETS_LONG_PORT_SMS;
-                    } else {
-                        ret[0] = 1;
-                        ret[2] = JbedSmsSender.MAX_USER_DATA_SEPTETS_PORT_SMS - septets;
-                    }
-                    ret[3] = 1;
-                } catch (EncodeException e) {
-                    int octets = messageBody.length() * 2;
-                    ret[1] = octets;
-                    if (octets > JbedSmsSender.MAX_USER_DATA_BYTES_PORT_SMS) {
-                        ret[0] = (octets / JbedSmsSender.MAX_USER_DATA_BYTES_LONG_PORT_SMS) + 1;
-                        ret[2] = octets % JbedSmsSender.MAX_USER_DATA_BYTES_LONG_PORT_SMS;
-                    } else {
-                        ret[0] = 1;
-                        ret[2] = JbedSmsSender.MAX_USER_DATA_BYTES_PORT_SMS - octets;
-                    }
-                    ret[3] = 3;
-                }
-                return ret;
-            }
-
-            private static List<String> divideMessageWithPort(String text) {
-                int contentAvailableSize;
-                int[] params = calculateLength(text);
-                int messageCount = params[0];
-                List<String> result = new ArrayList<>(messageCount);
-                if (text.length() == 0) {
-                    result.add("");
-                } else {
-                    if (messageCount > 1) {
-                        contentAvailableSize = params[3] == 3 ? JbedSmsSender.MAX_USER_DATA_BYTES_LONG_PORT_SMS : JbedSmsSender.MAX_USER_DATA_SEPTETS_LONG_PORT_SMS;
-                    } else {
-                        contentAvailableSize = params[3] == 3 ? JbedSmsSender.MAX_USER_DATA_BYTES_PORT_SMS : JbedSmsSender.MAX_USER_DATA_SEPTETS_PORT_SMS;
-                    }
-                    int fragmentStart = 0;
-                    int textSize = params[3] == 3 ? text.length() * 2 : text.length();
-                    if (params[3] == 3) {
-                        while (fragmentStart < textSize) {
-                            int fragmentEnd = fragmentStart + contentAvailableSize < textSize ? fragmentStart + contentAvailableSize : textSize;
-                            result.add(text.substring(fragmentStart / 2, fragmentEnd / 2));
-                            fragmentStart = fragmentEnd;
-                        }
-                    } else {
-                        while (fragmentStart < textSize) {
-                            int fragmentEnd2 = GsmAlphabet.findGsmSeptetLimitIndex(text, fragmentStart, contentAvailableSize);
-                            result.add(text.substring(fragmentStart, fragmentEnd2));
-                            fragmentStart = fragmentEnd2;
-                        }
-                    }
-                }
-                return result;
             }
 
             @Override // com.esmertec.android.jbed.jsr.JbedSmsManager.JbedSmsSender.SmsData
@@ -428,131 +398,67 @@ public class JbedSmsManager extends BroadcastReceiver implements JbedService.Lif
                 if (TextUtils.isEmpty(this.mDstAddr)) {
                     throw new IllegalArgumentException("Invalid destinationAddress");
                 }
+                if (size() == 0) {
+                    throw new IllegalArgumentException("Invalid message body");
+                }
                 if (hasPort()) {
-                    SmsMessage.SubmitPdu pdus = getSubmitPdu(0, null);
-                    JbedSmsSender.sendRawPdu(pdus.encodedScAddress, pdus.encodedMessage, sentIntent, null, false, false);
+                    JbedSmsSender.sendDataMessage(this.mDstAddr, this.mDstPort, toBytes(this.mData.get(0)), sentIntent);
                 } else {
-                    ArrayList<PendingIntent> sentIntents = new ArrayList<>();
-                    sentIntents.add(sentIntent);
-                    sendByDefault(sentIntents);
+                    SmsManager.getDefault().sendTextMessage(this.mDstAddr, null, this.mData.get(0), sentIntent, null);
                 }
             }
 
             @Override // com.esmertec.android.jbed.jsr.JbedSmsManager.JbedSmsSender.SmsData
-            public void sendByDefault(List<PendingIntent> sentIntents) {
-                SmsManager.getDefault().sendMultipartTextMessage(this.mDstAddr, null, (ArrayList) this.mData, (ArrayList) sentIntents, null);
-            }
-
-            @Override // com.esmertec.android.jbed.jsr.JbedSmsManager.JbedSmsSender.SmsData
-            public SmsMessage.SubmitPdu getSubmitPdu(int index, byte[] concatenatedElementData) {
-                String fragment = this.mData.get(index);
-                if (fragment == null || this.mDstAddr == null) {
-                    return null;
+            public void sendMultipartMessage(List<PendingIntent> sentIntents) {
+                if (TextUtils.isEmpty(this.mDstAddr)) {
+                    throw new IllegalArgumentException("Invalid destinationAddress");
                 }
-                SmsMessage.SubmitPdu ret = new SmsMessage.SubmitPdu();
-                ByteArrayOutputStream bo = JbedSmsSender.getSubmitPduHead(this.mSrcAddr, this.mDstAddr, (byte) 65, false, ret);
-                byte[] portData = new byte[4];
-                try {
-                    SmsHeader header = new SmsHeader();
-                    if (concatenatedElementData != null) {
-                        SmsHeader.MiscElt misc = new SmsHeader.MiscElt();
-                        misc.id = 0;
-                        misc.data = concatenatedElementData;
-                        header.miscEltList.add(misc);
-                    }
-                    portData[0] = (byte) ((this.mDstPort >> 8) & 255);
-                    portData[1] = (byte) (this.mDstPort & 255);
-                    portData[2] = 0;
-                    portData[3] = 0;
-                    SmsHeader.MiscElt misc2 = new SmsHeader.MiscElt();
-                    misc2.id = 5;
-                    misc2.data = portData;
-                    header.miscEltList.add(misc2);
-                    byte[] userData = GsmAlphabet.stringToGsm7BitPackedWithHeader(fragment, SmsHeader.toByteArray(header));
-                    if ((userData[0] & 255) > JbedSmsSender.MAX_USER_DATA_SEPTETS) {
-                        Log.w(JbedSmsManager.TAG, "getSubmitPdu Message too long");
-                        return null;
-                    }
-                    bo.write(0);
-                    bo.write(userData, 0, userData.length);
-                    ret.encodedMessage = bo.toByteArray();
-                    return ret;
-                } catch (EncodeException e) {
-                    try {
-                        byte[] userData2 = fragment.getBytes("utf-16be");
-                        if (userData2.length > JbedSmsSender.MAX_USER_DATA_BYTES) {
-                            Log.w(JbedSmsManager.TAG, "getSubmitPdu Message too long");
-                            return null;
-                        }
-                        bo.write(11);
-                        bo.write(userData2.length + (concatenatedElementData == null ? 7 : 12));
-                        bo.write(concatenatedElementData == null ? 6 : 11);
-                        if (concatenatedElementData != null) {
-                            bo.write(0);
-                            bo.write(3);
-                            bo.write(concatenatedElementData, 0, concatenatedElementData.length);
-                        }
-                        bo.write(5);
-                        bo.write(4);
-                        bo.write(portData, 0, portData.length);
-                        bo.write(userData2, 0, userData2.length);
-                    } catch (UnsupportedEncodingException e2) {
-                        return null;
-                    }
+                if (size() == 0) {
+                    throw new IllegalArgumentException("Invalid message body");
                 }
+                if (hasPort()) {
+                    int count = this.mData.size();
+                    for (int i = 0; i < count; i++) {
+                        JbedSmsSender.sendDataMessage(this.mDstAddr, this.mDstPort, toBytes(this.mData.get(i)), sentIntents.get(i));
+                    }
+                    return;
+                }
+                SmsManager.getDefault().sendMultipartTextMessage(this.mDstAddr, null, new ArrayList<>(this.mData), new ArrayList<>(sentIntents), null);
             }
         }
 
         private static class BinarySmsData extends SmsData {
-            private List<byte[]> mData;
+            private final List<byte[]> mData;
 
             public BinarySmsData(String dstAddr, int dstPort, String srcAddr, byte[] payload) {
                 super(dstAddr, dstPort, srcAddr);
                 this.mData = divideMessageWithPort(payload);
             }
 
+            private static List<byte[]> divideMessageWithPort(byte[] payload) {
+                List<byte[]> result = new ArrayList<>();
+                if (payload.length == 0) {
+                    result.add(new byte[0]);
+                    return result;
+                }
+                if (payload.length <= JbedSmsSender.MAX_USER_DATA_BYTES_PORT_SMS) {
+                    result.add(payload);
+                    return result;
+                }
+                int start = 0;
+                while (start < payload.length) {
+                    int end = Math.min(start + JbedSmsSender.MAX_USER_DATA_BYTES_LONG_PORT_SMS, payload.length);
+                    byte[] fragment = new byte[end - start];
+                    System.arraycopy(payload, start, fragment, 0, fragment.length);
+                    result.add(fragment);
+                    start = end;
+                }
+                return result;
+            }
+
             @Override // com.esmertec.android.jbed.jsr.JbedSmsManager.JbedSmsSender.SmsData
             public int size() {
                 return this.mData.size();
-            }
-
-            private static int[] calculateLength(byte[] payload) {
-                int[] ret = new int[3];
-                ret[1] = payload.length;
-                if (ret[1] > JbedSmsSender.MAX_USER_DATA_BYTES_PORT_SMS) {
-                    ret[0] = (ret[1] / JbedSmsSender.MAX_USER_DATA_BYTES_LONG_PORT_SMS) + 1;
-                    ret[2] = ret[1] % JbedSmsSender.MAX_USER_DATA_BYTES_LONG_PORT_SMS;
-                } else {
-                    ret[0] = 1;
-                    ret[2] = JbedSmsSender.MAX_USER_DATA_BYTES_PORT_SMS - ret[1];
-                }
-                return ret;
-            }
-
-            private List<byte[]> divideMessageWithPort(byte[] payload) {
-                int contentAvailableSize;
-                int[] params = calculateLength(payload);
-                int messageCount = params[0];
-                List<byte[]> result = new ArrayList<>(messageCount);
-                if (payload.length == 0) {
-                    result.add(new byte[0]);
-                } else {
-                    if (messageCount > 1) {
-                        contentAvailableSize = JbedSmsSender.MAX_USER_DATA_BYTES_LONG_PORT_SMS;
-                    } else {
-                        contentAvailableSize = JbedSmsSender.MAX_USER_DATA_BYTES_PORT_SMS;
-                    }
-                    int fragmentStart = 0;
-                    while (fragmentStart < params[1]) {
-                        int fragmentEnd = fragmentStart + contentAvailableSize < params[1] ? fragmentStart + contentAvailableSize : params[1];
-                        int fragmentLen = fragmentEnd - fragmentStart;
-                        byte[] fragment = new byte[fragmentLen];
-                        System.arraycopy(payload, fragmentStart, fragment, 0, fragmentLen);
-                        result.add(fragment);
-                        fragmentStart = fragmentEnd;
-                    }
-                }
-                return result;
             }
 
             @Override // com.esmertec.android.jbed.jsr.JbedSmsManager.JbedSmsSender.SmsData
@@ -563,39 +469,27 @@ public class JbedSmsManager extends BroadcastReceiver implements JbedService.Lif
                 if (this.mData.get(0) == null) {
                     throw new IllegalArgumentException("Invalid message data");
                 }
-                SmsMessage.SubmitPdu pdus = SmsMessage.getSubmitPdu(this.mSrcAddr, this.mDstAddr, (short) this.mDstPort, this.mData.get(0), false);
-                JbedSmsSender.sendRawPdu(pdus.encodedScAddress, pdus.encodedMessage, sentIntent, null, false, false);
-            }
-
-            @Override // com.esmertec.android.jbed.jsr.JbedSmsManager.JbedSmsSender.SmsData
-            public SmsMessage.SubmitPdu getSubmitPdu(int index, byte[] concatenatedElementData) {
-                byte[] fragment = this.mData.get(index);
-                if (fragment.length > JbedSmsSender.MAX_USER_DATA_BYTES_LONG_PORT_SMS) {
-                    Log.e(JbedSmsManager.TAG, "SMS data message may only contain 128 bytes");
-                    return null;
+                if (!hasPort()) {
+                    throw new UnsupportedOperationException("don't support send binary without port");
                 }
-                SmsMessage.SubmitPdu ret = new SmsMessage.SubmitPdu();
-                ByteArrayOutputStream bo = JbedSmsSender.getSubmitPduHead(this.mSrcAddr, this.mDstAddr, (byte) 65, false, ret);
-                bo.write(4);
-                bo.write(fragment.length + 12);
-                bo.write(11);
-                bo.write(0);
-                bo.write(3);
-                bo.write(concatenatedElementData, 0, concatenatedElementData.length);
-                bo.write(5);
-                bo.write(4);
-                bo.write((this.mDstPort >> 8) & 255);
-                bo.write(this.mDstPort & 255);
-                bo.write(0);
-                bo.write(0);
-                bo.write(fragment, 0, fragment.length);
-                ret.encodedMessage = bo.toByteArray();
-                return ret;
+                JbedSmsSender.sendDataMessage(this.mDstAddr, this.mDstPort, this.mData.get(0), sentIntent);
             }
 
             @Override // com.esmertec.android.jbed.jsr.JbedSmsManager.JbedSmsSender.SmsData
-            public void sendByDefault(List<PendingIntent> sentIntents) {
-                throw new UnsupportedOperationException("don't support send binary without port");
+            public void sendMultipartMessage(List<PendingIntent> sentIntents) {
+                if (TextUtils.isEmpty(this.mDstAddr)) {
+                    throw new IllegalArgumentException("Invalid destinationAddress");
+                }
+                if (size() == 0) {
+                    throw new IllegalArgumentException("Invalid message body");
+                }
+                if (!hasPort()) {
+                    throw new UnsupportedOperationException("don't support send binary without port");
+                }
+                int count = this.mData.size();
+                for (int i = 0; i < count; i++) {
+                    JbedSmsSender.sendDataMessage(this.mDstAddr, this.mDstPort, this.mData.get(i), sentIntents.get(i));
+                }
             }
         }
     }

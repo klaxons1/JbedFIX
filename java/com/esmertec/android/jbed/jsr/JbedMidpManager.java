@@ -10,11 +10,10 @@ import android.database.Cursor;
 import android.net.Uri;
 import android.os.Handler;
 import android.os.Message;
-import android.os.SystemProperties;
 import android.os.Vibrator;
 import android.provider.Telephony;
+import android.telephony.TelephonyManager;
 import android.util.Log;
-import com.android.internal.telephony.Phone;
 import com.esmertec.android.jbed.JbedConfig;
 import com.esmertec.android.jbed.JbedConstants;
 import com.esmertec.android.jbed.JbedProvider;
@@ -64,10 +63,9 @@ public class JbedMidpManager implements JbedService.LifecycleListener, JbedConst
             Message msg;
             if (intent.getAction().equals(JbedMidpManager.ACTION_PHONE_STATE_CHANGED)) {
                 String phoneState = intent.getStringExtra(TransactionService.STATE);
-                Phone.State state = Enum.valueOf(Phone.State.class, phoneState);
-                if (state == Phone.State.RINGING || state == Phone.State.OFFHOOK) {
+                if (TelephonyManager.EXTRA_STATE_RINGING.equals(phoneState) || TelephonyManager.EXTRA_STATE_OFFHOOK.equals(phoneState)) {
                     msg = JbedMidpManager.this.mHandler.obtainMessage(6, 2, 0);
-                } else if (state == Phone.State.IDLE) {
+                } else if (TelephonyManager.EXTRA_STATE_IDLE.equals(phoneState)) {
                     if (JbedConfig.isBlockVMAfterPhoneHangup() && !((JbedService) JbedMidpManager.this.mContext).mAmsConnection.getRunningMidletList().isEmpty()) {
                         JbedMidpManager.this.mHandler.obtainMessage(9).sendToTarget();
                     }
@@ -98,7 +96,6 @@ public class JbedMidpManager implements JbedService.LifecycleListener, JbedConst
         };
         this.mHandler = handler;
         INSTANCE = this;
-        this.mVibrator = new Vibrator();
     }
 
     @Override // com.esmertec.android.jbed.service.JbedService.LifecycleListener
@@ -130,7 +127,12 @@ public class JbedMidpManager implements JbedService.LifecycleListener, JbedConst
     /* JADX INFO: Access modifiers changed from: private */
     public void setJbedHttpProxy() {
         Uri PREFERAPN_URI = Uri.parse("content://telephony/carriers/preferapn");
-        String where = "numeric=\"" + SystemProperties.get("gsm.sim.operator.numeric", "") + "\"";
+        String simOperator = "";
+        TelephonyManager tm = (TelephonyManager) this.mContext.getSystemService(Context.TELEPHONY_SERVICE);
+        if (tm != null && tm.getSimOperator() != null) {
+            simOperator = tm.getSimOperator();
+        }
+        String where = "numeric=\"" + simOperator + "\"";
         Cursor cursor = this.mContext.getContentResolver().query(PREFERAPN_URI, null, where, null, "name ASC");
         if (cursor == null) {
             Log.e(TAG, "ERROR:-----------setJbedHttpProxy failed to get the apn information");
@@ -194,10 +196,18 @@ public class JbedMidpManager implements JbedService.LifecycleListener, JbedConst
     }
 
     static void setVibrate(boolean isVibrate) {
+        Vibrator vibrator = INSTANCE.mVibrator;
+        if (vibrator == null) {
+            vibrator = (Vibrator) INSTANCE.mContext.getSystemService(Context.VIBRATOR_SERVICE);
+            INSTANCE.mVibrator = vibrator;
+        }
+        if (vibrator == null) {
+            return;
+        }
         if (isVibrate) {
-            INSTANCE.mVibrator.vibrate(31536000000L);
+            vibrator.vibrate(31536000000L);
         } else {
-            INSTANCE.mVibrator.cancel();
+            vibrator.cancel();
         }
     }
 

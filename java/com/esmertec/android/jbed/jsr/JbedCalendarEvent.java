@@ -5,8 +5,7 @@ import android.content.ContentUris;
 import android.content.ContentValues;
 import android.database.Cursor;
 import android.net.Uri;
-import android.pim.EventRecurrence;
-import android.provider.Calendar;
+import android.provider.CalendarContract;
 import android.text.TextUtils;
 import android.text.format.Time;
 import android.util.Log;
@@ -64,7 +63,7 @@ public class JbedCalendarEvent implements JbedPimManager.PimAction {
         if (TextUtils.isEmpty(id)) {
             id = "-1";
         }
-        Cursor cursor = Calendar.Events.query(this.mResolver, (String[]) null, "_id>" + id, JbedCalendarTodo.Tasks.ID);
+        Cursor cursor = this.mResolver.query(CalendarContract.Events.CONTENT_URI, (String[]) null, "_id>" + id, null, JbedCalendarTodo.Tasks.ID);
         String result = null;
         if (cursor != null) {
             try {
@@ -106,7 +105,7 @@ public class JbedCalendarEvent implements JbedPimManager.PimAction {
     }
 
     private void loadReminders(long eventId, long startTime) {
-        Cursor cursor = this.mResolver.query(Calendar.Reminders.CONTENT_URI, null, "event_id=" + eventId, null, null);
+        Cursor cursor = this.mResolver.query(CalendarContract.Reminders.CONTENT_URI, null, "event_id=" + eventId, null, null);
         try {
             this.reminderList.clear();
             for (int i = 0; cursor != null && cursor.moveToNext() && i < 10; i++) {
@@ -192,12 +191,12 @@ public class JbedCalendarEvent implements JbedPimManager.PimAction {
             Log.e(TAG, " the id is empty! can't delete");
             return -1;
         }
-        Uri contentURI = ContentUris.withAppendedId(Calendar.Events.CONTENT_URI, Long.parseLong(id));
+        Uri contentURI = ContentUris.withAppendedId(CalendarContract.Events.CONTENT_URI, Long.parseLong(id));
         int count = this.mResolver.delete(contentURI, null, null);
         if (count == 0) {
             Log.w(TAG, "WARNING: failed to delete event id " + id);
         }
-        JbedPimManager.removeByUri(this.mResolver, Calendar.Reminders.CONTENT_URI, null, "event_id=" + id);
+        JbedPimManager.removeByUri(this.mResolver, CalendarContract.Reminders.CONTENT_URI, null, "event_id=" + id);
         return 0;
     }
 
@@ -270,11 +269,60 @@ public class JbedCalendarEvent implements JbedPimManager.PimAction {
         return result2;
     }
 
+    /* JADX INFO: Access modifiers changed from: private */
+    static class RecurrenceRule {
+        int count;
+        int freq;
+        int interval;
+        String until;
+
+        RecurrenceRule() {
+        }
+    }
+
+    private static RecurrenceRule parseRecurrence(String rfc2445Recurrence) {
+        RecurrenceRule rule = new RecurrenceRule();
+        if (rfc2445Recurrence == null) {
+            return rule;
+        }
+        for (String part : rfc2445Recurrence.split(";")) {
+            int eq = part.indexOf(61);
+            if (eq <= 0) {
+                continue;
+            }
+            String name = part.substring(0, eq).trim();
+            String value = part.substring(eq + 1).trim();
+            if ("FREQ".equalsIgnoreCase(name)) {
+                if ("DAILY".equalsIgnoreCase(value)) {
+                    rule.freq = 4;
+                } else if ("WEEKLY".equalsIgnoreCase(value)) {
+                    rule.freq = 5;
+                } else if ("MONTHLY".equalsIgnoreCase(value)) {
+                    rule.freq = 6;
+                } else if ("YEARLY".equalsIgnoreCase(value)) {
+                    rule.freq = 7;
+                }
+            } else if ("INTERVAL".equalsIgnoreCase(name)) {
+                try {
+                    rule.interval = Integer.parseInt(value);
+                } catch (NumberFormatException e) {
+                }
+            } else if ("COUNT".equalsIgnoreCase(name)) {
+                try {
+                    rule.count = Integer.parseInt(value);
+                } catch (NumberFormatException e2) {
+                }
+            } else if ("UNTIL".equalsIgnoreCase(name)) {
+                rule.until = value;
+            }
+        }
+        return rule;
+    }
+
     String convertRfc2445RecurrenceToRRule(String rfc2445Recurrence) {
         String result;
         String result2;
-        EventRecurrence eventRecurrence = new EventRecurrence();
-        eventRecurrence.parse(rfc2445Recurrence);
+        RecurrenceRule eventRecurrence = parseRecurrence(rfc2445Recurrence);
         switch (eventRecurrence.freq) {
             case 4:
                 result = "D";
@@ -307,16 +355,16 @@ public class JbedCalendarEvent implements JbedPimManager.PimAction {
 
     private long save(long id, ContentValues eventValues, List<ContentValues> remindValues) {
         if (id == 0) {
-            Uri uri = this.mResolver.insert(Calendar.Events.CONTENT_URI, eventValues);
+            Uri uri = this.mResolver.insert(CalendarContract.Events.CONTENT_URI, eventValues);
             id = ContentUris.parseId(uri);
         } else {
-            Uri uri2 = ContentUris.withAppendedId(Calendar.Events.CONTENT_URI, id);
+            Uri uri2 = ContentUris.withAppendedId(CalendarContract.Events.CONTENT_URI, id);
             this.mResolver.update(uri2, eventValues, null, null);
-            JbedPimManager.removeByUri(this.mResolver, Calendar.Reminders.CONTENT_URI, null, "event_id=" + id);
+            JbedPimManager.removeByUri(this.mResolver, CalendarContract.Reminders.CONTENT_URI, null, "event_id=" + id);
         }
         for (ContentValues v : remindValues) {
             v.put("event_id", Long.valueOf(id));
-            this.mResolver.insert(Calendar.Reminders.CONTENT_URI, v);
+            this.mResolver.insert(CalendarContract.Reminders.CONTENT_URI, v);
         }
         return id;
     }
@@ -327,12 +375,12 @@ public class JbedCalendarEvent implements JbedPimManager.PimAction {
         if (calendarId != -1) {
             return calendarId;
         }
-        Cursor cursor = resolver.query(Calendar.Calendars.CONTENT_URI, null, "name='jbed'", null, null);
+        Cursor cursor = resolver.query(CalendarContract.Calendars.CONTENT_URI, null, "name='jbed'", null, null);
         if (cursor == null) {
             ContentValues c = new ContentValues();
             c.put(JbedProvider.Midlets.NAME, JBED_CALENDAR_NAME);
             c.put("hidden", (Boolean) false);
-            Uri uri = resolver.insert(Calendar.Calendars.CONTENT_URI, c);
+            Uri uri = resolver.insert(CalendarContract.Calendars.CONTENT_URI, c);
             calendarId = ContentUris.parseId(uri);
             if (Log.isLoggable(TAG, 3)) {
                 Log.d(TAG, "create a jbed calendar id=" + calendarId);
@@ -348,7 +396,7 @@ public class JbedCalendarEvent implements JbedPimManager.PimAction {
                     ContentValues c2 = new ContentValues();
                     c2.put(JbedProvider.Midlets.NAME, JBED_CALENDAR_NAME);
                     c2.put("hidden", (Boolean) false);
-                    Uri uri2 = resolver.insert(Calendar.Calendars.CONTENT_URI, c2);
+                    Uri uri2 = resolver.insert(CalendarContract.Calendars.CONTENT_URI, c2);
                     calendarId = ContentUris.parseId(uri2);
                     if (Log.isLoggable(TAG, 3)) {
                         Log.d(TAG, "create a jbed calendar id=" + calendarId);
