@@ -35,10 +35,19 @@ mkdir -p lib/armeabi
   -Wl,-soname,libskia.so \
   -o lib/armeabi/libskia.so native_compat/libskia_compat.c
 
-# This VM has no unresolved libcutils symbols; it still carries the old
-# DT_NEEDED entry, so provide a valid empty compatibility library.
+# libjbedvm imports platform libpng symbols without a DT_NEEDED entry. Build
+# it first and make it a dependency of libcutils, which *is* in Jbed's linker
+# dependency group; System.loadLibrary alone loads it RTLD_LOCAL on Android.
 "$clang" --target=armv7a-linux-androideabi21 -fPIC -shared -O2 \
-  -Wl,-soname,libcutils.so \
+  -Wl,-soname,libpng.so \
+  -o lib/armeabi/libpng.so native_compat/libpng_compat.c
+
+# This VM has no unresolved libcutils symbols; it still carries the old
+# DT_NEEDED entry. Its libpng dependency makes PNG symbols available while
+# resolving libjbedvm.so.
+"$clang" --target=armv7a-linux-androideabi21 -fPIC -shared -O2 \
+  -Wl,-soname,libcutils.so -Wl,--no-as-needed \
+  -Llib/armeabi -l:libpng.so \
   -o lib/armeabi/libcutils.so native_compat/empty_legacy_library.c
 
 # Software compatibility path for the pre-Honeycomb Surface API used by Jbed.
@@ -48,11 +57,5 @@ mkdir -p lib/armeabi
 "$clang" --target=armv7a-linux-androideabi21 -fPIC -shared -O2 \
   -Wl,-soname,libsurfaceflinger_client.so \
   -o lib/armeabi/libsurfaceflinger_client.so native_compat/libsurface_compat.c
-
-# libjbedvm was linked against a platform libpng rather than declaring it as a
-# DT_NEEDED dependency. It is loaded explicitly before the VM below.
-"$clang" --target=armv7a-linux-androideabi21 -fPIC -shared -O2 \
-  -Wl,-soname,libpng.so \
-  -o lib/armeabi/libpng.so native_compat/libpng_compat.c
 
 echo "Built Jbed native compatibility libraries"

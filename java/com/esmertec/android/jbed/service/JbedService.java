@@ -154,10 +154,8 @@ public class JbedService extends Service implements JbedConstants {
         LogTag.serviceDebug(TAG, "JNI search path is " + System.getProperty("java.library.path"));
         LogTag.serviceDebug(TAG, "jbedvm becomes '" + System.mapLibraryName(JbedConstants.JBED_NATIVE_LIB));
         try {
-            // The 2011 VM expected libpng symbols from the old platform linker
-            // namespace but did not declare a DT_NEEDED entry for libpng.
-            // Load the packaged compatibility provider before loading the VM.
-            System.loadLibrary("png");
+            // libpng is brought into the VM's linker dependency group through
+            // the packaged libcutils compatibility shim.
             System.loadLibrary(JbedConstants.JBED_NATIVE_LIB);
         } catch (UnsatisfiedLinkError ule) {
             Log.e(TAG, "WARNING: Could not load jbed native lib jbedvm", ule);
