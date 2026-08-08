@@ -45,6 +45,7 @@
 #define JBED_VM_NATIVE_ACTIVE_OFFSET 0x320160u
 #define JBED_AMS_UPCALL_QUEUE_OFFSET 0x31edc0u
 #define JBED_EVENT_HANDLER_TABLE_OFFSET 0x320068u
+#define JBED_EVENT_HANDLER_MASK_OFFSET 0x320170u
 #define JBED_CURRENT_SCHEDULED_OFFSET 0x3200a8u
 #define JBED_SCHEDULED_COUNT_OFFSET 0x320228u
 #define JBED_WAITING_SCHEDULED_COUNT_OFFSET 0x32022cu
@@ -266,12 +267,63 @@ static void dump_upcall_queue(const char *label, const char *name, uint32_t queu
         LOGI("%s %s[%d]=%p next=%p prio=%u read=%u write=%u cap=%u tmpWrite=%d tmpRead=%d",
              label, name, index, (void *) queue_ptr, (void *) q[0], q[1], q[2], q[3], q[4],
              (int32_t) q[5], (int32_t) q[6]);
+        if (q[3] != q[2]) {
+            uint32_t pos = q[2];
+            LOGI("%s %s[%d] head words: %08x %08x %08x %08x %08x %08x %08x %08x",
+                 label, name, index, q[7 + pos], q[7 + ((pos + 1) % q[4])],
+                 q[7 + ((pos + 2) % q[4])], q[7 + ((pos + 3) % q[4])],
+                 q[7 + ((pos + 4) % q[4])], q[7 + ((pos + 5) % q[4])],
+                 q[7 + ((pos + 6) % q[4])], q[7 + ((pos + 7) % q[4])]);
+        }
         queue_ptr = q[0];
         ++index;
     }
     if (index == 0) {
         LOGI("%s %s=<null>", label, name);
     }
+}
+
+static void dump_event_handlers(const char *label, uint32_t event_id) {
+    uint32_t table = read_u32(JBED_EVENT_HANDLER_TABLE_OFFSET);
+    uint32_t mask = read_u32(JBED_EVENT_HANDLER_MASK_OFFSET);
+    uint32_t bucket;
+    uint32_t handler;
+    int index = 0;
+
+    if (table == 0) {
+        LOGI("%s handlers event=%u table=<null> mask=0x%08x", label, event_id, mask);
+        return;
+    }
+    bucket = event_id & mask;
+    LOGI("%s handlers event=%u table=0x%08x len=%u mask=0x%08x bucket=%u",
+         label, event_id, table, *(uint32_t *) (table + 12), mask, bucket);
+    if (*(uint32_t *) (table + 12) <= bucket) {
+        LOGI("%s handlers bucket out of range", label);
+        return;
+    }
+    handler = *(uint32_t *) (table + 16 + 4 * bucket);
+    while (handler != 0 && index < 12) {
+        uint32_t *h = (uint32_t *) handler;
+        LOGI("%s handler[%d]=0x%08x bucket=%u event=%u field6=0x%08x scheduled=0x%08x field8=0x%08x prev=0x%08x next=0x%08x",
+             label, index, handler, h[4], h[5], h[6], h[7], h[8], h[9], h[10]);
+        handler = h[10];
+        ++index;
+    }
+    if (index == 0) {
+        LOGI("%s handlers event=%u bucket empty", label, event_id);
+    }
+}
+
+static void dump_current_scheduled(const char *label) {
+    uint32_t current = read_u32(JBED_CURRENT_SCHEDULED_OFFSET);
+    if (current == 0) {
+        LOGI("%s currentScheduled=<null>", label);
+        return;
+    }
+    uint32_t *s = (uint32_t *) current;
+    LOGI("%s currentScheduled=0x%08x words: %08x %08x %08x %08x %08x %08x %08x %08x %08x %08x %08x %08x %08x %08x",
+         label, current, s[0], s[1], s[2], s[3], s[4], s[5], s[6], s[7],
+         s[8], s[9], s[10], s[11], s[12], s[13]);
 }
 
 static void dump_scheduler_state(const char *label) {
@@ -289,6 +341,8 @@ static void dump_scheduler_state(const char *label) {
          call_state_frame, read_u32(JBED_EVENT_HANDLER_TABLE_OFFSET),
          read_u32(JBED_CURRENT_SCHEDULED_OFFSET), read_u32(JBED_SCHEDULED_COUNT_OFFSET),
          read_u32(JBED_WAITING_SCHEDULED_COUNT_OFFSET), ams_queue, queue_list);
+    dump_current_scheduled(label);
+    dump_event_handlers(label, 210);
     dump_upcall_queue(label, "amsQueue", ams_queue);
     dump_upcall_queue(label, "queueList", queue_list);
 }
