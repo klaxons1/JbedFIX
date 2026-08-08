@@ -190,7 +190,7 @@ Scheduler.setForeground from null to com.jbed.ams.NativeAms
 
 `JbedFileManager.getRoots()` is reached through the old native JNI bridge but returns null with a pending Java exception on this ART runtime. Its precise failure did not safely produce a Java stack trace: attempting `ExceptionDescribe()` itself hit the already constrained Jbed thread stack.
 
-The compatibility shim now bypasses the two unsafe legacy static JNI callbacks entirely (`088a580`): it supplies `"<unknown>"` for native i18n and a valid five-byte **zero-root** payload for `getRoots`, without entering Android Java. This lets `FileSystemCallHandler.register` complete, but does **not** provide a usable SD-card/FileConnection implementation. Separately, `JbedFileManager` maps legacy `/mnt/sdcard` to Android's actual legacy external-storage path when its normal Java method can run (`043ce2f`).
+The compatibility shim now bypasses the two unsafe legacy static JNI callbacks entirely (`088a580`): it supplies `"<unknown>"` for native i18n and synthesizes a one-root `sdcard/` FileConnection payload for `getRoots`, without entering Android Java. The root path is chosen from `EXTERNAL_STORAGE`, `/storage/emulated/0`, `/sdcard`, then `/mnt/sdcard`. This is enough to stop NativeAms from treating storage as absent, but full FileConnection behavior is still not proven. Separately, `JbedFileManager` maps legacy `/mnt/sdcard` to Android's actual legacy external-storage path when its normal Java method can run (`043ce2f`).
 
 ### Current active blocker: Jbed thread stack
 
@@ -206,7 +206,7 @@ The same stack exhaustion occurred during the failing `getRoots()` callback. The
 
 Current experiment: `libjbedcompat.so` now also patches libjbedvm's original `JbedEngine.nativeJbedRun()` Thumb wrapper in memory. Instead of replacing the JNI method with a cross-library callback, it changes the wrapper's hard-coded `Jbed_run(50)` immediate to `Jbed_run(20)`. This is the lowest valid scheduler quantum: smaller values trip libjbedvm's own `quantum >= 20` assertion. The Android host `JbedThread` is back at 16 MiB diagnostic stack headroom, and Java unblocks the AMS startup wait if nativeJbedRun still overflows after the foreground transition, so the UI is not left forever on the modal wait dialog.
 
-Surface rendering also remains unresolved because the `libsurfaceflinger_client.so` shim has no modern display presentation path.
+Surface rendering also remains unresolved because the `libsurfaceflinger_client.so` shim has no modern display presentation path. Android 11 also blocks direct APN provider access; `JbedMidpManager` now treats APN lookup/observer failures as "no HTTP proxy" instead of crashing the remote VM process, and the legacy APN settings menu is hidden.
 
 ### Focused test procedure
 

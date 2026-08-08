@@ -105,7 +105,11 @@ public class JbedMidpManager implements JbedService.LifecycleListener, JbedConst
         context.registerReceiver(this.mIncomingCallReceiver, incomingCallFilter);
         IntentFilter vmStartFilter = new IntentFilter(JbedConstants.ACTION_JBED_VM_STARTED);
         context.registerReceiver(this.mVmStartedReceiver, vmStartFilter);
-        context.getContentResolver().registerContentObserver(Telephony.Carriers.CONTENT_URI, true, this.apnObserver);
+        try {
+            context.getContentResolver().registerContentObserver(Telephony.Carriers.CONTENT_URI, true, this.apnObserver);
+        } catch (RuntimeException e) {
+            Log.w(TAG, "APN observer unavailable on this Android release; continuing without APN proxy updates", e);
+        }
     }
 
     @Override // com.esmertec.android.jbed.service.JbedService.LifecycleListener
@@ -133,34 +137,47 @@ public class JbedMidpManager implements JbedService.LifecycleListener, JbedConst
             simOperator = tm.getSimOperator();
         }
         String where = "numeric=\"" + simOperator + "\"";
-        Cursor cursor = this.mContext.getContentResolver().query(PREFERAPN_URI, null, where, null, "name ASC");
-        if (cursor == null) {
-            Log.e(TAG, "ERROR:-----------setJbedHttpProxy failed to get the apn information");
-            return;
+        Cursor cursor = null;
+        try {
+            cursor = this.mContext.getContentResolver().query(PREFERAPN_URI, null, where, null, "name ASC");
+            if (cursor == null) {
+                Log.w(TAG, "setJbedHttpProxy: APN provider returned no cursor; continuing without proxy");
+                nativeSetJbedProperty(JBED_HTTP_PROXY, "");
+                return;
+            }
+            cursor.moveToFirst();
+            if (!cursor.isAfterLast()) {
+                cursor.getString(cursor.getColumnIndexOrThrow(JbedProvider.Midlets.NAME));
+                cursor.getString(cursor.getColumnIndexOrThrow("apn"));
+                String proxy = cursor.getString(cursor.getColumnIndexOrThrow("proxy"));
+                String port = cursor.getString(cursor.getColumnIndexOrThrow("port"));
+                cursor.getString(cursor.getColumnIndexOrThrow(TransactionService.TRANSACTION_TYPE));
+                String user = cursor.getString(cursor.getColumnIndexOrThrow("user"));
+                String password = cursor.getString(cursor.getColumnIndexOrThrow("password"));
+                String proxyAndPort = "";
+                if (proxy != null && proxy.trim().length() != 0) {
+                    proxyAndPort = proxy + ":" + port;
+                }
+                nativeSetJbedProperty(JBED_HTTP_PROXY, proxyAndPort);
+                if (user != null) {
+                    nativeSetJbedProperty(JBED_HTTP_USER, user);
+                }
+                if (password != null) {
+                    nativeSetJbedProperty(JBED_HTTP_PASSWORD, password);
+                }
+            }
+        } catch (RuntimeException e) {
+            // Android 11 protects APN settings from ordinary apps. The original
+            // Android 2.x integration used APN data only to configure an HTTP
+            // proxy, so continue with no proxy instead of crashing the remote VM
+            // process after ACTION_JBED_VM_STARTED.
+            Log.w(TAG, "setJbedHttpProxy: APN access unavailable; continuing without proxy", e);
+            nativeSetJbedProperty(JBED_HTTP_PROXY, "");
+        } finally {
+            if (cursor != null) {
+                cursor.close();
+            }
         }
-        cursor.moveToFirst();
-        if (!cursor.isAfterLast()) {
-            cursor.getString(cursor.getColumnIndexOrThrow(JbedProvider.Midlets.NAME));
-            cursor.getString(cursor.getColumnIndexOrThrow("apn"));
-            String proxy = cursor.getString(cursor.getColumnIndexOrThrow("proxy"));
-            String port = cursor.getString(cursor.getColumnIndexOrThrow("port"));
-            cursor.getString(cursor.getColumnIndexOrThrow(TransactionService.TRANSACTION_TYPE));
-            String user = cursor.getString(cursor.getColumnIndexOrThrow("user"));
-            String password = cursor.getString(cursor.getColumnIndexOrThrow("password"));
-            String proxyAndPort = "";
-            if (proxy != null && proxy.trim().length() != 0) {
-                proxyAndPort = proxy + ":" + port;
-            }
-            nativeSetJbedProperty(JBED_HTTP_PROXY, proxyAndPort);
-            if (user != null) {
-                nativeSetJbedProperty(JBED_HTTP_USER, user);
-            }
-            if (password != null) {
-                nativeSetJbedProperty(JBED_HTTP_PASSWORD, password);
-            }
-            cursor.moveToNext();
-        }
-        cursor.close();
     }
 
     static String getIntentActionByUrl(String url) {

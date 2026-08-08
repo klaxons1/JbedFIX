@@ -73,7 +73,8 @@ be a full renderer; Jbed's Surface-buffer rendering can then be tested.
 
 - clones the active `JNIEnv` table long enough to promote libjbedvm's saved
   `JbedEngine` local reference to a global reference and to bypass unsafe
-  legacy static callbacks (`JbedMidpManager.getString`, `JbedFileManager.getRoots`);
+  legacy static callbacks. `JbedMidpManager.getString` returns `"<unknown>"`;
+  `JbedFileManager.getRoots` returns a synthesized one-root `sdcard/` payload;
 - patches libjbedvm's original `JbedEngine.nativeJbedRun()` Thumb wrapper in
   memory so it calls `Jbed_run(20)` instead of its hard-coded `Jbed_run(50)`.
   `20` is the VM's minimum accepted scheduler quantum; lower values trip an

@@ -24,6 +24,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 #define LOG_TAG "jbed-jni-compat"
@@ -183,16 +184,68 @@ static jmethodID JNICALL hooked_get_static_method_id(JNIEnv *env, jclass clazz,
     return result;
 }
 
-static jobject make_empty_roots(JNIEnv *env) {
-    jbyteArray empty_roots;
-    jbyte zero_roots[5] = {0, 0, 0, 0, 0};
-    LOGI("bypassing legacy JbedFileManager.getRoots with an empty root list");
-    empty_roots = (*env)->NewByteArray(env, (jsize) sizeof(zero_roots));
-    if (empty_roots != NULL) {
-        (*env)->SetByteArrayRegion(env, empty_roots, 0,
-                                    (jsize) sizeof(zero_roots), zero_roots);
+static int is_directory(const char *path) {
+    struct stat st;
+    return path != NULL && stat(path, &st) == 0 && S_ISDIR(st.st_mode);
+}
+
+static const char *choose_external_storage_root(void) {
+    static const char *candidates[] = {
+        "/storage/emulated/0",
+        "/sdcard",
+        "/mnt/sdcard",
+    };
+    size_t i;
+    const char *env_root = getenv("EXTERNAL_STORAGE");
+    if (is_directory(env_root)) return env_root;
+    for (i = 0; i < sizeof(candidates) / sizeof(candidates[0]); ++i) {
+        if (is_directory(candidates[i])) return candidates[i];
     }
-    return empty_roots;
+    return "/sdcard";
+}
+
+static jobject make_legacy_roots(JNIEnv *env) {
+    static const char root_name[] = "sdcard/";
+    const char *root_path = choose_external_storage_root();
+    char path_with_slash[256];
+    size_t root_name_len = sizeof(root_name); /* includes NUL terminator */
+    size_t root_path_len = strlen(root_path);
+    size_t payload_len;
+    jbyteArray roots;
+    jbyte *payload;
+
+    if (root_path_len + 2 > sizeof(path_with_slash)) {
+        root_path = "/sdcard";
+        root_path_len = strlen(root_path);
+    }
+    memcpy(path_with_slash, root_path, root_path_len);
+    if (root_path_len == 0 || path_with_slash[root_path_len - 1] != '/') {
+        path_with_slash[root_path_len++] = '/';
+    }
+    path_with_slash[root_path_len++] = '\0';
+
+    payload_len = 1 + 2 + root_name_len + 2 + root_path_len;
+    payload = (jbyte *) malloc(payload_len);
+    if (payload == NULL) {
+        LOGE("unable to allocate legacy root payload");
+        return NULL;
+    }
+
+    payload[0] = 1; /* root count */
+    payload[1] = (jbyte) ((root_name_len >> 8) & 0xff);
+    payload[2] = (jbyte) (root_name_len & 0xff);
+    memcpy(payload + 3, root_name, root_name_len);
+    payload[3 + root_name_len] = (jbyte) ((root_path_len >> 8) & 0xff);
+    payload[4 + root_name_len] = (jbyte) (root_path_len & 0xff);
+    memcpy(payload + 5 + root_name_len, path_with_slash, root_path_len);
+
+    LOGI("providing legacy JbedFileManager root: %s -> %s", root_name, path_with_slash);
+    roots = (*env)->NewByteArray(env, (jsize) payload_len);
+    if (roots != NULL) {
+        (*env)->SetByteArrayRegion(env, roots, 0, (jsize) payload_len, payload);
+    }
+    free(payload);
+    return roots;
 }
 
 static jobject JNICALL hooked_call_static_object_method(JNIEnv *env, jclass clazz, jmethodID method, ...) {
@@ -201,7 +254,7 @@ static jobject JNICALL hooked_call_static_object_method(JNIEnv *env, jclass claz
         return (*env)->NewStringUTF(env, "<unknown>");
     }
     if (g_file_get_roots_method != NULL && method == g_file_get_roots_method) {
-        return make_empty_roots(env);
+        return make_legacy_roots(env);
     }
 
     va_list args;
@@ -217,7 +270,7 @@ static jobject JNICALL hooked_call_static_object_method_v(JNIEnv *env, jclass cl
         return (*env)->NewStringUTF(env, "<unknown>");
     }
     if (g_file_get_roots_method != NULL && method == g_file_get_roots_method) {
-        return make_empty_roots(env);
+        return make_legacy_roots(env);
     }
     return g_original_table->CallStaticObjectMethodV(env, clazz, method, args);
 }
@@ -228,7 +281,7 @@ static jobject JNICALL hooked_call_static_object_method_a(JNIEnv *env, jclass cl
         return (*env)->NewStringUTF(env, "<unknown>");
     }
     if (g_file_get_roots_method != NULL && method == g_file_get_roots_method) {
-        return make_empty_roots(env);
+        return make_legacy_roots(env);
     }
     return g_original_table->CallStaticObjectMethodA(env, clazz, method, args);
 }
