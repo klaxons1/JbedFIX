@@ -478,11 +478,21 @@ public class JbedEngine implements JbedConstants {
                 JbedEngine.this.nativeJbedRequestState(3);
                 JbedFileLog.info(JbedEngine.TAG, "nativeJbedRequestState(3) returned");
                 JbedEngine.this.applyRequestedLowSchedulerQuantum();
+                int nativeRunCount = 0;
                 while (!JbedEngine.this.mShutdownVM) {
                     JbedEngine.this.mEventPending = false;
                     int delay;
+                    int nativeRunNumber = ++nativeRunCount;
+                    boolean logNativeRun = nativeRunNumber <= 12 || (nativeRunNumber % 100) == 0;
+                    if (logNativeRun) {
+                        JbedFileLog.info(JbedEngine.TAG, "entering nativeJbedRun #" + nativeRunNumber);
+                    }
                     try {
                         delay = JbedEngine.this.nativeJbedRun();
+                        if (logNativeRun) {
+                            JbedFileLog.info(JbedEngine.TAG, "nativeJbedRun #" + nativeRunNumber
+                                    + " returned delay=" + delay);
+                        }
                         JbedEngine.this.applyRequestedLowSchedulerQuantum();
                     } catch (StackOverflowError e) {
                         JbedFileLog.error(JbedEngine.TAG,

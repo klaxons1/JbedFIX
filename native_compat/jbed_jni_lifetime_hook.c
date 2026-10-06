@@ -30,11 +30,13 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <sys/system_properties.h>
+#include <ucontext.h>
 #include <unistd.h>
 
 #define LOG_TAG "jbed-jni-compat"
 #define JBED_PUBLIC_LOG_DIR "/storage/emulated/0/jbedfix"
 #define JBED_NATIVE_LOG_PATH JBED_PUBLIC_LOG_DIR "/native.log"
+#define JBED_DISABLE_STARTUP_PATCH_MARKER JBED_PUBLIC_LOG_DIR "/disable-startup-quantum.patch"
 
 /*
  * The Android log buffer is not available on every test device. Keep the
@@ -115,15 +117,52 @@ static size_t append_hex(char *buffer, size_t offset, size_t capacity, uintptr_t
     return offset;
 }
 
+static uintptr_t crash_pc(void *context) {
+    if (context == NULL) return 0;
+#if defined(__arm__)
+    return (uintptr_t) ((ucontext_t *) context)->uc_mcontext.arm_pc;
+#elif defined(__aarch64__)
+    return (uintptr_t) ((ucontext_t *) context)->uc_mcontext.pc;
+#elif defined(__i386__)
+    return (uintptr_t) ((ucontext_t *) context)->uc_mcontext.gregs[REG_EIP];
+#elif defined(__x86_64__)
+    return (uintptr_t) ((ucontext_t *) context)->uc_mcontext.gregs[REG_RIP];
+#else
+    return 0;
+#endif
+}
+
+static uintptr_t crash_sp(void *context) {
+    if (context == NULL) return 0;
+#if defined(__arm__)
+    return (uintptr_t) ((ucontext_t *) context)->uc_mcontext.arm_sp;
+#elif defined(__aarch64__)
+    return (uintptr_t) ((ucontext_t *) context)->uc_mcontext.sp;
+#elif defined(__i386__)
+    return (uintptr_t) ((ucontext_t *) context)->uc_mcontext.gregs[REG_ESP];
+#elif defined(__x86_64__)
+    return (uintptr_t) ((ucontext_t *) context)->uc_mcontext.gregs[REG_RSP];
+#else
+    return 0;
+#endif
+}
+
+static size_t append_marker_hex(char *buffer, size_t offset, size_t capacity,
+                                const char *marker, size_t marker_length,
+                                uintptr_t value) {
+    memcpy(buffer + offset, marker, marker_length);
+    offset += marker_length;
+    return append_hex(buffer, offset, capacity, value);
+}
+
 static void native_crash_signal_handler(int signal_number, siginfo_t *signal_info, void *context) {
     static const char prefix[] = "FATAL/jbed-jni-compat native signal=";
     static const char address_marker[] = " address=0x";
     static const char newline[] = "\n";
-    char line[160];
+    char line[240];
     size_t length = 0;
     int fd;
 
-    (void) context;
     if (g_crash_handler_active) _exit(128 + signal_number);
     g_crash_handler_active = 1;
     memcpy(line + length, prefix, sizeof(prefix) - 1);
@@ -133,6 +172,10 @@ static void native_crash_signal_handler(int signal_number, siginfo_t *signal_inf
     length += sizeof(address_marker) - 1;
     length = append_hex(line, length, sizeof(line),
                         signal_info == NULL ? 0 : (uintptr_t) signal_info->si_addr);
+    length = append_marker_hex(line, length, sizeof(line), " pc=0x", sizeof(" pc=0x") - 1,
+                               crash_pc(context));
+    length = append_marker_hex(line, length, sizeof(line), " sp=0x", sizeof(" sp=0x") - 1,
+                               crash_sp(context));
     memcpy(line + length, newline, sizeof(newline) - 1);
     length += sizeof(newline) - 1;
 
@@ -336,6 +379,13 @@ static int patch_thumb16_instruction_from_either(uintptr_t offset, uint16_t expe
 
 static void patch_native_jbed_run_startup_quantum(void) {
     if (g_patched_startup_jbed_run_quantum) return;
+
+    if (access(JBED_DISABLE_STARTUP_PATCH_MARKER, F_OK) == 0) {
+        g_patched_startup_jbed_run_quantum = 1;
+        LOGI("startup scheduler patch disabled by marker %s; leaving Jbed_run(50) unchanged",
+             JBED_DISABLE_STARTUP_PATCH_MARKER);
+        return;
+    }
 
     if (!use_modern_art_scheduler_workarounds()) {
         g_patched_startup_jbed_run_quantum = 1;

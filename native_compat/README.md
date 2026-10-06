@@ -117,8 +117,19 @@ on a modern Java Surface is a later step.
 The compatibility shim also mirrors its JNI, linker, and scheduler markers to
 `/storage/emulated/0/jbedfix/native.log` in addition to Android's log buffer.
 It installs a small signal marker for native crashes at
-`/storage/emulated/0/jbedfix/native-crash.log`, then re-raises the signal so
-Android can still create its normal tombstone. This is intended for devices
+`/storage/emulated/0/jbedfix/native-crash.log`, including the fault address,
+program counter (`pc`) and stack pointer (`sp`), then re-raises the signal so
+Android can still create its normal tombstone. The `pc` can be translated
+against the legacy VM map using the offsets in `docs/libjbedvm.so.c`; unlike
+`si_addr`, it identifies the failing instruction. This is intended for devices
 where logcat cannot be collected.
+
+For a controlled bootstrap comparison, create the empty marker file
+`/storage/emulated/0/jbedfix/disable-startup-quantum.patch` before launching
+Jbed. The compatibility shim will leave the decompiled VM's original
+`nativeJbedRun -> Jbed_run(50)` immediate unchanged and record that choice in
+`native.log`. Remove the marker to restore the default Android 5+ diagnostic
+patch to `Jbed_run(20)`. This isolates the startup patch from the later
+foreground/deferred patch without rebuilding the APK.
 
 The next load attempt may expose additional unavailable legacy framework APIs.
