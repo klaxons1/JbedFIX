@@ -714,19 +714,27 @@ public class BasicEventHandler {
 
         /* JADX INFO: Access modifiers changed from: private */
         public void collectLocalInstallFiles() {
+            /* The compatibility shim's drop folder first: JAR/JAD files copied
+             * next to /storage/emulated/0/jbedfix/native.log. Walking the whole
+             * external-storage root here is unusable on Android 11 - it would
+             * recurse through every media directory - so this list is limited to
+             * that folder plus the VM's own LocalInstall directory. */
+            findAllMidlets(new File(JBEDFIX_DROP_FOLDER));
             if (!this.mIsOnlySdcard) {
                 File dir = new File(JbedSettings.getInstance(this.mContext).getLocalInstallDir());
                 findAllMidlets(dir);
             }
-            findAllMidlets(new File(JBEDFIX_DROP_FOLDER));
-            JbedFileManager manager = new JbedFileManager(this.mContext, null);
-            List<String> roots = manager.getRootPathList();
-            for (int i = 0; i < roots.size(); i++) {
-                File dir2 = new File(roots.get(i));
-                findAllMidlets(dir2);
-            }
             Collections.sort(mLocalInsallFiles, FileEntry.FILE_COMPARATOR);
             compressJarFiles();
+        }
+
+        private static boolean containsLocalInstallFile(String path) {
+            for (FileEntry entry : mLocalInsallFiles) {
+                if (entry.mPath != null && entry.mPath.equals(path)) {
+                    return true;
+                }
+            }
+            return false;
         }
 
         /* JADX INFO: Access modifiers changed from: private */
@@ -853,6 +861,12 @@ public class BasicEventHandler {
             });
             if (files != null) {
                 for (int i2 = 0; i2 < files.length; i2++) {
+                    /* A folder that is also listed as a root, or a second
+                     * spelling of the same path, must not produce a duplicate
+                     * entry in the MIDlet list. */
+                    if (containsLocalInstallFile(files[i2].getPath())) {
+                        continue;
+                    }
                     LogTag.amsDebug("AmsEventHandler", "Add a midlet file " + files[i2].getPath());
                     mLocalInsallFiles.add(new FileEntry(files[i2]));
                 }
