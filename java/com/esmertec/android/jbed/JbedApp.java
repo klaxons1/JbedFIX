@@ -59,7 +59,18 @@ public class JbedApp extends Application {
     public void onCreate() {
         super.onCreate();
         sInstance = this;
-        JbedSettings.getInstance(this);
+        JbedFileLog.initialize(this);
+        JbedFileLog.info(TAG, "Application.onCreate package=" + getPackageName()
+                + " process=" + android.os.Process.myPid());
+        try {
+            JbedSettings.getInstance(this);
+        } catch (RuntimeException exception) {
+            JbedFileLog.error(TAG, "JbedSettings initialization failed", exception);
+            throw exception;
+        } catch (Error error) {
+            JbedFileLog.error(TAG, "JbedSettings initialization failed", error);
+            throw error;
+        }
         LogTag.appDebug(TAG, "onCreate");
     }
 
@@ -93,6 +104,8 @@ public class JbedApp extends Application {
     }
 
     public synchronized void startService(final Activity activity, final Handler handler, final long id) {
+        JbedFileLog.info(TAG, "startService activity=" + activity.getClass().getName()
+                + " id=" + id + " service=" + this.mJbedService);
         if (!this.handlerCountMap.containsKey(handler)) {
             this.handlerCountMap.put(handler, 1);
         } else if (this.amsClientMap.containsKey(handler)) {
@@ -105,6 +118,7 @@ public class JbedApp extends Application {
             this.mServiceConn = new ServiceConnection() { // from class: com.esmertec.android.jbed.JbedApp.1
                 @Override // android.content.ServiceConnection
                 public void onServiceConnected(ComponentName className, IBinder service) {
+                    JbedFileLog.info(JbedApp.TAG, "onServiceConnected " + className);
                     LogTag.appDebug(JbedApp.TAG, "Connecte Service successfully");
                     JbedApp.this.mJbedService = IJbedService.Stub.asInterface(service);
                     try {
@@ -119,6 +133,7 @@ public class JbedApp extends Application {
 
                 @Override // android.content.ServiceConnection
                 public void onServiceDisconnected(ComponentName className) {
+                    JbedFileLog.warn(JbedApp.TAG, "onServiceDisconnected " + className);
                     Log.w(JbedApp.TAG, "WARNING: diconnect from Service!");
                     Toast.makeText(activity, R.string.PRJ_SDCARD_ERROR_MESSAGE, 0).show();
                     JbedApp.this.clearOnServiceDisconnect();

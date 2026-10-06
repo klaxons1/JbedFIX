@@ -112,4 +112,8 @@ They deliberately avoid Android 11's private SurfaceFlinger ABI. The current
 bridge permits VM initialisation and framebuffer writes; presenting this buffer
 on a modern Java Surface is a later step.
 
+The compatibility shim also mirrors its JNI, linker, and scheduler markers to
+`/storage/emulated/0/jbedfix/native.log` in addition to Android's log buffer.
+This is intended for devices where logcat cannot be collected.
+
 The next load attempt may expose additional unavailable legacy framework APIs.

@@ -27,6 +27,7 @@
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
     <uses-permission android:name="android.permission.ACCESS_LGDRM"/>
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
     <application
         android:label="@string/AMS_MAIN_SCREEN_TITLE"
         android:icon="@drawable/launcher_java"
@@ -39,6 +40,7 @@
         <activity
             android:label="@string/AMS_MAIN_SCREEN_TITLE"
             android:name="com.esmertec.android.jbed.app.JbedAppActivity"
+            android:exported="true"
             android:launchMode="singleTop"
             android:configChanges="orientation|keyboardHidden">
             <intent-filter>
@@ -52,6 +54,7 @@
         <activity
             android:label="@string/AMS_MAIN_SCREEN_TITLE"
             android:name="com.esmertec.android.jbed.ams.AmsActivity"
+            android:exported="true"
             android:screenOrientation="portrait"
             android:configChanges="orientation|keyboardHidden"
             android:alwaysRetainTaskState="true">
@@ -65,10 +68,25 @@
                 <category android:name="android.intent.category.DEFAULT"/>
                 <category android:name="android.lge.lgdrm.GAME_CATEGORY"/>
                 <data android:mimeType="text/vnd.sun.j2me.app-descriptor"/>
+                <data android:mimeType="text/plain"/>
                 <data android:mimeType="application/java-archive"/>
+                <data android:mimeType="application/x-java-archive"/>
+                <data android:mimeType="application/x-jar"/>
+                <data android:mimeType="application/zip"/>
+                <data android:mimeType="application/octet-stream"/>
                 <data android:mimeType="application/vnd.oma.drm.message"/>
                 <data android:mimeType="application/vnd.oma.drm.content"/>
                 <data android:mimeType="application/vnd.oma.drm.dcf"/>
+            </intent-filter>
+            <!-- Some Android file managers omit or mislabel the MIME type. A
+                 scheme-only VIEW filter still routes file:// and content://
+                 JAR opens to the installer, where the extension is inspected
+                 and the URI is copied into app-readable storage if needed. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <data android:scheme="file"/>
+                <data android:scheme="content"/>
             </intent-filter>
         </activity>
         <service

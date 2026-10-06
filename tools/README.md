@@ -20,6 +20,24 @@ The focused log includes Jbed messages, linker errors, ART JNI failures,
 tombstone information, and native crashes while excluding unrelated Google/MIUI
 noise. Send the generated `*-focus.txt` file content when reporting a run.
 
+## Device-side log files without logcat
+
+The APK also writes a diagnostic trace to:
+
+```text
+/storage/emulated/0/jbedfix/jbed.log
+/storage/emulated/0/jbedfix/native.log
+```
+
+`jbed.log` records application lifecycle events, the complete external VIEW
+intent summary, MIME/URI normalization, content-URI copies, installer errors,
+uncaught Java exceptions, and the legacy VM bootstrap path. `native.log` records
+compatibility-shim load, JNI, linker, and scheduler markers. Both files rotate
+their current contents at approximately 4 MiB. The app keeps a private fallback
+under its internal files directory if the device denies public storage access.
+Copy both files from the device after reproducing the issue; they can be read
+with any file manager and do not require adb/logcat.
+
 If the Android device displays an installation/permission dialog, increase the
 capture duration:
 

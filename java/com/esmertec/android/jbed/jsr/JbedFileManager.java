@@ -9,6 +9,7 @@ import android.os.Environment;
 import android.os.Handler;
 import android.os.Message;
 import android.util.Log;
+import com.esmertec.android.jbed.JbedFileLog;
 import com.esmertec.android.jbed.JbedSettings;
 import com.esmertec.android.jbed.ams.JbedSelector;
 import com.esmertec.android.jbed.service.JbedService;
@@ -199,9 +200,11 @@ public class JbedFileManager implements JbedService.LifecycleListener {
             byte[] paths = getRootPaths();
             out.writeShort(paths.length);
             out.write(paths);
-            Log.i(TAG, "native root payload: state=" + Environment.getExternalStorageState()
+            String rootMessage = "native root payload: state=" + Environment.getExternalStorageState()
                     + " count=" + getRootCount() + " namesBytes=" + names.length
-                    + " pathsBytes=" + paths.length);
+                    + " pathsBytes=" + paths.length + " roots=" + INSTANCE.getRootPathList();
+            JbedFileLog.info(TAG, rootMessage);
+            Log.i(TAG, rootMessage);
             return bo.toByteArray();
         } catch (IOException e) {
             Log.e(TAG, "failed to serialize J2ME file roots", e);

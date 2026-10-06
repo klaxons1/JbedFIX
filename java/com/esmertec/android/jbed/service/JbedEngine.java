@@ -12,6 +12,7 @@ import android.view.WindowManager;
 import android.widget.Toast;
 import com.esmertec.android.jbed.JbedConfig;
 import com.esmertec.android.jbed.JbedConstants;
+import com.esmertec.android.jbed.JbedFileLog;
 import com.esmertec.android.jbed.JbedSettings;
 import com.esmertec.android.jbed.LogTag;
 import com.esmertec.android.jbed.jsr.JbedMidpManager;
@@ -436,9 +437,21 @@ public class JbedEngine implements JbedConstants {
 
         @Override // java.lang.Thread, java.lang.Runnable
         public void run() {
+            JbedFileLog.info(JbedEngine.TAG, "JbedThread.run started stack="
+                    + Thread.currentThread().getStackTrace().length);
             LogTag.serviceDebug(JbedEngine.TAG, "Jbed Thread Started");
-            nativeInstallJniLifetimeHook();
-            JbedEngine.this.nativeInitializeSubsystems(JbedEngine.this.getCommandLine(), 50);
+            try {
+                nativeInstallJniLifetimeHook();
+                JbedFileLog.info(JbedEngine.TAG, "nativeInstallJniLifetimeHook returned");
+                JbedEngine.this.nativeInitializeSubsystems(JbedEngine.this.getCommandLine(), 50);
+                JbedFileLog.info(JbedEngine.TAG, "nativeInitializeSubsystems returned");
+            } catch (RuntimeException exception) {
+                JbedFileLog.error(JbedEngine.TAG, "native VM initialization failed", exception);
+                throw exception;
+            } catch (Error error) {
+                JbedFileLog.error(JbedEngine.TAG, "native VM initialization failed", error);
+                throw error;
+            }
             JbedEngine.this.mHandler.obtainMessage(2).sendToTarget();
             do {
                 JbedEngine.this.nativeOnEnterRestartVMLoop();
@@ -450,6 +463,8 @@ public class JbedEngine implements JbedConstants {
                     try {
                         delay = JbedEngine.this.nativeJbedRun();
                     } catch (StackOverflowError e) {
+                        JbedFileLog.error(JbedEngine.TAG,
+                                "StackOverflow in nativeJbedRun; recovering scheduler", e);
                         Log.e(JbedEngine.TAG, "StackOverflow in nativeJbedRun, recovering native scheduler state and using delay fallback 100ms", e);
                         try {
                             nativeRecoverAfterStackOverflow();

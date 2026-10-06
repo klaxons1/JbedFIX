@@ -20,6 +20,7 @@
 #include <android/log.h>
 #include <errno.h>
 #include <dlfcn.h>
+#include <fcntl.h>
 #include <stdint.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -31,8 +32,47 @@
 #include <unistd.h>
 
 #define LOG_TAG "jbed-jni-compat"
-#define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
-#define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
+#define JBED_PUBLIC_LOG_DIR "/storage/emulated/0/jbedfix"
+#define JBED_NATIVE_LOG_PATH JBED_PUBLIC_LOG_DIR "/native.log"
+
+/*
+ * The Android log buffer is not available on every test device. Keep the
+ * compatibility shim's decisions in the same user-visible directory as the
+ * Java diagnostic log. Java creates this directory first; mkdir is repeated
+ * here because the VM runs in the :remote process and must also work when the
+ * directory was removed between launches.
+ */
+static void native_file_log(int priority, const char *format, ...) {
+    char message[2048];
+    char line[2200];
+    va_list args;
+    int length;
+    int fd;
+    struct stat file_stat;
+
+    va_start(args, format);
+    vsnprintf(message, sizeof(message), format, args);
+    va_end(args);
+    mkdir(JBED_PUBLIC_LOG_DIR, 0775);
+
+    if (stat(JBED_NATIVE_LOG_PATH, &file_stat) == 0 && file_stat.st_size >= (4 * 1024 * 1024)) {
+        unlink(JBED_PUBLIC_LOG_DIR "/native.log.previous");
+        rename(JBED_NATIVE_LOG_PATH, JBED_PUBLIC_LOG_DIR "/native.log.previous");
+    }
+    length = snprintf(line, sizeof(line), "%s/%s %s\n",
+                       priority == ANDROID_LOG_ERROR ? "E" : "I", LOG_TAG, message);
+    if (length < 0) return;
+    if (length > (int) sizeof(line)) length = (int) sizeof(line);
+    fd = open(JBED_NATIVE_LOG_PATH, O_WRONLY | O_CREAT | O_APPEND, 0664);
+    if (fd >= 0) {
+        write(fd, line, (size_t) length);
+        close(fd);
+    }
+    __android_log_print(priority, LOG_TAG, "%s", message);
+}
+
+#define LOGE(...) native_file_log(ANDROID_LOG_ERROR, __VA_ARGS__)
+#define LOGI(...) native_file_log(ANDROID_LOG_INFO, __VA_ARGS__)
 
 /* dword_31C864 in the original ELF; its first LOAD segment has vaddr zero. */
 #define JBED_ENGINE_LOCAL_REF_OFFSET 0x31c864u
