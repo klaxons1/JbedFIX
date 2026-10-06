@@ -179,6 +179,33 @@ static uintptr_t crash_sp(void *context) {
 #endif
 }
 
+static uintptr_t crash_lr(void *context) {
+    if (context == NULL) return 0;
+#if defined(__arm__)
+    return (uintptr_t) ((ucontext_t *) context)->uc_mcontext.arm_lr;
+#elif defined(__aarch64__)
+    return (uintptr_t) ((ucontext_t *) context)->uc_mcontext.regs[30];
+#else
+    return 0;
+#endif
+}
+
+static uintptr_t crash_arm_register(void *context, unsigned int index) {
+    if (context == NULL || index > 3) return 0;
+#if defined(__arm__)
+    switch (index) {
+        case 0: return (uintptr_t) ((ucontext_t *) context)->uc_mcontext.arm_r0;
+        case 1: return (uintptr_t) ((ucontext_t *) context)->uc_mcontext.arm_r1;
+        case 2: return (uintptr_t) ((ucontext_t *) context)->uc_mcontext.arm_r2;
+        default: return (uintptr_t) ((ucontext_t *) context)->uc_mcontext.arm_r3;
+    }
+#elif defined(__aarch64__)
+    return (uintptr_t) ((ucontext_t *) context)->uc_mcontext.regs[index];
+#else
+    return 0;
+#endif
+}
+
 static size_t append_marker_hex(char *buffer, size_t offset, size_t capacity,
                                 const char *marker, size_t marker_length,
                                 uintptr_t value) {
@@ -191,18 +218,22 @@ static void native_crash_signal_handler(int signal_number, siginfo_t *signal_inf
     static const char prefix[] = "FATAL/jbed-jni-compat native signal=";
     static const char address_marker[] = " address=0x";
     static const char newline[] = "\n";
-    char line[320];
+    char line[768];
     size_t length = 0;
     int fd;
     uintptr_t pc;
+    uintptr_t lr;
     uintptr_t vm_base;
     const struct executable_map *pc_map;
+    const struct executable_map *lr_map;
 
     if (g_crash_handler_active) _exit(128 + signal_number);
     g_crash_handler_active = 1;
     pc = crash_pc(context);
+    lr = crash_lr(context);
     vm_base = g_jbed_base;
     pc_map = find_executable_map(pc);
+    lr_map = find_executable_map(lr);
     memcpy(line + length, prefix, sizeof(prefix) - 1);
     length += sizeof(prefix) - 1;
     length = append_decimal(line, length, sizeof(line), (unsigned long) signal_number);
@@ -214,6 +245,16 @@ static void native_crash_signal_handler(int signal_number, siginfo_t *signal_inf
                                crash_pc(context));
     length = append_marker_hex(line, length, sizeof(line), " sp=0x", sizeof(" sp=0x") - 1,
                                crash_sp(context));
+    length = append_marker_hex(line, length, sizeof(line), " lr=0x", sizeof(" lr=0x") - 1,
+                               lr);
+    length = append_marker_hex(line, length, sizeof(line), " r0=0x", sizeof(" r0=0x") - 1,
+                               crash_arm_register(context, 0));
+    length = append_marker_hex(line, length, sizeof(line), " r1=0x", sizeof(" r1=0x") - 1,
+                               crash_arm_register(context, 1));
+    length = append_marker_hex(line, length, sizeof(line), " r2=0x", sizeof(" r2=0x") - 1,
+                               crash_arm_register(context, 2));
+    length = append_marker_hex(line, length, sizeof(line), " r3=0x", sizeof(" r3=0x") - 1,
+                               crash_arm_register(context, 3));
     length = append_marker_hex(line, length, sizeof(line), " vmBase=0x", sizeof(" vmBase=0x") - 1,
                                vm_base);
     if (vm_base != 0 && pc >= vm_base
@@ -227,6 +268,24 @@ static void native_crash_signal_handler(int signal_number, siginfo_t *signal_inf
                              sizeof(" pcModule=") - 1);
         length = append_text(line, length, sizeof(line), pc_map->name,
                              pc_map->name_length);
+        length = append_marker_hex(line, length, sizeof(line), " pcModuleBase=0x",
+                                   sizeof(" pcModuleBase=0x") - 1, pc_map->start);
+        if (pc >= pc_map->start) {
+            length = append_marker_hex(line, length, sizeof(line), " pcModuleOffset=0x",
+                                       sizeof(" pcModuleOffset=0x") - 1,
+                                       (pc & ~(uintptr_t) 1u) - pc_map->start);
+        }
+    }
+    if (lr_map != NULL) {
+        length = append_text(line, length, sizeof(line), " lrModule=",
+                             sizeof(" lrModule=") - 1);
+        length = append_text(line, length, sizeof(line), lr_map->name,
+                             lr_map->name_length);
+        if (lr >= lr_map->start) {
+            length = append_marker_hex(line, length, sizeof(line), " lrModuleOffset=0x",
+                                       sizeof(" lrModuleOffset=0x") - 1,
+                                       (lr & ~(uintptr_t) 1u) - lr_map->start);
+        }
     }
     memcpy(line + length, newline, sizeof(newline) - 1);
     length += sizeof(newline) - 1;
