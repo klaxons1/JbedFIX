@@ -234,6 +234,22 @@ Duplicate paths are filtered, and
 `disable-direct-install-upcall.patch` disables the diagnostic direct-upcall
 bridge so the install event travels only through the Java AMS path.
 
+Selecting a JAR in that list now writes the suite into the Jbed storage directly
+(`LocalSuiteInstaller`): `<prefix>suite.jar`, `<prefix>.jar`, `<prefix>suite.utf`,
+`<prefix>.jad`, `<prefix>info_suite.utf`, `<prefix>info_<no>.icn` and an appended
+`selector.utf` entry. The MIDlet list is built by `JbedSelector` from
+`selector.utf`, so the entry appears without the VM's installer. The reason this
+is necessary is visible in the library itself: the AMS is **AOT compiled inside
+`libjbedvm.so`** (its Java string constants are UCS-2 entries in the ROM image
+next to `suite.jar`, `suite.utf`, `selector.utf`, `/Installed/`), and its
+install pipeline (`STEP_GET_JAD` … `STEP_PRECOMPILE`) overflows the host thread
+stack as soon as it consumes a local install event. The installer self-verifies
+by re-parsing `selector.utf`, and the first run of a build dumps the storage
+layout and selector content into `jbed.log` /
+`/storage/emulated/0/jbedfix/installed-layout.txt` so the JAR/JAD naming of the
+AOT-compiled AMS can be confirmed. `disable-local-sidecar-install.patch` restores
+the original (VM installer) behaviour.
+
 Installs are still blocked further down the stack: the install event reaches the
 VM's native upcall queue and is consumed (`poll result=1`), but the VM's Java
 side cannot run — `nativeJbedRun` raises `StackOverflowError: stack size 65MB`

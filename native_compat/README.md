@@ -187,6 +187,37 @@ event straight into the VM's native queue) can be disabled without rebuilding by
 creating `/storage/emulated/0/jbedfix/disable-direct-install-upcall.patch`; the
 Java AMS path still queues the event.
 
+Selecting a file in that list no longer depends on the proprietary installer.
+`libjbedvm.so` carries its own Java AMS, but it is *ahead of time compiled*
+inside the library: its Java string constants are stored as UCS-2 in the ROM
+image next to literals such as `suite.jar`, `suite.utf` and `selector.utf`, and
+its install pipeline (`STEP_GET_JAD`, `STEP_PARSE_JAD`, `STEP_VERIFY_JAD`,
+`STEP_PRECOMPILE`) overflows the host thread stack on Android 11 as soon as it
+consumes a local install event (`StackOverflowError: stack size 65MB`, then
+`nativeJbedRun` returns a ~24 day delay). `LocalSuiteInstaller` therefore writes
+the suite into the Jbed storage itself:
+
+```text
+<basedir><prefix>suite.jar        the MIDlet JAR          (prefix is s0_, s1_, ...)
+<basedir><prefix>.jar             the same JAR, object-style name
+<basedir><prefix>suite.utf        JAD attributes, .properties form
+<basedir><prefix>.jad             the same JAD
+<basedir><prefix>info_suite.utf   key/value pairs in the binary form
+                                  JbedSelectorData.getInfoSuiteValue reads
+<basedir><prefix>info_<no>.icn    the MIDlet icon from the manifest
+<basedir>selector.utf             appended suite entry (DataOutput UTF text)
+```
+
+The MIDlet list is built by `JbedSelector` from `selector.utf`, so the suite is
+visible and launchable from the UI as soon as the write finishes; the VM is then
+asked to launch it like any other installed suite. The installer verifies its
+own work by re-parsing `selector.utf` and logging the resulting entry, and the
+first run of a build also records the current storage layout and selector
+content in `jbed.log` and `/storage/emulated/0/jbedfix/installed-layout.txt`,
+because the exact file naming of the AOT-compiled AMS cannot be read out of the
+library. `disable-local-sidecar-install.patch` restores the original behaviour
+(hand the request to the VM installer).
+
 ## Native crash diagnostics
 
 `libjbedcompat.so` mirrors its JNI, linker, and scheduler markers to
