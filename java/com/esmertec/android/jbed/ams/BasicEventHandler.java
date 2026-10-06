@@ -812,8 +812,27 @@ public class BasicEventHandler {
                 final AlertDialog dialog = new AlertDialog.Builder(getContext()).setTitle(R.string.AMS_LOCAL_FILES_INSTALLED).setItems((CharSequence[]) mLocalInsallFiles.toArray(new CharSequence[mLocalInsallFiles.size()]), new DialogInterface.OnClickListener() { // from class: com.esmertec.android.jbed.ams.BasicEventHandler.AndroidListLocallInstallEventHandler.4
                     @Override // android.content.DialogInterface.OnClickListener
                     public void onClick(DialogInterface dialog2, int pos) {
-                        String fileUri = "file:///" + ((FileEntry) AndroidListLocallInstallEventHandler.mLocalInsallFiles.get(pos)).mPath;
+                        FileEntry selected = (FileEntry) AndroidListLocallInstallEventHandler.mLocalInsallFiles.get(pos);
+                        String fileUri = "file:///" + selected.mPath;
                         Log.i("AmsEventHandler", "local MIDlet selected for install: " + fileUri);
+                        if (LocalSuiteInstaller.isEnabled()) {
+                            // The proprietary installer overflows the host thread
+                            // stack on Android 11 as soon as it consumes a local
+                            // install event, so the suite is registered in the
+                            // Jbed storage directly and the list is refreshed.
+                            String installError = LocalSuiteInstaller.install(
+                                    AndroidListLocallInstallEventHandler.this.mContext,
+                                    selected.mPath);
+                            if (installError == null) {
+                                dialog2.dismiss();
+                                AndroidListLocallInstallEventHandler.this.mHandler
+                                        .obtainMessage(AmsConstants.HANDLE_REFRESH_LIST)
+                                        .sendToTarget();
+                                return;
+                            }
+                            Log.w("AmsEventHandler", "direct suite install refused (" + installError
+                                    + "); asking the VM to install " + fileUri);
+                        }
                         ((AmsClient) AndroidListLocallInstallEventHandler.this.mClient).requestInstallEvent(fileUri);
                         dialog2.dismiss();
                     }
