@@ -250,6 +250,20 @@ layout and selector content into `jbed.log` /
 AOT-compiled AMS can be confirmed. `disable-local-sidecar-install.patch` restores
 the original (VM installer) behaviour.
 
+Launching a suite reached the VM and failed the same way as install did
+(`StackOverflowError: stack size 65MB` in `nativeJbedRun`). The last upcalls
+before the overflow were a repeated VM -> Java call of one static
+`JbedFileManager` method; the static root helpers (`getRoots`, `getRootPaths`)
+went through the `JbedFileManager` `INSTANCE`, which may not exist yet when the
+VM's file bridge calls them from native code, so they threw
+`NullPointerException`. The compatibility hook clears a pending exception
+before the next upcall (the 2011 VM cannot handle an ART exception), therefore
+the VM saw a null byte array and repeated the call until the thread stack
+overflowed. The helpers are now instance-independent, and the hook logs every
+upcall that throws (`VM upcall <call> threw a Java exception in <Class.method>`)
+together with `Class.method` names in the JNI trace, so a remaining retry loop
+can be named from the log alone.
+
 Installs are still blocked further down the stack: the install event reaches the
 VM's native upcall queue and is consumed (`poll result=1`), but the VM's Java
 side cannot run — `nativeJbedRun` raises `StackOverflowError: stack size 65MB`

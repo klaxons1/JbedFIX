@@ -91,6 +91,16 @@ staged scheduler workarounds. It currently provides targeted ART workarounds:
   scheduler flags skipped when ART throws through the old native frame. This
   keeps execution inside the proprietary VM while minimizing scheduler stack
   pressure; it is not a complete fix for the proprietary scheduler;
+- reports a legacy Java callback that throws. The 2011 VM has no notion of an
+  ART exception, so the hook clears it before the next upcall and the VM simply
+  receives the null the callback returned; `VM upcall <call> threw a Java
+  exception in <Class.method>; clearing it` in `native.log` names the callback.
+  This is the failure mode behind a VM retry loop: while `JbedFileManager`'s
+  static root helpers went through `INSTANCE`, the VM's own file bridge could
+  call them before a `JbedFileManager` existed in the process, receive null and
+  repeat the call until the JbedThread stack overflowed. The helpers are now
+  instance-independent. `disable-low-quantum-patch.patch` turns the staged
+  scheduler-quantum patches off for an A/B run;
 - registers an `AmsConnection.nativeRequestLocalInstall()` bridge for local
   JAR/JAD selection. `AmsConnection` enqueues this call onto `JbedThread`;
   calling it directly from the Binder thread crashes because the old VM expects
