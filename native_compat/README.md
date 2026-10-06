@@ -91,6 +91,17 @@ staged scheduler workarounds. It currently provides targeted ART workarounds:
   scheduler flags skipped when ART throws through the old native frame. This
   keeps execution inside the proprietary VM while minimizing scheduler stack
   pressure; it is not a complete fix for the proprietary scheduler;
+- logs *which* exception a legacy Java callback threw, with its class and
+  message (`VM upcall <call> threw <java.lang.FooException: ...> in
+  <Class.method>`), before clearing it. This is what identified the current
+  blocker: `AmsClientBase.getEventName()` indexed its name arrays by event id,
+  and the Android-side table holds five entries while the VM asks about ids up
+  to 10031, so the log line inside `AmsConnection.fetchEvent()` threw
+  `ArrayIndexOutOfBoundsException`, the VM received null and re-entered the
+  call from native code until the JbedThread stack overflowed. The lookup is
+  bounds checked now, `AmsEvent.toString()` no longer throws, `fetchEvent()` /
+  `handleEventEx()` catch everything and fall back to a static event queue, and
+  events are enqueued into whichever queue `fetchEvent()` reads;
 - reports a legacy Java callback that throws. The 2011 VM has no notion of an
   ART exception, so the hook clears it before the next upcall and the VM simply
   receives the null the callback returned; `VM upcall <call> threw a Java

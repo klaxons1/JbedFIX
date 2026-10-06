@@ -30,6 +30,13 @@ public class AmsConnection extends IJbedAmsConnection.Stub implements AmsConstan
     private JbedService.ClientProxy mJbedClient;
     private List<JbedSelectorData> mPowerOnMidlets;
     private BlockingQueue<AmsEvent> mEventQueue = new LinkedBlockingQueue();
+    /*
+     * The VM's native AMS calls the static fetchEvent() before a Java-side
+     * AmsConnection is registered in this process, so the queue cannot live on
+     * the instance alone. This queue is drained as a fallback and receives
+     * events whenever no instance is registered.
+     */
+    private static final BlockingQueue<AmsEvent> sVmEventQueue = new LinkedBlockingQueue<>();
     private BlockingQueue<AmsEvent> mPendingEventQueue = new LinkedBlockingQueue();
     private BlockingQueue<AmsEvent> mPendingRequestEventQueue = new LinkedBlockingQueue();
     private Object mAmsClientMutx = new Object();
@@ -236,17 +243,51 @@ public class AmsConnection extends IJbedAmsConnection.Stub implements AmsConstan
     }
 
     private static AmsEvent fetchEvent() {
-        AmsEvent e = INSTANCE.mEventQueue.poll();
-        if (e != null) {
-            Log.i(TAG, "fetchAmsEvent() " + e.toString());
-        } else {
-            LogTag.amsWarning(TAG, "There is no any event, who call the fetchAmsEvent()?");
+        AmsEvent e = null;
+        try {
+            AmsConnection instance = INSTANCE;
+            if (instance != null && instance.mEventQueue != null) {
+                e = instance.mEventQueue.poll();
+            }
+            if (e == null) {
+                e = sVmEventQueue.poll();
+            }
+            if (e != null) {
+                Log.i(TAG, "fetchAmsEvent() id=" + e.mId + " result=" + e.mResult + " " + e);
+            } else {
+                LogTag.amsWarning(TAG, "There is no any event, who call the fetchAmsEvent()?");
+            }
+        } catch (Throwable throwable) {
+            /* This method is a VM upcall: an exception here is cleared by the
+             * compatibility hook, the VM reads null and calls again from native
+             * code until its stack overflows. Never let anything escape. */
+            Log.e(TAG, "fetchEvent failed", throwable);
+            e = null;
         }
         return e;
     }
 
     private static void handleEventEx(int eventId, int result, byte[] data) {
-        INSTANCE.handleEvent(eventId, result, data);
+        try {
+            AmsConnection instance = INSTANCE;
+            if (instance != null) {
+                instance.handleEvent(eventId, result, data);
+                return;
+            }
+            Log.w(TAG, "handleEventEx(" + eventId + ") without a registered AmsConnection");
+        } catch (Throwable throwable) {
+            Log.e(TAG, "handleEventEx failed for event " + eventId, throwable);
+        }
+    }
+
+    /** Deliver an event to whichever queue fetchEvent() will read. */
+    private static void enqueueVmEvent(AmsEvent event) {
+        AmsConnection instance = INSTANCE;
+        if (instance != null && instance.mEventQueue != null) {
+            instance.mEventQueue.add(event);
+        } else {
+            sVmEventQueue.add(event);
+        }
     }
 
     /* JADX INFO: Access modifiers changed from: private */
@@ -315,8 +356,8 @@ public class AmsConnection extends IJbedAmsConnection.Stub implements AmsConstan
             return;
         }
         AmsEvent e2 = new AmsEvent(eventId, result, data);
-        Log.i(TAG, "deliverEventToJbedVm() " + e2.toString());
-        this.mEventQueue.add(e2);
+        Log.i(TAG, "deliverEventToJbedVm() id=" + eventId + " result=" + result + " " + e2);
+        enqueueVmEvent(e2);
         if (eventId == 5 && data != null) {
             final String installUrl = new String(data).trim();
             this.mHandler.obtainMessage(10, new Runnable() {

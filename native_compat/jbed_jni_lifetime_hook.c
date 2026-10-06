@@ -517,11 +517,43 @@ static void trace_and_clear_exception(JNIEnv *env, const char *call_name, uint32
  * retry loops.
  */
 static void report_upcall_exception(JNIEnv *env, const char *call_name, jmethodID method) {
+    jthrowable throwable;
+    char text[JBED_TRACE_NAME_LENGTH];
+
     if (env == NULL || method == NULL) return;
     if (!(*env)->ExceptionCheck(env)) return;
-    LOGE("VM upcall %s threw a Java exception in %s; clearing it before the VM sees it",
-         call_name, trace_method_name(method));
+
+    /* Read the exception's own description before clearing it: the class name
+     * and message are what make the next report actionable without a debugger,
+     * and the pending state must be gone before any further JNI call. */
+    throwable = (*env)->ExceptionOccurred(env);
     (*env)->ExceptionClear(env);
+    text[0] = '\0';
+    if (throwable != NULL) {
+        jclass throwable_class = (*env)->GetObjectClass(env, throwable);
+        if (throwable_class != NULL) {
+            jmethodID to_string = (*env)->GetMethodID(env, throwable_class, "toString",
+                                                      "()Ljava/lang/String;");
+            if (to_string != NULL) {
+                jstring description = (jstring) (*env)->CallObjectMethod(env, throwable, to_string);
+                if (description != NULL) {
+                    const char *utf = (*env)->GetStringUTFChars(env, description, NULL);
+                    if (utf != NULL) {
+                        size_t length = bounded_length(utf, sizeof(text) - 1);
+                        memcpy(text, utf, length);
+                        text[length] = '\0';
+                        (*env)->ReleaseStringUTFChars(env, description, utf);
+                    }
+                    (*env)->DeleteLocalRef(env, description);
+                }
+            }
+            (*env)->DeleteLocalRef(env, throwable_class);
+        }
+        if ((*env)->ExceptionCheck(env)) (*env)->ExceptionClear(env);
+        (*env)->DeleteLocalRef(env, throwable);
+    }
+    LOGE("VM upcall %s threw %s in %s; clearing it before the VM sees it", call_name,
+         text[0] != '\0' ? text : "a Java exception", trace_method_name(method));
 }
 
 static uintptr_t crash_pc(void *context) {
@@ -3901,8 +3933,8 @@ static jobject call_legacy_get_string(JNIEnv *env, jclass clazz, jmethodID metho
     }
     if (result == NULL) {
         if ((*env)->ExceptionCheck(env)) {
-            LOGE("legacy MIDP getString threw; substituting \"<unknown>\"");
-            (*env)->ExceptionClear(env);
+            report_upcall_exception(env, "CallStaticObjectMethod", method);
+            LOGE("legacy MIDP getString returned null; substituting \"<unknown>\"");
         }
         result = (*env)->NewStringUTF(env, "<unknown>");
     }
@@ -3957,8 +3989,8 @@ static jobject JNICALL hooked_call_static_object_method_a(JNIEnv *env, jclass cl
         result = g_original_table->CallStaticObjectMethodA(env, clazz, method, args);
         if (result == NULL) {
             if ((*env)->ExceptionCheck(env)) {
-                LOGE("legacy MIDP getString threw; substituting \"<unknown>\"");
-                (*env)->ExceptionClear(env);
+                report_upcall_exception(env, "CallStaticObjectMethodA", method);
+                LOGE("legacy MIDP getString returned null; substituting \"<unknown>\"");
             }
             result = (*env)->NewStringUTF(env, "<unknown>");
         }

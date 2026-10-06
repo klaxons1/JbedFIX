@@ -35,7 +35,13 @@ public class AmsEvent {
     }
 
     public String toString() {
-        String ret = "[" + AmsClientBase.getEventName(this.mId) + "] mResult=" + this.mResult;
+        String name;
+        try {
+            name = AmsClientBase.getEventName(this.mId);
+        } catch (Throwable throwable) {
+            name = "EVENT_" + this.mId;
+        }
+        String ret = "[" + name + "] mResult=" + this.mResult;
         return this.mData == null ? ret + " with empty data" : ret + ", len=" + this.mData.length;
     }
 }
