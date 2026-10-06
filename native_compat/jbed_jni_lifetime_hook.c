@@ -170,6 +170,8 @@ static volatile sig_atomic_t g_vm_sigaction_forwarded;
 static volatile sig_atomic_t g_vm_sigaction_refused;
 static volatile sig_atomic_t g_vm_sigaction_last_signal;
 static volatile sig_atomic_t g_monitor_stubs_written;
+static int g_sigaction_interpose_reported;
+static int g_monitor_emulation_reported;
 static void log_signal_dispositions(void);
 
 /* Crash diagnostics keep a copy of every named mapping, not only executable
@@ -182,7 +184,13 @@ struct mapped_region {
     uintptr_t end;
     size_t name_length;
     char permissions[5];
-    char name[96];
+    /* A complete path, not a prefix: Android 11 puts application libraries in
+     * /data/app/~~<hash>==/<package>-<hash>==/lib/arm/libjbedvm.so, which is
+     * already longer than 100 characters. Truncating it here used to break
+     * module_lookup("libjbedvm.so") -- the suffix comparison failed, so the VM
+     * signal interposition was never installed. The scanner reads up to 255
+     * characters, so this buffer has to hold at least that many. */
+    char name[256];
 };
 static struct mapped_region g_mappings[JBED_MAX_MAPPINGS];
 static size_t g_mapping_count;
@@ -2770,8 +2778,12 @@ static void interpose_vm_signal_handlers(const char *reason) {
     if (g_sigaction_interposed) return;
     if (g_jbed_base == 0) return;
     if (!module_lookup("libjbedvm.so", path, sizeof(path), &base)) {
-        if (!g_guard_retry_logged) {
-            LOGE("cannot interpose the VM signal handlers: libjbedvm.so mapping not found");
+        /* Expected on the first attempt: the shim is loaded before the VM
+         * library is. The janitor retries every sweep, so this is information,
+         * not an error. */
+        if (!g_sigaction_interpose_reported) {
+            g_sigaction_interpose_reported = 1;
+            LOGI("libjbedvm.so is not mapped yet; the janitor will retry the signal interposition");
         }
         return;
     }
@@ -2854,8 +2866,11 @@ static void emulate_platform_monitor(const char *reason) {
 
     if (g_monitor_emulation_done) return;
     if (!module_lookup("libandroidio.so", path, sizeof(path), &base)) {
-        if (!g_guard_retry_logged) {
-            LOGE("cannot emulate AsynchronousCloseMonitor: libandroidio.so mapping not found");
+        /* libandroidio.so is loaded lazily by libcore, so the first attempt
+         * regularly runs before it exists; the janitor retries. */
+        if (!g_monitor_emulation_reported) {
+            g_monitor_emulation_reported = 1;
+            LOGI("libandroidio.so is not mapped yet; the janitor will retry the monitor emulation");
         }
         return;
     }
@@ -3957,6 +3972,10 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
         g_timer_tick_filter_enabled = 0;
         LOGI("timer-tick filter disabled by marker file");
     }
+    /* Fill the mapping table before anything reports module names or looks for
+     * a library: without this the first guard attempt ran against an empty
+     * table and reported every module as unmapped. */
+    refresh_process_mappings();
     log_process_signal_state("signal state at shim load");
     log_signal_dispositions();
     install_timer_tick_filter("shim load");

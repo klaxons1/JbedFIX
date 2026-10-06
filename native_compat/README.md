@@ -144,6 +144,13 @@ platform runtime from crossing into each other:
   `/storage/emulated/0/jbedfix/disable-monitor-emulation.patch` to skip this.
   Trade-off: asynchronous-close interruption of blocking I/O is disabled for
   the process (`was_signalled` always reports "not signalled").
+- **Long Android 11 module paths.** `module_lookup` matches the tail of the
+  recorded mapping name, so the name buffer must hold the whole path:
+  `/data/app/~~<hash>==/<package>-<hash>==/lib/arm/libjbedvm.so` is longer than
+  95 characters. With the old 96-byte field the suffix comparison failed and the
+  VM signal interposition silently never installed while the monitor emulation
+  (a 37-character `/apex/...` path) did. The field now holds the scanner's full
+  255-character path.
 - **How the text is written.** `write_process_memory` patches through
   `/proc/self/mem` first, which keeps the mapping's permissions untouched, and
   falls back to a temporary `mprotect(RWX)`; both paths read the bytes back and
@@ -164,6 +171,13 @@ small symbol subset imported by Jbed using a 480x800 RGB_565 software buffer.
 They deliberately avoid Android 11's private SurfaceFlinger ABI. The current
 bridge permits VM initialisation and framebuffer writes; presenting this buffer
 on a modern Java Surface is a later step.
+
+## Local install drop box
+
+The AMS "Local install" search (`BasicEventHandler`'s local-install handler)
+scans the configured download folder, every FileConnection root, and
+`/storage/emulated/0/jbedfix/`, so a JAR/JAD copied there is offered in the
+MIDlet list regardless of how the platform exposes external storage.
 
 ## Native crash diagnostics
 

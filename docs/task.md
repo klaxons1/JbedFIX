@@ -212,6 +212,32 @@ crash record lists the resulting counters, so the next run shows which layer
 engaged. See the "Platform-library guard rails" section of
 `native_compat/README.md` for details and trade-offs.
 
+### Platform fault mitigation on the current branch — follow-up
+
+The first on-device run of the guard rails showed two errors at shim load that
+were both consequences of one bug: mapping names were truncated to 95
+characters, and Android 11 stores application libraries under
+`/data/app/~~<hash>==/<package>-<hash>==/lib/arm/libjbedvm.so` (108 characters
+for this package). `module_lookup("libjbedvm.so")` could therefore never match,
+so the VM signal interposition never installed, while the monitor emulation
+matched `/apex/com.android.art/lib/libandroidio.so` on the janitor retry. The
+name field now holds the scanner's full path, the mapping table is refreshed
+before the first guard attempt (it used to be empty, which also made every
+module print as `unmapped`), and a module that is not mapped yet is reported as
+"will retry" instead of an error.
+
+The local-install search (`AmsEventHandler`) additionally scans
+`/storage/emulated/0/jbedfix/`, so test JAR/JAD files can be dropped next to the
+shim logs.
+
+Installs are still blocked further down the stack: the install event reaches the
+VM's native upcall queue and is consumed (`poll result=1`), but the VM's Java
+side cannot run — `nativeJbedRun` raises `StackOverflowError: stack size 65MB`
+immediately, the recovery path runs, and the next call returns
+`delay=2147483513` (about 24 days), after which the JbedThread sleeps until the
+next VM state change. This is the documented unbounded recursion inside the
+proprietary VM scheduler/AMS path, not a stack-size limit.
+
 ### FileConnection bridge
 
 `JbedFileManager.getRoots()` is reached through the old native JNI bridge but returns null with a pending Java exception on this ART runtime. Its precise failure did not safely produce a Java stack trace: attempting `ExceptionDescribe()` itself hit the already constrained Jbed thread stack.

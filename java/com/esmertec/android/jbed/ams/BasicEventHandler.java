@@ -707,6 +707,10 @@ public class BasicEventHandler {
         boolean mIsOnlySdcard = false;
         private final boolean isCompressJarFile = true;
         private final String[] excludeFolders = JbedConfig.getExcludeSearchFolder().split(":");
+        /* Drop-in folder used by the compatibility shim for its logs. JAR/JAD
+         * files placed there are offered in this list as well, so tests do not
+         * depend on how the platform exposes the rest of external storage. */
+        private static final String JBEDFIX_DROP_FOLDER = "/storage/emulated/0/jbedfix";
 
         /* JADX INFO: Access modifiers changed from: private */
         public void collectLocalInstallFiles() {
@@ -714,6 +718,7 @@ public class BasicEventHandler {
                 File dir = new File(JbedSettings.getInstance(this.mContext).getLocalInstallDir());
                 findAllMidlets(dir);
             }
+            findAllMidlets(new File(JBEDFIX_DROP_FOLDER));
             JbedFileManager manager = new JbedFileManager(this.mContext, null);
             List<String> roots = manager.getRootPathList();
             for (int i = 0; i < roots.size(); i++) {
