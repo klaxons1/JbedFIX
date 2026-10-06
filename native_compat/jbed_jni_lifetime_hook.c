@@ -81,6 +81,7 @@ static void native_file_log(int priority, const char *format, ...) {
  * small async-signal-safe marker before re-raising it so Android still creates
  * its normal tombstone while devices without logcat retain the crash reason. */
 static volatile sig_atomic_t g_crash_handler_active;
+static uintptr_t g_jbed_base;
 
 static size_t append_decimal(char *buffer, size_t offset, size_t capacity, unsigned long value) {
     char digits[24];
@@ -159,12 +160,16 @@ static void native_crash_signal_handler(int signal_number, siginfo_t *signal_inf
     static const char prefix[] = "FATAL/jbed-jni-compat native signal=";
     static const char address_marker[] = " address=0x";
     static const char newline[] = "\n";
-    char line[240];
+    char line[320];
     size_t length = 0;
     int fd;
+    uintptr_t pc;
+    uintptr_t vm_base;
 
     if (g_crash_handler_active) _exit(128 + signal_number);
     g_crash_handler_active = 1;
+    pc = crash_pc(context);
+    vm_base = g_jbed_base;
     memcpy(line + length, prefix, sizeof(prefix) - 1);
     length += sizeof(prefix) - 1;
     length = append_decimal(line, length, sizeof(line), (unsigned long) signal_number);
@@ -176,6 +181,13 @@ static void native_crash_signal_handler(int signal_number, siginfo_t *signal_inf
                                crash_pc(context));
     length = append_marker_hex(line, length, sizeof(line), " sp=0x", sizeof(" sp=0x") - 1,
                                crash_sp(context));
+    length = append_marker_hex(line, length, sizeof(line), " vmBase=0x", sizeof(" vmBase=0x") - 1,
+                               vm_base);
+    if (vm_base != 0 && pc >= vm_base) {
+        length = append_marker_hex(line, length, sizeof(line), " vmPcOffset=0x",
+                                   sizeof(" vmPcOffset=0x") - 1,
+                                   (pc & ~(uintptr_t) 1u) - vm_base);
+    }
     memcpy(line + length, newline, sizeof(newline) - 1);
     length += sizeof(newline) - 1;
 
@@ -232,7 +244,6 @@ static jmethodID g_vm_state_change_method;
 static jmethodID g_midp_get_string_method;
 static jmethodID g_file_get_roots_method;
 
-static uintptr_t g_jbed_base;
 static jobject g_promoted_engine;
 
 /*

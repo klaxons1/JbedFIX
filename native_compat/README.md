@@ -118,10 +118,10 @@ The compatibility shim also mirrors its JNI, linker, and scheduler markers to
 `/storage/emulated/0/jbedfix/native.log` in addition to Android's log buffer.
 It installs a small signal marker for native crashes at
 `/storage/emulated/0/jbedfix/native-crash.log`, including the fault address,
-program counter (`pc`) and stack pointer (`sp`), then re-raises the signal so
-Android can still create its normal tombstone. The `pc` can be translated
-against the legacy VM map using the offsets in `docs/libjbedvm.so.c`; unlike
-`si_addr`, it identifies the failing instruction. This is intended for devices
+program counter (`pc`), stack pointer (`sp`) and, when available, the
+`libjbedvm`-relative `vmPcOffset`, then re-raises the signal so Android can
+still create its normal tombstone. `vmPcOffset` can be looked up directly in
+`docs/libjbedvm.so.c`; unlike `si_addr`, it identifies the failing instruction. This is intended for devices
 where logcat cannot be collected.
 
 For a controlled bootstrap comparison, create the empty marker file
