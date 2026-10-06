@@ -206,7 +206,7 @@ static int g_mapping_table_truncated;
  * platform code (for example libcore's libandroidio.so) rather than in the VM.
  */
 #define JBED_TRACE_RING_SIZE 128
-#define JBED_TRACE_NAME_LENGTH 48
+#define JBED_TRACE_NAME_LENGTH 80
 #define JBED_MAX_TRACE_METHODS 256
 #define JBED_TRACE_UNKNOWN_METHOD "?"
 
@@ -440,9 +440,12 @@ static void trace_remember_method(jmethodID method, int is_static, const char *n
     entry->method_id = (uintptr_t) method;
     entry->is_static = (uint8_t) (is_static ? 1 : 0);
     if (class_matches && g_last_find_class_name[0] != '\0') {
+        /* Leave room for "." plus the method name: a full class name used to
+         * fill the field, so the trace only ever showed the class. */
+        size_t class_length = bounded_length(g_last_find_class_name,
+                                             sizeof(entry->name) / 2);
         offset = append_text(entry->name, offset, sizeof(entry->name),
-                             g_last_find_class_name, bounded_length(g_last_find_class_name,
-                                                                    sizeof(entry->name)));
+                             g_last_find_class_name, class_length);
         if (offset + 1 < sizeof(entry->name)) entry->name[offset++] = '.';
     }
     offset = append_text(entry->name, offset, sizeof(entry->name), name,
@@ -504,6 +507,21 @@ static void trace_and_clear_exception(JNIEnv *env, const char *call_name, uint32
     vm_upcall_observe(call_name);
     clear_pending_exception(env);
     trace_record(kind, method, -1, -1, call_name);
+}
+
+/*
+ * A legacy Java callback that throws is the one upcall result the VM cannot
+ * handle: the exception is cleared before the next call (the 2011 VM has no
+ * notion of a pending ART exception) and the VM keeps the null it received.
+ * Log which method did it, because a repeated null is what drives the VM's
+ * retry loops.
+ */
+static void report_upcall_exception(JNIEnv *env, const char *call_name, jmethodID method) {
+    if (env == NULL || method == NULL) return;
+    if (!(*env)->ExceptionCheck(env)) return;
+    LOGE("VM upcall %s threw a Java exception in %s; clearing it before the VM sees it",
+         call_name, trace_method_name(method));
+    (*env)->ExceptionClear(env);
 }
 
 static uintptr_t crash_pc(void *context) {
@@ -2286,6 +2304,12 @@ static void start_timer_filter_janitor(void) {
 #define JBED_DISABLE_DIRECT_INSTALL_MARKER \
     JBED_PUBLIC_LOG_DIR "/disable-direct-install-upcall.patch"
 
+/* The staged scheduler-quantum patches change the VM's time slicing. They can
+ * be switched off for an A/B run when the VM misbehaves inside a long-running
+ * operation such as its ahead-of-time compiler. */
+#define JBED_DISABLE_LOW_QUANTUM_MARKER \
+    JBED_PUBLIC_LOG_DIR "/disable-low-quantum-patch.patch"
+
 #define JBED_DISABLE_MONITOR_EMULATION_MARKER \
     JBED_PUBLIC_LOG_DIR "/disable-monitor-emulation.patch"
 #define JBED_ELF32_IMAGE_LIMIT (16u * 1024u * 1024u)
@@ -3315,6 +3339,13 @@ Java_com_esmertec_android_jbed_service_JbedEngine_nativeEnableLowSchedulerQuantu
 
     if (g_patched_low_jbed_run_quantum) return;
 
+    if (access(JBED_DISABLE_LOW_QUANTUM_MARKER, F_OK) == 0) {
+        g_patched_low_jbed_run_quantum = 1;
+        LOGI("low scheduler quantum patch disabled by %s; the VM keeps its own time slicing",
+             JBED_DISABLE_LOW_QUANTUM_MARKER);
+        return;
+    }
+
     if (!use_modern_art_scheduler_workarounds()) {
         g_patched_low_jbed_run_quantum = 1;
         LOGI("leaving low scheduler quantum patch disabled on Android API %d",
@@ -3852,42 +3883,93 @@ static jobject make_legacy_roots(JNIEnv *env) {
     return roots;
 }
 
+/*
+ * The i18n callback of the legacy MIDP bridge must never return null: the VM
+ * calls strlen() on it. The Java implementation already catches everything and
+ * falls back to its own "<unknown>", so the real method is called and only a
+ * null result is substituted.
+ */
+static jobject call_legacy_get_string(JNIEnv *env, jclass clazz, jmethodID method,
+                                      va_list *arguments) {
+    jobject result = NULL;
+
+    if (arguments != NULL) {
+        va_list copy;
+        va_copy(copy, *arguments);
+        result = g_original_table->CallStaticObjectMethodV(env, clazz, method, copy);
+        va_end(copy);
+    }
+    if (result == NULL) {
+        if ((*env)->ExceptionCheck(env)) {
+            LOGE("legacy MIDP getString threw; substituting \"<unknown>\"");
+            (*env)->ExceptionClear(env);
+        }
+        result = (*env)->NewStringUTF(env, "<unknown>");
+    }
+    return result;
+}
+
 static jobject JNICALL hooked_call_static_object_method(JNIEnv *env, jclass clazz, jmethodID method, ...) {
+    va_list arguments;
+
     trace_and_clear_exception(env, "CallStaticObjectMethod", JBED_TRACE_CALL_STATIC_OBJECT, method);
+    va_start(arguments, method);
     if (g_midp_get_string_method != NULL && method == g_midp_get_string_method) {
-        return (*env)->NewStringUTF(env, "<unknown>");
+        jobject result = call_legacy_get_string(env, clazz, method, &arguments);
+        va_end(arguments);
+        return result;
     }
     if (g_file_get_roots_method != NULL && method == g_file_get_roots_method) {
+        va_end(arguments);
         return make_legacy_roots(env);
     }
 
-    va_list args;
-    va_start(args, method);
-    jobject result = g_original_table->CallStaticObjectMethodV(env, clazz, method, args);
-    va_end(args);
+    jobject result = g_original_table->CallStaticObjectMethodV(env, clazz, method, arguments);
+    va_end(arguments);
+    report_upcall_exception(env, "CallStaticObjectMethod", method);
     return result;
 }
 
 static jobject JNICALL hooked_call_static_object_method_v(JNIEnv *env, jclass clazz, jmethodID method, va_list args) {
+    jobject result;
+
     trace_and_clear_exception(env, "CallStaticObjectMethodV", JBED_TRACE_CALL_STATIC_OBJECT, method);
     if (g_midp_get_string_method != NULL && method == g_midp_get_string_method) {
-        return (*env)->NewStringUTF(env, "<unknown>");
+        va_list copy;
+        va_copy(copy, args);
+        result = call_legacy_get_string(env, clazz, method, &copy);
+        va_end(copy);
+        return result;
     }
     if (g_file_get_roots_method != NULL && method == g_file_get_roots_method) {
         return make_legacy_roots(env);
     }
-    return g_original_table->CallStaticObjectMethodV(env, clazz, method, args);
+    result = g_original_table->CallStaticObjectMethodV(env, clazz, method, args);
+    report_upcall_exception(env, "CallStaticObjectMethodV", method);
+    return result;
 }
 
 static jobject JNICALL hooked_call_static_object_method_a(JNIEnv *env, jclass clazz, jmethodID method, const jvalue *args) {
+    jobject result;
+
     trace_and_clear_exception(env, "CallStaticObjectMethodA", JBED_TRACE_CALL_STATIC_OBJECT, method);
     if (g_midp_get_string_method != NULL && method == g_midp_get_string_method) {
-        return (*env)->NewStringUTF(env, "<unknown>");
+        result = g_original_table->CallStaticObjectMethodA(env, clazz, method, args);
+        if (result == NULL) {
+            if ((*env)->ExceptionCheck(env)) {
+                LOGE("legacy MIDP getString threw; substituting \"<unknown>\"");
+                (*env)->ExceptionClear(env);
+            }
+            result = (*env)->NewStringUTF(env, "<unknown>");
+        }
+        return result;
     }
     if (g_file_get_roots_method != NULL && method == g_file_get_roots_method) {
         return make_legacy_roots(env);
     }
-    return g_original_table->CallStaticObjectMethodA(env, clazz, method, args);
+    result = g_original_table->CallStaticObjectMethodA(env, clazz, method, args);
+    report_upcall_exception(env, "CallStaticObjectMethodA", method);
+    return result;
 }
 
 JNIEXPORT void JNICALL

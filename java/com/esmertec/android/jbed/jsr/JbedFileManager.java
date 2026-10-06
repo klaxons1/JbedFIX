@@ -159,7 +159,13 @@ public class JbedFileManager implements JbedService.LifecycleListener {
         ByteArrayOutputStream bo = new ByteArrayOutputStream();
         DataOutputStream out = new DataOutputStream(bo);
         try {
-            List<String> roots = INSTANCE.getRootPathList();
+            /* Never through INSTANCE: the native VM calls this static method
+             * through its JNI bridge while it is still starting, and the
+             * registered JbedFileManager may not exist yet in this process. A
+             * NullPointerException here is swallowed by the compatibility hook
+             * as a pending-exception clear, the VM sees a null byte array and
+             * repeats the call until the thread stack overflows. */
+            List<String> roots = collectRootPaths();
             for (String path : roots) {
                 out.write(convertFilePath(path).getBytes("utf-8"));
                 out.writeByte(0);
@@ -171,6 +177,11 @@ public class JbedFileManager implements JbedService.LifecycleListener {
     }
 
     public List<String> getRootPathList() {
+        return collectRootPaths();
+    }
+
+    /** The root list without any dependency on a JbedFileManager instance. */
+    private static List<String> collectRootPaths() {
         List<String> result = new ArrayList<>();
         String[] arr$ = rootPaths;
         for (String path : arr$) {
@@ -202,7 +213,7 @@ public class JbedFileManager implements JbedService.LifecycleListener {
             out.write(paths);
             String rootMessage = "native root payload: state=" + Environment.getExternalStorageState()
                     + " count=" + getRootCount() + " namesBytes=" + names.length
-                    + " pathsBytes=" + paths.length + " roots=" + INSTANCE.getRootPathList();
+                    + " pathsBytes=" + paths.length + " roots=" + collectRootPaths();
             JbedFileLog.info(TAG, rootMessage);
             Log.i(TAG, rootMessage);
             return bo.toByteArray();
