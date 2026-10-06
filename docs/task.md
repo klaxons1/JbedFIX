@@ -250,6 +250,18 @@ layout and selector content into `jbed.log` /
 AOT-compiled AMS can be confirmed. `disable-local-sidecar-install.patch` restores
 the original (VM installer) behaviour.
 
+The next run named the failure precisely: the VM's upcall
+`AmsConnection.fetchEvent()` threw `ArrayIndexOutOfBoundsException`, because
+`AmsClientBase.getEventName()` indexed `eventAndroidNames` (five entries) with
+Android event ids that go up to 10031; the exception came from a log line
+inside `fetchEvent()`, the hook cleared it, the VM received null and re-entered
+the call from native code until the JbedThread stack overflowed. The lookup is
+bounds checked, `AmsEvent.toString()` cannot throw, `fetchEvent()` and
+`handleEventEx()` catch everything and drain a static fallback queue (so an
+event still reaches the VM when no `AmsConnection` instance is registered in
+the process), and the hook now reports the exception class and message of any
+failing upcall.
+
 Launching a suite reached the VM and failed the same way as install did
 (`StackOverflowError: stack size 65MB` in `nativeJbedRun`). The last upcalls
 before the overflow were a repeated VM -> Java call of one static
