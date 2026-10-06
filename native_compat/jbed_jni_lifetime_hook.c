@@ -26,7 +26,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <pthread.h>
 #include <signal.h>
+#include <time.h>
 #include <sys/mman.h>
 #include <sys/prctl.h>
 #include <sys/stat.h>
@@ -106,6 +108,69 @@ static int g_previous_signal_action_valid[JBED_MAX_SIGNALS];
  */
 #define JBED_BLOCKED_THREAD_SIGNAL 34
 static volatile sig_atomic_t g_blocked_thread_signals_seen;
+
+/*
+ * The VM arms setitimer() for its scheduler quantum and installs a handler for
+ * the matching signal. libjbedvm imports sigaction and setitimer but never
+ * pthread_kill/tgkill/raise, so every tick it receives is a *process-directed*
+ * timer delivery, which the kernel hands to whichever thread is not blocking
+ * that signal. On Android 11 that can be any ART thread (finalizer, main,
+ * Binder, GC) or the JbedThread while it runs platform code that the VM called
+ * into. The VM handler assumes it interrupted VM code and rewrites the
+ * interrupted context, so the resumed platform code then uses a scrambled
+ * register-derived pointer and faults; a SIGBUS/BUS_ADRALN on an odd address
+ * (for example the strd in libcore's AsynchronousCloseMonitor constructor) is
+ * exactly that signature.
+ *
+ * The tick filter wraps the VM's handler and forwards the tick only when the
+ * interrupted pc lies inside libjbedvm.so, i.e. when the VM really owns the
+ * interrupted instruction stream. Ticks that land anywhere else are counted
+ * and dropped, so the VM keeps its preemption ticks while no platform or Java
+ * frame is ever rewritten by a tick.
+ */
+#define JBED_TIMER_TICK_SIGNAL_COUNT 3
+#define JBED_DISABLE_TIMER_TICK_FILTER_MARKER \
+    JBED_PUBLIC_LOG_DIR "/disable-timer-tick-filter.patch"
+#define JBED_DISABLE_RT_SIGNAL_HOOKS_MARKER \
+    JBED_PUBLIC_LOG_DIR "/disable-rt-signal-hooks.patch"
+static const int g_timer_tick_signals[JBED_TIMER_TICK_SIGNAL_COUNT] = {SIGALRM, SIGVTALRM,
+                                                                      SIGPROF};
+static int g_timer_tick_filter_enabled = 1;
+static volatile sig_atomic_t g_timer_tick_wrapped[JBED_TIMER_TICK_SIGNAL_COUNT];
+static struct sigaction g_timer_tick_previous[JBED_TIMER_TICK_SIGNAL_COUNT];
+static volatile sig_atomic_t g_timer_ticks_seen;
+static volatile sig_atomic_t g_timer_ticks_forwarded;
+static volatile sig_atomic_t g_timer_ticks_swallowed;
+static volatile sig_atomic_t g_timer_ticks_logged;
+static volatile uintptr_t g_timer_last_swallowed_pc;
+static volatile sig_atomic_t g_timer_last_swallowed_tid;
+static char g_timer_last_swallowed_module[64];
+static volatile sig_atomic_t g_vm_thread_tid;
+static volatile sig_atomic_t g_vm_upcall_count;
+static volatile sig_atomic_t g_tls_watch_valid = -1;
+static volatile sig_atomic_t g_tls_watch_samples;
+static int g_timer_filter_janitor_started;
+static void install_timer_tick_filter(const char *reason);
+static void install_vm_platform_guards(const char *reason);
+static int timer_tick_pc_is_vm_code(uintptr_t pc);
+static int sanitize_sigaction_flags(int flags);
+
+/*
+ * Counters and latches owned by the platform-guard block further down; the
+ * crash record is emitted much earlier, so they are tentatively defined here
+ * and keep their storage in the later definitions.
+ */
+static int g_sigaction_interposed;
+static int g_signal_interposed;
+static int g_monitor_emulation_done;
+static int g_guard_retry_logged;
+static volatile sig_atomic_t g_vm_sigaction_calls;
+static volatile sig_atomic_t g_vm_sigaction_filtered;
+static volatile sig_atomic_t g_vm_sigaction_forwarded;
+static volatile sig_atomic_t g_vm_sigaction_refused;
+static volatile sig_atomic_t g_vm_sigaction_last_signal;
+static volatile sig_atomic_t g_monitor_stubs_written;
+static void log_signal_dispositions(void);
 
 /* Crash diagnostics keep a copy of every named mapping, not only executable
  * ones, so a fault address (si_addr) can be attributed to the library that
@@ -249,6 +314,92 @@ static const struct mapped_region *find_region(uintptr_t address, int require_ex
     return NULL;
 }
 
+/*
+ * bionic's thread pointer points at the TLS block: slot 0 mirrors the pointer
+ * itself and slot 1 holds the pthread_internal_t* whose third word is the
+ * kernel tid (next, prev, tid). A thread whose TLS slot was overwritten
+ * therefore reports a pthread_self() value that is not a mapped
+ * pthread_internal_t of the running thread -- the state that makes libcore's
+ * AsynchronousCloseMonitor store through an odd address. Every read below is
+ * checked against the mapping table first, so it is safe both from a signal
+ * handler and from the per-upcall watch.
+ */
+static uintptr_t tls_thread_pointer(void) {
+#if defined(__arm__)
+    uintptr_t value = 0;
+    __asm__ __volatile__("mrc p15, 0, %0, c13, c0, 3" : "=r"(value));
+    return value;
+#else
+    return 0;
+#endif
+}
+
+static int tls_read_u32(uintptr_t address, uint32_t *value) {
+    const struct mapped_region *region = find_region(address, 0);
+    if (region == NULL) return 0;
+    if (strchr(region->permissions, 'r') == NULL) return 0;
+    if (address < region->start || region->end - address < sizeof(*value)) return 0;
+    memcpy(value, (const void *) address, sizeof(*value));
+    return 1;
+}
+
+static int tls_measure(uintptr_t *tp_out, uint32_t *self_slot_out, uint32_t *thread_slot_out,
+                       uint32_t *thread_tid_out) {
+    uintptr_t tp = tls_thread_pointer();
+    uint32_t self_slot = 0;
+    uint32_t thread_slot = 0;
+    uint32_t thread_tid = 0;
+
+    if (tp_out != NULL) *tp_out = tp;
+    if (self_slot_out != NULL) *self_slot_out = 0;
+    if (thread_slot_out != NULL) *thread_slot_out = 0;
+    if (thread_tid_out != NULL) *thread_tid_out = 0;
+    if (tp == 0) return 0;
+    if (!tls_read_u32(tp, &self_slot)) return 0;
+    if (!tls_read_u32(tp + 4, &thread_slot)) return 0;
+    if (!tls_read_u32((uintptr_t) thread_slot + 8, &thread_tid)) return 0;
+    if (self_slot_out != NULL) *self_slot_out = self_slot;
+    if (thread_slot_out != NULL) *thread_slot_out = thread_slot;
+    if (thread_tid_out != NULL) *thread_tid_out = thread_tid;
+    return (self_slot == (uint32_t) tp) && (thread_slot != 0)
+           && ((int32_t) thread_tid == current_tid());
+}
+
+static size_t tls_append_state(char *buffer, size_t offset, size_t capacity) {
+    uintptr_t tp = 0;
+    uint32_t self_slot = 0;
+    uint32_t thread_slot = 0;
+    uint32_t thread_tid = 0;
+    int valid = tls_measure(&tp, &self_slot, &thread_slot, &thread_tid);
+
+    offset = append_text(buffer, offset, capacity, "tlsTp=0x", sizeof("tlsTp=0x") - 1);
+    offset = append_hex(buffer, offset, capacity, tp);
+    offset = append_text(buffer, offset, capacity, " tlsSelf=0x", sizeof(" tlsSelf=0x") - 1);
+    offset = append_hex(buffer, offset, capacity, (uintptr_t) self_slot);
+    offset = append_text(buffer, offset, capacity, " tlsThread=0x", sizeof(" tlsThread=0x") - 1);
+    offset = append_hex(buffer, offset, capacity, (uintptr_t) thread_slot);
+    offset = append_text(buffer, offset, capacity, " tlsThreadTid=", sizeof(" tlsThreadTid=") - 1);
+    offset = append_decimal(buffer, offset, capacity, (unsigned long) (int32_t) thread_tid);
+    offset = append_text(buffer, offset, capacity, valid ? " tlsValid=1" : " tlsValid=0",
+                         valid ? sizeof(" tlsValid=1") - 1 : sizeof(" tlsValid=0") - 1);
+    return offset;
+}
+
+/* Rate-limited by design: this runs on every VM -> Java upcall. */
+static void tls_watch(const char *where) {
+    char text[320];
+    size_t offset;
+    int valid;
+    int32_t samples = ++g_tls_watch_samples;
+
+    valid = tls_measure(NULL, NULL, NULL, NULL);
+    if (valid == (int) g_tls_watch_valid && (samples % 256) != 0) return;
+    g_tls_watch_valid = (sig_atomic_t) valid;
+    offset = tls_append_state(text, 0, sizeof(text) - 1);
+    text[offset < sizeof(text) ? offset : sizeof(text) - 1] = '\0';
+    LOGI("tls-watch %s samples=%d %s", where, (int) samples, text);
+}
+
 static void clear_pending_exception(JNIEnv *env);
 
 /*
@@ -292,6 +443,30 @@ static void trace_remember_method(jmethodID method, int is_static, const char *n
     (void) signature;
 }
 
+/*
+ * Called for every VM -> Java upcall routed through the cloned JNIEnv table.
+ * It identifies the JbedThread (the thread the VM runs on, and the only thread
+ * whose env table was replaced), arms the tick filter as soon as that thread is
+ * known, and watches the thread's TLS state. This is diagnostics only: it must
+ * never change the JNI call it precedes.
+ */
+static void vm_upcall_observe(const char *call_name) {
+    int32_t tid = current_tid();
+
+    ++g_vm_upcall_count;
+    if ((int32_t) g_vm_thread_tid != tid) {
+        char thread_name[32];
+        thread_name[0] = '\0';
+        (void) prctl(PR_GET_NAME, thread_name, 0, 0, 0);
+        g_vm_thread_tid = (sig_atomic_t) tid;
+        LOGI("VM thread observed on upcall %s: tid=%d thread=%s", call_name, (int) tid,
+             thread_name[0] != '\0' ? thread_name : "?");
+        install_timer_tick_filter("upcall observation");
+        log_signal_dispositions();
+    }
+    tls_watch(call_name);
+}
+
 static void trace_record(uint32_t kind, jmethodID method, int32_t arg0, int32_t arg1,
                          const char *call_name) {
     struct jni_trace_entry *entry;
@@ -318,6 +493,7 @@ static void trace_record(uint32_t kind, jmethodID method, int32_t arg0, int32_t 
 
 static void trace_and_clear_exception(JNIEnv *env, const char *call_name, uint32_t kind,
                                       jmethodID method) {
+    vm_upcall_observe(call_name);
     clear_pending_exception(env);
     trace_record(kind, method, -1, -1, call_name);
 }
@@ -890,6 +1066,71 @@ static void dump_crash_marker(int signal_number, siginfo_t *signal_info, void *c
          * raise), not raised by the hardware, so si_addr is not an address. */
         offset = append_text(line, offset, sizeof(line), " sent=1", sizeof(" sent=1") - 1);
     }
+    end_crash_line(line, offset, sizeof(line));
+
+    /*
+     * TLS state of the crashing thread and the VM timer-tick counters. A
+     * tlsValid=0 (or a tlsThread whose tid is not this thread) means the
+     * thread's TLS block was overwritten, which is what makes pthread_self()
+     * return a wild value inside libcore. A non-zero dropped count means VM
+     * ticks reached code outside libjbedvm.so, and lastDroppedModule names
+     * where such a tick landed.
+     */
+    offset = begin_crash_line(line);
+    offset = tls_append_state(line, offset, sizeof(line));
+    offset = append_text(line, offset, sizeof(line), " vmTid=", sizeof(" vmTid=") - 1);
+    offset = append_decimal(line, offset, sizeof(line), (unsigned long) g_vm_thread_tid);
+    offset = append_text(line, offset, sizeof(line), " vmUpcalls=", sizeof(" vmUpcalls=") - 1);
+    offset = append_decimal(line, offset, sizeof(line), (unsigned long) g_vm_upcall_count);
+    end_crash_line(line, offset, sizeof(line));
+
+    offset = begin_crash_line(line);
+    offset = append_text(line, offset, sizeof(line), "timerTicks seen=",
+                         sizeof("timerTicks seen=") - 1);
+    offset = append_decimal(line, offset, sizeof(line), (unsigned long) g_timer_ticks_seen);
+    offset = append_text(line, offset, sizeof(line), " forwarded=", sizeof(" forwarded=") - 1);
+    offset = append_decimal(line, offset, sizeof(line), (unsigned long) g_timer_ticks_forwarded);
+    offset = append_text(line, offset, sizeof(line), " dropped=", sizeof(" dropped=") - 1);
+    offset = append_decimal(line, offset, sizeof(line), (unsigned long) g_timer_ticks_swallowed);
+    offset = append_marker_hex(line, offset, sizeof(line), " lastDroppedPc=0x",
+                               sizeof(" lastDroppedPc=0x") - 1,
+                               (uintptr_t) g_timer_last_swallowed_pc);
+    offset = append_text(line, offset, sizeof(line), " lastDroppedModule=",
+                         sizeof(" lastDroppedModule=") - 1);
+    offset = append_text(line, offset, sizeof(line), g_timer_last_swallowed_module,
+                         bounded_length(g_timer_last_swallowed_module,
+                                        sizeof(g_timer_last_swallowed_module)));
+    offset = append_text(line, offset, sizeof(line), " lastDroppedTid=",
+                         sizeof(" lastDroppedTid=") - 1);
+    offset = append_decimal(line, offset, sizeof(line),
+                            (unsigned long) g_timer_last_swallowed_tid);
+    end_crash_line(line, offset, sizeof(line));
+
+    offset = begin_crash_line(line);
+    offset = append_text(line, offset, sizeof(line), "guards sigactionInterposed=",
+                         sizeof("guards sigactionInterposed=") - 1);
+    offset = append_decimal(line, offset, sizeof(line), (unsigned long) g_sigaction_interposed);
+    offset = append_text(line, offset, sizeof(line), " signalInterposed=",
+                         sizeof(" signalInterposed=") - 1);
+    offset = append_decimal(line, offset, sizeof(line), (unsigned long) g_signal_interposed);
+    offset = append_text(line, offset, sizeof(line), " monitorStubs=",
+                         sizeof(" monitorStubs=") - 1);
+    offset = append_decimal(line, offset, sizeof(line), (unsigned long) g_monitor_stubs_written);
+    offset = append_text(line, offset, sizeof(line), " vmSigAction calls=",
+                         sizeof(" vmSigAction calls=") - 1);
+    offset = append_decimal(line, offset, sizeof(line), (unsigned long) g_vm_sigaction_calls);
+    offset = append_text(line, offset, sizeof(line), " filtered=",
+                         sizeof(" filtered=") - 1);
+    offset = append_decimal(line, offset, sizeof(line), (unsigned long) g_vm_sigaction_filtered);
+    offset = append_text(line, offset, sizeof(line), " forwarded=",
+                         sizeof(" forwarded=") - 1);
+    offset = append_decimal(line, offset, sizeof(line), (unsigned long) g_vm_sigaction_forwarded);
+    offset = append_text(line, offset, sizeof(line), " refused=",
+                         sizeof(" refused=") - 1);
+    offset = append_decimal(line, offset, sizeof(line), (unsigned long) g_vm_sigaction_refused);
+    offset = append_text(line, offset, sizeof(line), " last=", sizeof(" last=") - 1);
+    offset = append_decimal(line, offset, sizeof(line),
+                            (unsigned long) g_vm_sigaction_last_signal);
     end_crash_line(line, offset, sizeof(line));
 
     offset = begin_crash_line(line);
@@ -1790,6 +2031,943 @@ static void install_blocked_thread_observer(void) {
              JBED_BLOCKED_THREAD_SIGNAL);
     } else {
         LOGI("unable to observe signal %d: errno=%d", JBED_BLOCKED_THREAD_SIGNAL, errno);
+    }
+}
+
+/* -------------------------------------------------------------------------
+ * VM timer-tick filter (see the comment next to its globals near the top).
+ * ---------------------------------------------------------------------- */
+
+static int timer_tick_signal_index(int signal_number) {
+    int i;
+    for (i = 0; i < JBED_TIMER_TICK_SIGNAL_COUNT; ++i) {
+        if (g_timer_tick_signals[i] == signal_number) return i;
+    }
+    return -1;
+}
+
+/* The mapping name is a path such as /data/app/.../lib/arm/libjbedvm.so. */
+static int region_is_libjbedvm(const struct mapped_region *region) {
+    static const char suffix[] = "libjbedvm.so";
+    size_t suffix_length = sizeof(suffix) - 1;
+
+    if (region == NULL || region->name_length < suffix_length) return 0;
+    return memcmp(region->name + (region->name_length - suffix_length), suffix, suffix_length) == 0;
+}
+
+static int address_is_inside_vm(uintptr_t address) {
+    const struct mapped_region *region;
+
+    if (address < 0x1000) return 0;
+    if (g_jbed_base != 0 && address >= g_jbed_base
+            && address < g_jbed_base + JBED_LIBVM_IMAGE_SIZE) {
+        return 1;
+    }
+    region = find_region(address, 0);
+    return region_is_libjbedvm(region);
+}
+
+static void timer_tick_record_module(uintptr_t pc) {
+    const struct mapped_region *region = find_region(pc, 0);
+    size_t length = region == NULL ? 0 : region->name_length;
+
+    if (length > sizeof(g_timer_last_swallowed_module) - 1) {
+        length = sizeof(g_timer_last_swallowed_module) - 1;
+    }
+    if (length > 0) memcpy(g_timer_last_swallowed_module, region->name, length);
+    g_timer_last_swallowed_module[length] = '\0';
+}
+
+/*
+ * A tick may be handed to the VM's handler only when the interrupted
+ * instruction belongs to VM-owned code:
+ *   - libjbedvm.so itself,
+ *   - an unnamed anonymous executable region (the VM's own mmap'ed code),
+ *   - the application's own library directory, which is where libjbedvm.so and
+ *     its dependencies (this shim, libskia, libdrm1, ...) are loaded from.
+ * Everything under /apex or /system -- ART, libcore, libandroidio, libc, the
+ * platform's own libraries -- must never have its interrupted context rewritten
+ * by the 2011 VM: that is what corrupts registers and, one instruction later,
+ * faults in platform code. Calls the VM makes into libc are therefore no longer
+ * preemptible; that is a deliberate trade documented in native_compat/README.md.
+ */
+static int timer_tick_pc_is_vm_code(uintptr_t pc) {
+    const struct mapped_region *region = find_region(pc, 1);
+
+    if (region == NULL) return 0;
+    if (region_is_libjbedvm(region)) return 1;
+    if (region->name_length == 0) return 1;
+    if (strcmp(region->name, "[anon]") == 0) return 1;
+    if (strncmp(region->name, "/data/app/", 10) == 0) return 1;
+    if (strstr(region->name, "/lib/arm/") != NULL) return 1;
+    return 0;
+}
+
+/* Enter the handler the VM installed for this signal, with its own semantics. */
+static void timer_tick_forward(int index, int signal_number, siginfo_t *signal_info,
+                               void *context) {
+    struct sigaction *previous = (struct sigaction *) &g_timer_tick_previous[index];
+
+    if ((previous->sa_flags & SA_SIGINFO) != 0) {
+        if (previous->sa_sigaction != NULL) {
+            previous->sa_sigaction(signal_number, signal_info, context);
+        }
+        return;
+    }
+    if (previous->sa_handler != NULL && previous->sa_handler != SIG_DFL
+            && previous->sa_handler != SIG_IGN) {
+        previous->sa_handler(signal_number);
+    }
+}
+
+/*
+ * Runs on whichever thread the kernel picked for the tick. The VM handler is
+ * entered only when the interrupted pc is inside VM-owned code; everywhere else
+ * -- a platform/ART frame, a Java upcall, another thread entirely -- the tick
+ * is counted and dropped so that no frame outside the VM is ever rewritten by
+ * a VM tick. Only async-signal-safe work happens on the dropped path; the log
+ * write is rate-limited.
+ */
+static void timer_tick_filter_handler(int signal_number, siginfo_t *signal_info, void *context) {
+    uintptr_t pc = crash_pc(context);
+    int index = timer_tick_signal_index(signal_number);
+
+    ++g_timer_ticks_seen;
+    if (index >= 0 && timer_tick_pc_is_vm_code(pc)) {
+        ++g_timer_ticks_forwarded;
+        timer_tick_forward(index, signal_number, signal_info, context);
+        return;
+    }
+    ++g_timer_ticks_swallowed;
+    g_timer_last_swallowed_pc = pc;
+    g_timer_last_swallowed_tid = (sig_atomic_t) current_tid();
+    timer_tick_record_module(pc);
+    if (g_timer_ticks_logged < 8 || (g_timer_ticks_swallowed % 512) == 0) {
+        ++g_timer_ticks_logged;
+        LOGI("timer-tick dropped signal=%d pc=0x%lx module=%s tid=%d seen=%d forwarded=%d dropped=%d",
+             signal_number, (unsigned long) pc, g_timer_last_swallowed_module,
+             (int) g_timer_last_swallowed_tid, (int) g_timer_ticks_seen,
+             (int) g_timer_ticks_forwarded, (int) g_timer_ticks_swallowed);
+    }
+}
+
+static int timer_tick_handler_is_ours(const struct sigaction *action) {
+    return (void (*)(void)) action->sa_handler == (void (*)(void)) timer_tick_filter_handler;
+}
+
+/*
+ * The polling installer below is the fallback for the case where the GOT
+ * interposition of sigaction() could not be applied (for example when the
+ * module image could not be read). It wraps the disposition the VM installed
+ * as long as that handler lives in VM code.
+ */
+static int timer_tick_install_one(int index, const char *reason) {
+    int signal_number = g_timer_tick_signals[index];
+    struct sigaction current;
+    struct sigaction action;
+
+    if (g_timer_tick_wrapped[index] == 1) return 1;
+    if (sigaction(signal_number, NULL, &current) != 0) return 0;
+    if (current.sa_handler == SIG_DFL || current.sa_handler == SIG_IGN) return 0;
+    if (timer_tick_handler_is_ours(&current)) {
+        g_timer_tick_wrapped[index] = 1;
+        return 1;
+    }
+    if (!timer_tick_pc_is_vm_code((uintptr_t) current.sa_handler)) {
+        /* Not the VM's handler: leave any platform disposition alone. */
+        return 0;
+    }
+    current.sa_flags = sanitize_sigaction_flags(current.sa_flags);
+    memset(&action, 0, sizeof(action));
+    action.sa_sigaction = timer_tick_filter_handler;
+    action.sa_mask = current.sa_mask;
+    action.sa_flags = current.sa_flags | SA_SIGINFO;
+    if (sigaction(signal_number, &action, &g_timer_tick_previous[index]) != 0) return 0;
+    g_timer_tick_previous[index].sa_flags = current.sa_flags;
+    g_timer_tick_wrapped[index] = 1;
+    LOGI("timer-tick filter armed for signal %d (%s): vmHandler=0x%lx vmBase=0x%lx "
+         "forward=pc-in-vm-code drop=pc-anywhere-else",
+         signal_number, reason, (unsigned long) current.sa_handler,
+         (unsigned long) g_jbed_base);
+    return 1;
+}
+
+static void install_timer_tick_filter(const char *reason) {
+    int i;
+
+    if (!g_timer_tick_filter_enabled) return;
+    for (i = 0; i < JBED_TIMER_TICK_SIGNAL_COUNT; ++i) {
+        (void) timer_tick_install_one(i, reason);
+    }
+}
+
+/*
+ * The VM installs its handler during its first run, after JNI_OnLoad, so the
+ * disposition is polled (quickly for the first seconds, then slowly) instead of
+ * being hooked at the GOT level.
+ */
+static void *timer_filter_janitor(void *argument) {
+    struct timespec interval;
+    int fast_sweeps = 250; /* ~20 ms apart for the first five seconds */
+
+    (void) argument;
+    (void) prctl(PR_SET_NAME, "jbed-tick-filter", 0, 0, 0);
+    for (;;) {
+        install_timer_tick_filter("janitor");
+        install_vm_platform_guards("janitor");
+        interval.tv_sec = 0;
+        interval.tv_nsec = fast_sweeps > 0 ? (20L * 1000L * 1000L) : (250L * 1000L * 1000L);
+        if (fast_sweeps > 0) --fast_sweeps;
+        nanosleep(&interval, NULL);
+    }
+    return NULL;
+}
+
+static void start_timer_filter_janitor(void) {
+    pthread_t thread;
+
+    if (!g_timer_tick_filter_enabled || g_timer_filter_janitor_started) return;
+    if (pthread_create(&thread, NULL, timer_filter_janitor, NULL) == 0) {
+        g_timer_filter_janitor_started = 1;
+        LOGI("timer-tick filter janitor started");
+    } else {
+        LOGE("unable to start the timer-tick filter janitor: errno=%d", errno);
+    }
+}
+
+/* -------------------------------------------------------------------------
+ * VM platform guards.
+ *
+ * Two binary-compatibility measures are installed before the VM starts, both
+ * optional through marker files and both reported through native.log.
+ *
+ * 1. Signal-handler interposition.
+ *    libjbedvm.so installs its scheduler/preemption handler through
+ *    sigaction(), and its tick comes from setitimer (the decompiled interval
+ *    is ITIMER_VIRTUAL), which is a *process-wide* timer even though the VM
+ *    only ever runs on the JbedThread. On Android 11 the kernel delivers that
+ *    signal to whichever thread is consuming the process's CPU time: an ART
+ *    daemon thread doing file I/O, the Binder thread, or the JbedThread while
+ *    it runs platform code called through a VM -> Java upcall. The 2011 handler assumes it always
+ *    interrupted VM code and rewrites the interrupted context; a tick that
+ *    lands anywhere else corrupts that code's registers, and one instruction
+ *    later the resumed platform code faults. That is the observed SIGBUS:
+ *    libcore's AsynchronousCloseMonitor constructor storing through an odd
+ *    "this" inside libandroidio.
+ *    The GOT slot of sigaction() inside libjbedvm.so is rewritten, so every
+ *    handler the VM installs is recorded and routed through the tick filter,
+ *    which forwards the tick only when the interrupted pc is VM-owned code.
+ *    Signals ART owns (SIGSEGV/SIGBUS/SIGILL/SIGFPE/SIGTRAP/SIGABRT/SIGQUIT/
+ *    SIGUSR1 and the bionic-reserved real-time signals) are refused, so the
+ *    VM cannot take over ART's fault and thread-suspension handling.
+ *    Marker: disable-rt-signal-hooks.patch.
+ *
+ * 2. AsynchronousCloseMonitor emulation.
+ *    The crash record showed libcore's blockedThreadList already holding a
+ *    VM-realm code pointer in an earlier run, and the constructor's first
+ *    store faults whenever its "this" or the list is corrupt. libandroidio's
+ *    exported entry points are therefore replaced with inert stubs, so the
+ *    Java-level close path never walks or mutates that list. Cost: async-close
+ *    interruption of blocking I/O is disabled process-wide (wasSignalled()
+ *    always reports false). Marker: disable-monitor-emulation.patch.
+ * ---------------------------------------------------------------------- */
+
+#define JBED_DISABLE_MONITOR_EMULATION_MARKER \
+    JBED_PUBLIC_LOG_DIR "/disable-monitor-emulation.patch"
+#define JBED_ELF32_IMAGE_LIMIT (16u * 1024u * 1024u)
+#define JBED_ELF32_MAX_SECTIONS 96
+#define JBED_ELF32_SECTION_STRING_TABLE 0x100u
+
+#define JBED_ELF32_SHT_REL 9
+/* ARM relocation numbering differs from x86: GLOB_DAT is 21, JUMP_SLOT is 22. */
+#define JBED_ELF32_ARM_GLOB_DAT 21
+#define JBED_ELF32_ARM_JUMP_SLOT 22
+
+struct jbed_elf32_image {
+    unsigned char *data;
+    size_t size;
+    size_t loaded_size;
+};
+
+struct jbed_elf32_section {
+    size_t offset;
+    size_t size;
+    size_t entry_size;
+    size_t link;
+    int present;
+};
+
+static int (*g_real_sigaction_function)(int, const struct sigaction *, struct sigaction *);
+typedef void (*jbed_signal_handler_t)(int);
+static jbed_signal_handler_t (*g_real_signal_function)(int, jbed_signal_handler_t);
+static int g_sigaction_interposed;
+static int g_signal_interposed;
+static int g_sigaction_interpose_attempted;
+static int g_monitor_emulation_done;
+static int g_monitor_emulation_attempted;
+static int g_guard_retry_logged;
+static volatile sig_atomic_t g_vm_sigaction_calls;
+static volatile sig_atomic_t g_vm_sigaction_filtered;
+static volatile sig_atomic_t g_vm_sigaction_forwarded;
+static volatile sig_atomic_t g_vm_sigaction_refused;
+static volatile sig_atomic_t g_vm_sigaction_last_signal;
+static volatile sig_atomic_t g_monitor_stubs_written;
+
+static uint16_t jbed_elf32_u16(const unsigned char *bytes) {
+    return (uint16_t) (bytes[0] | ((uint16_t) bytes[1] << 8));
+}
+
+static uint32_t jbed_elf32_u32(const unsigned char *bytes) {
+    return (uint32_t) bytes[0] | ((uint32_t) bytes[1] << 8) | ((uint32_t) bytes[2] << 16)
+           | ((uint32_t) bytes[3] << 24);
+}
+
+static int elf32_open_image(const char *path, struct jbed_elf32_image *image) {
+    struct stat info;
+    int fd;
+    void *mapped;
+
+    memset(image, 0, sizeof(*image));
+    if (stat(path, &info) != 0) return 0;
+    if (info.st_size <= 0 || (unsigned long) info.st_size > JBED_ELF32_IMAGE_LIMIT) return 0;
+    fd = open(path, O_RDONLY | O_CLOEXEC);
+    if (fd < 0) return 0;
+    mapped = mmap(NULL, (size_t) info.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+    close(fd);
+    if (mapped == MAP_FAILED) return 0;
+    image->data = (unsigned char *) mapped;
+    image->size = (size_t) info.st_size;
+    if (image->size < 52 || image->data[0] != 0x7f || image->data[1] != 'E'
+            || image->data[2] != 'L' || image->data[3] != 'F'
+            || image->data[4] != 1 /* ELF32 */ || image->data[5] != 1 /* little endian */) {
+        munmap(image->data, image->size);
+        memset(image, 0, sizeof(*image));
+        return 0;
+    }
+    if (jbed_elf32_u16(image->data + 18) != 40 /* EM_ARM */) {
+        munmap(image->data, image->size);
+        memset(image, 0, sizeof(*image));
+        return 0;
+    }
+    return 1;
+}
+
+static void elf32_close_image(struct jbed_elf32_image *image) {
+    if (image->data != NULL) munmap(image->data, image->size);
+    memset(image, 0, sizeof(*image));
+}
+
+/* Resolves a section by name through the section-header string table. */
+static int elf32_section(const struct jbed_elf32_image *image, const char *name,
+                         struct jbed_elf32_section *out) {
+    uint32_t section_offset;
+    uint16_t section_entry_size;
+    uint16_t section_count;
+    uint16_t string_section_index;
+    size_t string_offset;
+    size_t string_size;
+    const unsigned char *string_table;
+    uint16_t index;
+
+    memset(out, 0, sizeof(*out));
+    if (image->data == NULL) return 0;
+    section_offset = jbed_elf32_u32(image->data + 32);
+    section_entry_size = jbed_elf32_u16(image->data + 46);
+    section_count = jbed_elf32_u16(image->data + 48);
+    string_section_index = jbed_elf32_u16(image->data + 50);
+    if (section_offset == 0 || section_entry_size < 40 || section_count == 0
+            || string_section_index >= section_count || section_count > JBED_ELF32_MAX_SECTIONS) {
+        return 0;
+    }
+    if ((size_t) section_offset + (size_t) section_count * section_entry_size > image->size) return 0;
+    string_offset = jbed_elf32_u32(image->data + section_offset
+                                   + (size_t) string_section_index * section_entry_size + 16);
+    string_size = jbed_elf32_u32(image->data + section_offset
+                                 + (size_t) string_section_index * section_entry_size + 20);
+    if (string_offset == 0 || string_size == 0 || string_offset + string_size > image->size) return 0;
+    string_table = image->data + string_offset;
+
+    for (index = 0; index < section_count; ++index) {
+        const unsigned char *header = image->data + section_offset
+                                      + (size_t) index * section_entry_size;
+        uint32_t name_offset = jbed_elf32_u32(header);
+        const char *candidate;
+
+        if (name_offset >= string_size) continue;
+        candidate = (const char *) (string_table + name_offset);
+        if (strcmp(candidate, name) != 0) continue;
+        out->offset = jbed_elf32_u32(header + 16);
+        out->size = jbed_elf32_u32(header + 20);
+        out->link = jbed_elf32_u32(header + 24);
+        out->entry_size = jbed_elf32_u32(header + 36);
+        if (out->offset + out->size > image->size) {
+            /* A .bss-like section has no file contents; refuse it. */
+            memset(out, 0, sizeof(*out));
+            return 0;
+        }
+        out->present = 1;
+        return 1;
+    }
+    return 0;
+}
+
+/* Looks a symbol up in .dynsym and reports its st_value plus whether it is a
+ * Thumb function (bit 0 of st_value). */
+static int elf32_find_symbol(const struct jbed_elf32_image *image, const char *name,
+                             uint32_t *value_out, int *thumb_out, int *function_out) {
+    struct jbed_elf32_section symbols;
+    struct jbed_elf32_section strings;
+    size_t index;
+
+    if (!elf32_section(image, ".dynsym", &symbols)) return 0;
+    if (!elf32_section(image, ".dynstr", &strings)) return 0;
+    if (symbols.entry_size < 16) symbols.entry_size = 16;
+    for (index = 0; index + symbols.entry_size <= symbols.size; index += symbols.entry_size) {
+        const unsigned char *entry = image->data + symbols.offset + index;
+        uint32_t name_offset = jbed_elf32_u32(entry);
+
+        if (name_offset >= strings.size) continue;
+        if (strcmp((const char *) (image->data + strings.offset + name_offset), name) != 0) continue;
+        *value_out = jbed_elf32_u32(entry + 4);
+        *thumb_out = (*value_out & 1u) != 0;
+        *function_out = (entry[12] & 0x0fu) == 2 /* STT_FUNC */;
+        return 1;
+    }
+    return 0;
+}
+
+/* Finds the first relocation that references symbol_name. ARM uses REL, so
+ * each entry is 8 bytes: r_offset, then r_info. */
+static int elf32_find_relocation(const struct jbed_elf32_image *image, const char *symbol_name,
+                                 uint32_t *offset_out, int *is_jump_slot_out) {
+    static const char *const relocation_sections[] = {".rel.plt", ".rel.dyn"};
+    struct jbed_elf32_section symbols;
+    struct jbed_elf32_section strings;
+    size_t section_index;
+
+    if (!elf32_section(image, ".dynsym", &symbols)) return 0;
+    if (!elf32_section(image, ".dynstr", &strings)) return 0;
+    if (symbols.entry_size < 16) symbols.entry_size = 16;
+
+    for (section_index = 0;
+         section_index < sizeof(relocation_sections) / sizeof(relocation_sections[0]);
+         ++section_index) {
+        struct jbed_elf32_section relocations;
+        size_t index;
+
+        if (!elf32_section(image, relocation_sections[section_index], &relocations)) continue;
+        if (relocations.entry_size == 0 || relocations.entry_size > relocations.size) {
+            relocations.entry_size = 8;
+        }
+        for (index = 0; index + relocations.entry_size <= relocations.size;
+             index += relocations.entry_size) {
+            const unsigned char *entry = image->data + relocations.offset + index;
+            uint32_t info = jbed_elf32_u32(entry + 4);
+            uint32_t symbol_index = info >> 8;
+            uint32_t name_offset;
+            const char *name;
+
+            if ((size_t) symbol_index * symbols.entry_size + 16 > symbols.size) continue;
+            name_offset = jbed_elf32_u32(image->data + symbols.offset
+                                         + (size_t) symbol_index * symbols.entry_size);
+            if (name_offset >= strings.size) continue;
+            name = (const char *) (image->data + strings.offset + name_offset);
+            if (strcmp(name, symbol_name) != 0) continue;
+            *offset_out = jbed_elf32_u32(entry);
+            *is_jump_slot_out = (info & 0xffu) == JBED_ELF32_ARM_JUMP_SLOT;
+            (void) JBED_ELF32_ARM_GLOB_DAT;
+            return 1;
+        }
+    }
+    return 0;
+}
+
+/*
+ * Patching uses /proc/self/mem first: it writes into the private file mapping
+ * without changing its protection, which matters for executable pages that
+ * another thread may be running. mprotect() on the page is the fallback.
+ */
+static int write_process_memory(uintptr_t address, const void *bytes, size_t length,
+                                const char *description) {
+    int fd = open("/proc/self/mem", O_RDWR | O_CLOEXEC);
+
+    if (fd >= 0) {
+        ssize_t written = -1;
+        if (lseek(fd, (off_t) address, SEEK_SET) == (off_t) address) {
+            written = write(fd, bytes, length);
+        }
+        close(fd);
+        if (written == (ssize_t) length) {
+            /* Same reason as in the mprotect fallback below: on ARM32 the data
+             * and instruction caches are not coherent, so a patched instruction
+             * must be flushed before the CPU is told to execute it. */
+            __builtin___clear_cache((char *) address, (char *) address + length);
+            if (memcmp((const void *) address, bytes, length) == 0) return 1;
+            LOGE("write through /proc/self/mem for %s did not read back identical", description);
+        }
+    }
+    {
+        long page_size_long = sysconf(_SC_PAGESIZE);
+        size_t page_size = page_size_long > 0 ? (size_t) page_size_long : 4096u;
+        uintptr_t first = address & ~(uintptr_t) (page_size - 1u);
+        uintptr_t last = (address + length - 1u) & ~(uintptr_t) (page_size - 1u);
+        size_t span = (size_t) (last - first) + page_size;
+
+        if (mprotect((void *) first, span, PROT_READ | PROT_WRITE | PROT_EXEC) == 0) {
+            memcpy((void *) address, bytes, length);
+            __builtin___clear_cache((char *) address, (char *) address + length);
+            (void) mprotect((void *) first, span, PROT_READ | PROT_EXEC);
+            if (memcmp((const void *) address, bytes, length) == 0) return 1;
+        }
+    }
+    LOGE("unable to patch %s at 0x%lx: errno=%d", description, (unsigned long) address, errno);
+    return 0;
+}
+
+/* Copies the path of the first mapping whose name ends in suffix and reports
+ * the module's lowest mapping start (the ELF load base). */
+static int module_lookup(const char *suffix, char *path_buffer, size_t path_capacity,
+                         uintptr_t *base_out) {
+    size_t suffix_length = strlen(suffix);
+    size_t index;
+
+    for (index = 0; index < g_mapping_count; ++index) {
+        const struct mapped_region *region = &g_mappings[index];
+        size_t name_length = region->name_length;
+        size_t copy_length;
+
+        if (name_length < suffix_length) continue;
+        if (memcmp(region->name + (name_length - suffix_length), suffix, suffix_length) != 0) continue;
+        copy_length = name_length < path_capacity - 1 ? name_length : path_capacity - 1;
+        memcpy(path_buffer, region->name, copy_length);
+        path_buffer[copy_length] = '\0';
+        *base_out = module_lowest_base(path_buffer, copy_length);
+        if (*base_out != 0) return 1;
+    }
+    return 0;
+}
+
+/*
+ * libjbedvm.so was built against an Android 2.x bionic, whose
+ * struct sigaction is 12 bytes: { handler, sigset_t sa_mask (4 bytes),
+ * int sa_flags }. Android 11's is 16 bytes with an 8-byte sigset_t, so bionic
+ * reads the VM's flags from the wrong offset and would install the handler with
+ * arbitrary flags -- including SA_RESETHAND, whose garbage bit would silently
+ * reset the disposition to SIG_DFL after the first tick. The decompiled install
+ * site is unambiguous:
+ *
+ *   v3[0] = handler; v3[1] = 0; v3[2] = 0x10000000 (SA_RESTART);
+ *   sigaction(26, (const struct sigaction *)v3, 0);
+ *
+ * The offsets below translate that legacy layout into the real one. The legacy
+ * 4-byte mask maps onto the low word of the modern sigset_t, so it can be
+ * copied as-is.
+ */
+#define JBED_VM_SIGACTION_HANDLER_OFFSET 0
+#define JBED_VM_SIGACTION_MASK_OFFSET 4
+#define JBED_VM_SIGACTION_FLAGS_OFFSET 8
+
+/* Exactly four bytes: the VM's build is ARM32, where an sa_handler is 4 bytes.
+ * Reading sizeof(void*) here would also swallow the mask on a 64-bit host. */
+static void *vm_sigaction_handler(const unsigned char *action) {
+    uint32_t handler = 0;
+    memcpy(&handler, action + JBED_VM_SIGACTION_HANDLER_OFFSET, sizeof(handler));
+    return (void *) (uintptr_t) handler;
+}
+
+static unsigned int vm_sigaction_flags(const unsigned char *action) {
+    unsigned int flags = 0;
+    memcpy(&flags, action + JBED_VM_SIGACTION_FLAGS_OFFSET, sizeof(flags));
+    return flags;
+}
+
+static void vm_sigaction_mask_to_modern(const unsigned char *action, sigset_t *mask) {
+    sigemptyset(mask);
+    memcpy(mask, action + JBED_VM_SIGACTION_MASK_OFFSET,
+           sizeof(unsigned int) < sizeof(*mask) ? sizeof(unsigned int) : sizeof(*mask));
+}
+
+/* Flags worth forwarding: everything else a 2011 build could leave there is
+ * either meaningless to a modern disposition or dangerous to copy. */
+static int sanitize_sigaction_flags(int flags) {
+    return flags & (SA_RESTART | SA_NODEFER | SA_SIGINFO);
+}
+
+static int signal_is_platform_critical(int signal_number) {
+    switch (signal_number) {
+        case SIGSEGV:
+        case SIGBUS:
+        case SIGILL:
+        case SIGFPE:
+        case SIGTRAP:
+        case SIGABRT:
+        case SIGQUIT:
+        case SIGUSR1:
+        case 32:
+        case 33:
+        case 34:
+        case 35:
+            return 1;
+        default:
+            return 0;
+    }
+}
+
+static const char *signal_handler_module(void (*handler)(void)) {
+    const struct mapped_region *region = find_region((uintptr_t) handler, 0);
+    return region != NULL ? region->name : "unmapped";
+}
+
+/* Replaces the disposition the VM installed with the tick filter. The VM
+ * handler is kept and used for ticks that interrupted VM-owned code. */
+static int timer_tick_sigaction_hook(int signal_number, const struct sigaction *action,
+                                     struct sigaction *old_action) {
+    int index = timer_tick_signal_index(signal_number);
+    void *handler = NULL;
+
+    ++g_vm_sigaction_calls;
+    g_vm_sigaction_last_signal = (sig_atomic_t) signal_number;
+    if (action == NULL) {
+        return g_real_sigaction_function(signal_number, NULL, old_action);
+    }
+    /* The VM's argument uses the Android 2.x layout (see above). */
+    handler = vm_sigaction_handler((const unsigned char *) action);
+    if (handler == NULL || handler == (void *) SIG_DFL || handler == (void *) SIG_IGN) {
+        ++g_vm_sigaction_forwarded;
+        return g_real_sigaction_function(signal_number, action, old_action);
+    }
+    if (index >= 0) {
+        struct sigaction filter;
+        unsigned int vm_flags = vm_sigaction_flags((const unsigned char *) action);
+        int result;
+
+        memset(&g_timer_tick_previous[index], 0, sizeof(g_timer_tick_previous[index]));
+        if ((vm_flags & SA_SIGINFO) != 0) {
+            g_timer_tick_previous[index].sa_sigaction = handler;
+        } else {
+            g_timer_tick_previous[index].sa_handler = handler;
+        }
+        g_timer_tick_previous[index].sa_flags = sanitize_sigaction_flags((int) vm_flags);
+        vm_sigaction_mask_to_modern((const unsigned char *) action,
+                                    &g_timer_tick_previous[index].sa_mask);
+
+        memset(&filter, 0, sizeof(filter));
+        filter.sa_sigaction = timer_tick_filter_handler;
+        vm_sigaction_mask_to_modern((const unsigned char *) action, &filter.sa_mask);
+        filter.sa_flags = sanitize_sigaction_flags((int) vm_flags) | SA_SIGINFO;
+        result = g_real_sigaction_function(signal_number, &filter, old_action);
+        g_timer_tick_wrapped[index] = 1;
+        ++g_vm_sigaction_filtered;
+        LOGI("VM sigaction(%d) intercepted: vmHandler=0x%lx module=%s vmFlags=0x%x "
+             "vmLayout=android2 -> tick filter installed",
+             signal_number, (unsigned long) handler,
+             signal_handler_module((void (*)(void)) handler), (unsigned) vm_flags);
+        return result;
+    }
+    if (signal_is_platform_critical(signal_number)) {
+        ++g_vm_sigaction_refused;
+        if (old_action != NULL) (void) g_real_sigaction_function(signal_number, NULL, old_action);
+        LOGI("refused VM sigaction(%d) on an ART-owned signal: keeping the platform disposition "
+             "instead of handler=0x%lx module=%s",
+             signal_number, (unsigned long) handler,
+             signal_handler_module((void (*)(void)) handler));
+        return 0;
+    }
+    ++g_vm_sigaction_forwarded;
+    LOGI("forwarded VM sigaction(%d) handler=0x%lx module=%s vmFlags=0x%x", signal_number,
+         (unsigned long) handler, signal_handler_module((void (*)(void)) handler),
+         (unsigned) vm_sigaction_flags((const unsigned char *) action));
+    return g_real_sigaction_function(signal_number, action, old_action);
+}
+
+static jbed_signal_handler_t timer_tick_signal_hook(int signal_number,
+                                                   jbed_signal_handler_t handler) {
+    int index = timer_tick_signal_index(signal_number);
+
+    ++g_vm_sigaction_calls;
+    g_vm_sigaction_last_signal = (sig_atomic_t) signal_number;
+    if (handler == SIG_DFL || handler == SIG_IGN) {
+        ++g_vm_sigaction_forwarded;
+        return g_real_signal_function(signal_number, handler);
+    }
+    if (index >= 0) {
+        struct sigaction filter;
+        struct sigaction previous;
+        jbed_signal_handler_t previous_handler;
+
+        if (g_timer_tick_wrapped[index] != 1) {
+            memset(&g_timer_tick_previous[index], 0, sizeof(g_timer_tick_previous[index]));
+            g_timer_tick_previous[index].sa_handler = handler;
+            g_timer_tick_previous[index].sa_flags = 0;
+        }
+        memset(&filter, 0, sizeof(filter));
+        filter.sa_sigaction = timer_tick_filter_handler;
+        filter.sa_flags = SA_SIGINFO;
+        (void) g_real_sigaction_function(signal_number, &filter, &previous);
+        if ((previous.sa_flags & SA_SIGINFO) != 0) {
+            memcpy(&previous_handler, &previous.sa_sigaction, sizeof(previous_handler));
+        } else {
+            previous_handler = previous.sa_handler;
+        }
+        g_timer_tick_wrapped[index] = 1;
+        ++g_vm_sigaction_filtered;
+        LOGI("VM signal(%d) intercepted: vmHandler=0x%lx module=%s -> tick filter installed",
+             signal_number, (unsigned long) handler,
+             signal_handler_module((void (*)(void)) handler));
+        return previous_handler;
+    }
+    if (signal_is_platform_critical(signal_number)) {
+        ++g_vm_sigaction_refused;
+        LOGI("refused VM signal(%d) on an ART-owned signal: keeping the platform disposition "
+             "instead of handler=0x%lx module=%s",
+             signal_number, (unsigned long) handler,
+             signal_handler_module((void (*)(void)) handler));
+        return handler;
+    }
+    ++g_vm_sigaction_forwarded;
+    LOGI("forwarded VM signal(%d) handler=0x%lx module=%s", signal_number,
+         (unsigned long) handler, signal_handler_module((void (*)(void)) handler));
+    return g_real_signal_function(signal_number, handler);
+}
+
+/* Rewrites one GOT slot of the VM module. The relocation is authoritative for
+ * the slot address; the current contents must still look like a code address
+ * of that same module (its PLT stub) or the resolved libc function. */
+static int patch_module_relocation(const struct jbed_elf32_image *image, uintptr_t base,
+                                   const char *symbol_name, void *replacement,
+                                   const char *description) {
+    uint32_t offset = 0;
+    int is_jump_slot = 0;
+    uintptr_t slot;
+    uintptr_t current;
+
+    if (!elf32_find_relocation(image, symbol_name, &offset, &is_jump_slot)) {
+        LOGI("%s: %s has no GOT relocation in this build; skipping", description, symbol_name);
+        return 0;
+    }
+    slot = base + offset;
+    current = *(const volatile uintptr_t *) slot;
+    if (current != (uintptr_t) g_real_sigaction_function
+            && current != (uintptr_t) g_real_signal_function
+            && !address_is_inside_vm(current)) {
+        LOGE("%s: GOT slot 0x%lx for %s holds 0x%lx, which is neither the resolved function nor "
+             "VM code; leaving it alone",
+             description, (unsigned long) slot, symbol_name, (unsigned long) current);
+        return 0;
+    }
+    if (!write_process_memory(slot, &replacement, sizeof(replacement), description)) return 0;
+    LOGI("%s: %s GOT slot 0x%lx (jumpSlot=%d) 0x%lx -> 0x%lx", description, symbol_name,
+         (unsigned long) slot, is_jump_slot, (unsigned long) current,
+         (unsigned long) (uintptr_t) replacement);
+    return 1;
+}
+
+static void interpose_vm_signal_handlers(const char *reason) {
+    struct jbed_elf32_image image;
+    char path[256];
+    uintptr_t base = 0;
+
+    if (g_sigaction_interposed) return;
+    if (g_jbed_base == 0) return;
+    if (!module_lookup("libjbedvm.so", path, sizeof(path), &base)) {
+        if (!g_guard_retry_logged) {
+            LOGE("cannot interpose the VM signal handlers: libjbedvm.so mapping not found");
+        }
+        return;
+    }
+    g_real_sigaction_function = (int (*)(int, const struct sigaction *, struct sigaction *))
+            dlsym(RTLD_DEFAULT, "sigaction");
+    if (g_real_sigaction_function == NULL) {
+        g_real_sigaction_function = (int (*)(int, const struct sigaction *, struct sigaction *))
+                dlsym(RTLD_NEXT, "sigaction");
+    }
+    g_real_signal_function = (jbed_signal_handler_t (*)(int, jbed_signal_handler_t))
+            dlsym(RTLD_DEFAULT, "signal");
+    if (g_real_sigaction_function == NULL) {
+        LOGE("cannot interpose the VM signal handlers: sigaction is not resolvable");
+        return;
+    }
+    if (!elf32_open_image(path, &image)) {
+        LOGE("cannot interpose the VM signal handlers: unable to read %s", path);
+        return;
+    }
+    LOGI("interposing the VM signal handlers from %s (base=0x%lx, reason=%s)", path,
+         (unsigned long) base, reason);
+    if (patch_module_relocation(&image, base, "sigaction", (void *) timer_tick_sigaction_hook,
+                                "VM sigaction interposition")) {
+        g_sigaction_interposed = 1;
+    }
+    if (g_real_signal_function != NULL
+            && patch_module_relocation(&image, base, "signal", (void *) timer_tick_signal_hook,
+                                       "VM signal interposition")) {
+        g_signal_interposed = 1;
+    }
+    elf32_close_image(&image);
+    LOGI("VM signal interposition: sigaction=%d signal=%d", g_sigaction_interposed,
+         g_signal_interposed);
+}
+
+static const struct {
+    const char *name;
+    int returns_int;
+} g_monitor_entry_points[] = {
+    {"async_close_monitor_create", 1},
+    {"async_close_monitor_was_signalled", 1},
+    {"async_close_monitor_signal_blocked_threads", 0},
+    {"async_close_monitor_destroy", 0},
+};
+
+/* movs r0, #0; bx lr / bx lr in Thumb, mov r0, #0; bx lr / bx lr in ARM. */
+static size_t monitor_stub_bytes(int thumb, int returns_int, unsigned char *buffer,
+                                 size_t capacity) {
+    static const unsigned char thumb_value[] = {0x00, 0x20, 0x70, 0x47};
+    static const unsigned char thumb_void[] = {0x70, 0x47};
+    static const unsigned char arm_value[] = {0x00, 0x00, 0xa0, 0xe3, 0x1e, 0xff, 0x2f, 0xe1};
+    static const unsigned char arm_void[] = {0x1e, 0xff, 0x2f, 0xe1};
+
+    if (returns_int) {
+        if (thumb) {
+            if (capacity < sizeof(thumb_value)) return 0;
+            memcpy(buffer, thumb_value, sizeof(thumb_value));
+            return sizeof(thumb_value);
+        }
+        if (capacity < sizeof(arm_value)) return 0;
+        memcpy(buffer, arm_value, sizeof(arm_value));
+        return sizeof(arm_value);
+    }
+    if (thumb) {
+        if (capacity < sizeof(thumb_void)) return 0;
+        memcpy(buffer, thumb_void, sizeof(thumb_void));
+        return sizeof(thumb_void);
+    }
+    if (capacity < sizeof(arm_void)) return 0;
+    memcpy(buffer, arm_void, sizeof(arm_void));
+    return sizeof(arm_void);
+}
+
+static void emulate_platform_monitor(const char *reason) {
+    struct jbed_elf32_image image;
+    char path[256];
+    uintptr_t base = 0;
+    size_t index;
+    int patched = 0;
+
+    if (g_monitor_emulation_done) return;
+    if (!module_lookup("libandroidio.so", path, sizeof(path), &base)) {
+        if (!g_guard_retry_logged) {
+            LOGE("cannot emulate AsynchronousCloseMonitor: libandroidio.so mapping not found");
+        }
+        return;
+    }
+    if (!elf32_open_image(path, &image)) {
+        LOGE("cannot emulate AsynchronousCloseMonitor: unable to read %s", path);
+        return;
+    }
+    for (index = 0; index < sizeof(g_monitor_entry_points) / sizeof(g_monitor_entry_points[0]);
+         ++index) {
+        uint32_t value = 0;
+        int thumb = 0;
+        int is_function = 0;
+        unsigned char stub[8];
+        size_t stub_length;
+        uintptr_t address;
+
+        if (!elf32_find_symbol(&image, g_monitor_entry_points[index].name, &value, &thumb,
+                               &is_function)) {
+            LOGI("monitor emulation: %s is not exported by this build of %s",
+                 g_monitor_entry_points[index].name, path);
+            continue;
+        }
+        stub_length = monitor_stub_bytes(thumb, g_monitor_entry_points[index].returns_int, stub,
+                                         sizeof(stub));
+        if (stub_length == 0) continue;
+        address = base + (value & ~1u);
+        if (!write_process_memory(address, stub, stub_length,
+                                  g_monitor_entry_points[index].name)) {
+            continue;
+        }
+        ++patched;
+        g_monitor_stubs_written = (sig_atomic_t) patched;
+        LOGI("monitor emulation: %s at 0x%lx (%s) replaced by a %u-byte stub", 
+             g_monitor_entry_points[index].name, (unsigned long) address,
+             thumb ? "thumb" : "arm", (unsigned) stub_length);
+    }
+    elf32_close_image(&image);
+    if (patched > 0) {
+        g_monitor_emulation_done = 1;
+        LOGI("monitor emulation active (%d stubs, reason=%s): libcore's blocked-thread list is no "
+             "longer walked or mutated, so a corrupted list can no longer fault; asynchronous "
+             "close interruption of blocking I/O is disabled for this process",
+             patched, reason);
+    } else {
+        LOGE("monitor emulation installed no stubs for %s", path);
+    }
+}
+
+static void install_vm_platform_guards(const char *reason) {
+    if (g_timer_tick_filter_enabled && access(JBED_DISABLE_RT_SIGNAL_HOOKS_MARKER, F_OK) != 0) {
+        if (!g_sigaction_interpose_attempted || !g_sigaction_interposed) {
+            g_sigaction_interpose_attempted = 1;
+            interpose_vm_signal_handlers(reason);
+        }
+    }
+    if (access(JBED_DISABLE_MONITOR_EMULATION_MARKER, F_OK) != 0) {
+        if (!g_monitor_emulation_attempted || !g_monitor_emulation_done) {
+            g_monitor_emulation_attempted = 1;
+            emulate_platform_monitor(reason);
+        }
+    }
+    if (!g_guard_retry_logged && (g_sigaction_interposed || g_monitor_emulation_done)) {
+        g_guard_retry_logged = 1;
+    }
+}
+
+static unsigned long long status_mask_value(const char *field) {
+    FILE *status = fopen("/proc/self/status", "r");
+    char line[256];
+    unsigned long long value = 0;
+    size_t field_length = strlen(field);
+
+    if (status == NULL) return 0;
+    while (fgets(line, sizeof(line), status) != NULL) {
+        if (strncmp(line, field, field_length) != 0) continue;
+        value = strtoull(line + field_length, NULL, 16);
+        break;
+    }
+    fclose(status);
+    return value;
+}
+
+/* Which signals the process catches and which it blocks: this is where the
+ * VM's own sigaction() calls become visible without a debugger. */
+static void log_process_signal_state(const char *label) {
+    LOGI("%s: sigBlk=0x%llx sigCgt=0x%llx shdPnd=0x%llx sigPnd=0x%llx", label,
+         status_mask_value("SigBlk:"), status_mask_value("SigCgt:"),
+         status_mask_value("ShdPnd:"), status_mask_value("SigPnd:"));
+}
+
+static void log_signal_dispositions(void) {
+    static const int signals[] = {SIGSEGV, SIGBUS, SIGILL, SIGFPE, SIGABRT, SIGQUIT, SIGUSR1,
+                                  SIGUSR2, SIGALRM, SIGVTALRM, SIGPROF, SIGCHLD,
+                                  JBED_BLOCKED_THREAD_SIGNAL};
+    size_t i;
+
+    for (i = 0; i < sizeof(signals) / sizeof(signals[0]); ++i) {
+        struct sigaction current;
+        const struct mapped_region *region;
+        uintptr_t handler;
+
+        if (sigaction(signals[i], NULL, &current) != 0) continue;
+        handler = (uintptr_t) current.sa_handler;
+        if (handler < 0x1000) {
+            LOGI("signal %d disposition=%s flags=0x%x", signals[i],
+                 current.sa_handler == SIG_IGN ? "ignored" : "default", current.sa_flags);
+            continue;
+        }
+        region = find_region(handler, 0);
+        LOGI("signal %d handler=0x%lx module=%s flags=0x%x", signals[i],
+             (unsigned long) handler, region != NULL ? region->name : "unmapped",
+             current.sa_flags);
     }
 }
 
@@ -2699,6 +3877,15 @@ Java_com_esmertec_android_jbed_service_JbedEngine_nativeInstallJniLifetimeHook(J
     refresh_process_mappings();
     patch_native_jbed_run_startup_quantum();
 
+    /* This method runs on JbedThread before the VM starts, so it is the first
+     * reliable identification of the thread the VM will run on. */
+    g_vm_thread_tid = (sig_atomic_t) current_tid();
+    log_process_signal_state("JbedThread identified");
+    log_signal_dispositions();
+    install_timer_tick_filter("JbedThread identified");
+    install_vm_platform_guards("JbedThread identified");
+    tls_watch("nativeInstallJniLifetimeHook");
+
     g_original_table = *env;
     g_original_get_method_id = g_original_table->GetMethodID;
     g_hook_table = malloc(sizeof(*g_hook_table));
@@ -2765,10 +3952,23 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
     }
     install_native_crash_handlers();
     install_blocked_thread_observer();
+    if (access(JBED_DISABLE_TIMER_TICK_FILTER_MARKER, F_OK) == 0
+            || access(JBED_DISABLE_RT_SIGNAL_HOOKS_MARKER, F_OK) == 0) {
+        g_timer_tick_filter_enabled = 0;
+        LOGI("timer-tick filter disabled by marker file");
+    }
+    log_process_signal_state("signal state at shim load");
+    log_signal_dispositions();
+    install_timer_tick_filter("shim load");
+    start_timer_filter_janitor();
+    tls_watch("shim load");
+    install_vm_platform_guards("shim load");
     LOGI("native crash marker handlers installed=%d (chained to the previous handlers); "
-         "jniTrace=%d blockedThreadObserver=%d",
+         "jniTrace=%d blockedThreadObserver=%d timerTickFilter=%d sigactionInterposed=%d "
+         "monitorEmulation=%d",
          g_native_crash_handler_installed, g_jni_trace_enabled,
-         g_blocked_thread_signal_action_valid);
+         g_blocked_thread_signal_action_valid, g_timer_tick_filter_enabled,
+         g_sigaction_interposed, g_monitor_emulation_done);
     if ((*vm)->GetEnv(vm, (void **) &env, JNI_VERSION_1_6) != JNI_OK) return JNI_ERR;
 
     ensure_jbed_base();
