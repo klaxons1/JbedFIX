@@ -226,9 +226,13 @@ before the first guard attempt (it used to be empty, which also made every
 module print as `unmapped`), and a module that is not mapped yet is reported as
 "will retry" instead of an error.
 
-The local-install search (`AmsEventHandler`) additionally scans
-`/storage/emulated/0/jbedfix/`, so test JAR/JAD files can be dropped next to the
-shim logs.
+The local-install search (`AmsEventHandler`) now scans exactly
+`/storage/emulated/0/jbedfix/` (next to the shim logs) and the VM's own
+`LocalInstall` directory; the walk of the whole external-storage root was
+removed because on Android 11 it descends through every media directory.
+Duplicate paths are filtered, and
+`disable-direct-install-upcall.patch` disables the diagnostic direct-upcall
+bridge so the install event travels only through the Java AMS path.
 
 Installs are still blocked further down the stack: the install event reaches the
 VM's native upcall queue and is consumed (`poll result=1`), but the VM's Java

@@ -175,9 +175,17 @@ on a modern Java Surface is a later step.
 ## Local install drop box
 
 The AMS "Local install" search (`BasicEventHandler`'s local-install handler)
-scans the configured download folder, every FileConnection root, and
-`/storage/emulated/0/jbedfix/`, so a JAR/JAD copied there is offered in the
-MIDlet list regardless of how the platform exposes external storage.
+scans exactly two folders: `/storage/emulated/0/jbedfix/` (the shim's own
+directory, so a JAR/JAD dropped next to `native.log` is offered in the MIDlet
+list) and the VM's `LocalInstall` directory. It deliberately does not walk the
+external-storage root any more: on Android 11 that recursion descends through
+every media directory and the resulting list is unusable. Duplicate paths are
+filtered.
+
+The direct native install upcall (the diagnostic bridge that pushes the install
+event straight into the VM's native queue) can be disabled without rebuilding by
+creating `/storage/emulated/0/jbedfix/disable-direct-install-upcall.patch`; the
+Java AMS path still queues the event.
 
 ## Native crash diagnostics
 

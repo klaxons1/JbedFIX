@@ -2280,6 +2280,12 @@ static void start_timer_filter_janitor(void) {
  *    always reports false). Marker: disable-monitor-emulation.patch.
  * ---------------------------------------------------------------------- */
 
+/* The direct install upcall is a diagnostic bridge: the Java AMS path already
+ * queues the install event, and this bridge pushes two more. Keeping it behind
+ * a marker makes it possible to compare the two paths without rebuilding. */
+#define JBED_DISABLE_DIRECT_INSTALL_MARKER \
+    JBED_PUBLIC_LOG_DIR "/disable-direct-install-upcall.patch"
+
 #define JBED_DISABLE_MONITOR_EMULATION_MARKER \
     JBED_PUBLIC_LOG_DIR "/disable-monitor-emulation.patch"
 #define JBED_ELF32_IMAGE_LIMIT (16u * 1024u * 1024u)
@@ -3521,6 +3527,11 @@ Java_com_esmertec_android_jbed_ams_AmsConnection_nativeRequestLocalInstall(JNIEn
     jbed_request_local_install_fn request_local_install;
 
     if (url == NULL) return JNI_FALSE;
+    if (access(JBED_DISABLE_DIRECT_INSTALL_MARKER, F_OK) == 0) {
+        LOGI("direct install upcall disabled by %s; leaving the install event to the Java AMS path",
+             JBED_DISABLE_DIRECT_INSTALL_MARKER);
+        return JNI_FALSE;
+    }
     if (!use_modern_art_scheduler_workarounds()) {
         LOGI("letting legacy Java AMS event path handle local install on Android API %d",
              get_android_api_level());
