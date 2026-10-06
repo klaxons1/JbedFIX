@@ -85,6 +85,16 @@ static void native_file_log(int priority, const char *format, ...) {
 static volatile sig_atomic_t g_crash_handler_active;
 static uintptr_t g_jbed_base;
 
+#define JBED_MAX_EXECUTABLE_MAPS 96
+struct executable_map {
+    uintptr_t start;
+    uintptr_t end;
+    size_t name_length;
+    char name[160];
+};
+static struct executable_map g_executable_maps[JBED_MAX_EXECUTABLE_MAPS];
+static size_t g_executable_map_count;
+
 static size_t append_decimal(char *buffer, size_t offset, size_t capacity, unsigned long value) {
     char digits[24];
     size_t count = 0;
@@ -118,6 +128,25 @@ static size_t append_hex(char *buffer, size_t offset, size_t capacity, uintptr_t
         buffer[offset++] = digits[--count];
     }
     return offset;
+}
+
+static size_t append_text(char *buffer, size_t offset, size_t capacity,
+                          const char *text, size_t text_length) {
+    while (text_length > 0 && offset < capacity) {
+        buffer[offset++] = *text++;
+        --text_length;
+    }
+    return offset;
+}
+
+static const struct executable_map *find_executable_map(uintptr_t pc) {
+    size_t i;
+    for (i = 0; i < g_executable_map_count; ++i) {
+        if (pc >= g_executable_maps[i].start && pc < g_executable_maps[i].end) {
+            return &g_executable_maps[i];
+        }
+    }
+    return NULL;
 }
 
 static uintptr_t crash_pc(void *context) {
@@ -167,11 +196,13 @@ static void native_crash_signal_handler(int signal_number, siginfo_t *signal_inf
     int fd;
     uintptr_t pc;
     uintptr_t vm_base;
+    const struct executable_map *pc_map;
 
     if (g_crash_handler_active) _exit(128 + signal_number);
     g_crash_handler_active = 1;
     pc = crash_pc(context);
     vm_base = g_jbed_base;
+    pc_map = find_executable_map(pc);
     memcpy(line + length, prefix, sizeof(prefix) - 1);
     length += sizeof(prefix) - 1;
     length = append_decimal(line, length, sizeof(line), (unsigned long) signal_number);
@@ -190,6 +221,12 @@ static void native_crash_signal_handler(int signal_number, siginfo_t *signal_inf
         length = append_marker_hex(line, length, sizeof(line), " vmPcOffset=0x",
                                    sizeof(" vmPcOffset=0x") - 1,
                                    (pc & ~(uintptr_t) 1u) - vm_base);
+    }
+    if (pc_map != NULL) {
+        length = append_text(line, length, sizeof(line), " pcModule=",
+                             sizeof(" pcModule=") - 1);
+        length = append_text(line, length, sizeof(line), pc_map->name,
+                             pc_map->name_length);
     }
     memcpy(line + length, newline, sizeof(newline) - 1);
     length += sizeof(newline) - 1;
@@ -316,10 +353,33 @@ static void ensure_jbed_base(void) {
         LOGE("unable to open /proc/self/maps while locating libjbedvm base: errno=%d", errno);
         return;
     }
+    g_executable_map_count = 0;
     while (fgets(line, sizeof(line), maps) != NULL) {
         unsigned long start;
-        if (strstr(line, "libjbedvm.so") == NULL) continue;
-        if (sscanf(line, "%lx-", &start) == 1 && (uintptr_t) start < best) {
+        unsigned long end;
+        char permissions[5];
+        char pathname[256];
+        int fields;
+
+        permissions[0] = '\0';
+        pathname[0] = '\0';
+        fields = sscanf(line, "%lx-%lx %4s %*lx %*s %*s %255[^\n]",
+                        &start, &end, permissions, pathname);
+        if (fields >= 3 && strchr(permissions, 'x') != NULL
+                && g_executable_map_count < JBED_MAX_EXECUTABLE_MAPS) {
+            struct executable_map *map = &g_executable_maps[g_executable_map_count++];
+            map->start = (uintptr_t) start;
+            map->end = (uintptr_t) end;
+            if (fields >= 4 && pathname[0] != '\0') {
+                strncpy(map->name, pathname, sizeof(map->name) - 1);
+                map->name[sizeof(map->name) - 1] = '\0';
+            } else {
+                strcpy(map->name, "[anonymous executable]");
+            }
+            map->name_length = strlen(map->name);
+        }
+        if (fields >= 4 && strstr(pathname, "libjbedvm.so") != NULL
+                && (uintptr_t) start < best) {
             best = (uintptr_t) start;
         }
     }
