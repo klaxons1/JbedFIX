@@ -151,6 +151,8 @@ static volatile sig_atomic_t g_tls_watch_valid = -1;
 static volatile sig_atomic_t g_tls_watch_samples;
 static int g_timer_filter_janitor_started;
 static void install_timer_tick_filter(const char *reason);
+static void log_stack_repeats(const char *label, uintptr_t sp, int word_limit);
+static void check_implicit_stack_overflow(JNIEnv *env);
 static void install_vm_platform_guards(const char *reason);
 static int timer_tick_pc_is_vm_code(uintptr_t pc);
 static int sanitize_sigaction_flags(int flags);
@@ -515,12 +517,45 @@ static void trace_and_clear_exception(JNIEnv *env, const char *call_name, uint32
  * notion of a pending ART exception) and the VM keeps the null it received.
  * Log which method did it, because a repeated null is what drives the VM's
  * retry loops.
+ *
+ * Two cases matter for the current failure:
+ *  - when the C stack is already exhausted, ART refuses to run any Java code,
+ *    so even Throwable.toString() cannot produce a message. The report then
+ *    prints the step that failed and the stack's repeated return addresses,
+ *    which names the function that recursed;
+ *  - when the same upcall throws forever, only the first few reports carry the
+ *    full text, the rest are counted.
  */
+#define JBED_UPCALL_REPORT_LIMIT 48
+static volatile sig_atomic_t g_upcall_exception_reports;
+static volatile sig_atomic_t g_upcall_exception_suppressed;
+static volatile sig_atomic_t g_undescribed_exception_reports;
+
+static void copy_java_string(JNIEnv *env, jstring value, char *text, size_t capacity) {
+    const char *utf;
+    if (env == NULL || value == NULL || capacity == 0) return;
+    utf = (*env)->GetStringUTFChars(env, value, NULL);
+    if (utf != NULL) {
+        size_t length = bounded_length(utf, capacity - 1);
+        memcpy(text, utf, length);
+        text[length] = '\0';
+        (*env)->ReleaseStringUTFChars(env, value, utf);
+    }
+    (*env)->DeleteLocalRef(env, value);
+    if ((*env)->ExceptionCheck(env)) (*env)->ExceptionClear(env);
+}
+
 static void report_upcall_exception(JNIEnv *env, const char *call_name, jmethodID method) {
-    jthrowable throwable;
+    jthrowable throwable = NULL;
+    jclass throwable_class = NULL;
+    jmethodID to_string = NULL;
+    jmethodID get_name = NULL;
+    jstring description = NULL;
     char text[JBED_TRACE_NAME_LENGTH];
+    uintptr_t sp = (uintptr_t) &throwable;
 
     if (env == NULL || method == NULL) return;
+    check_implicit_stack_overflow(env);
     if (!(*env)->ExceptionCheck(env)) return;
 
     /* Read the exception's own description before clearing it: the class name
@@ -530,21 +565,22 @@ static void report_upcall_exception(JNIEnv *env, const char *call_name, jmethodI
     (*env)->ExceptionClear(env);
     text[0] = '\0';
     if (throwable != NULL) {
-        jclass throwable_class = (*env)->GetObjectClass(env, throwable);
+        throwable_class = (*env)->GetObjectClass(env, throwable);
         if (throwable_class != NULL) {
-            jmethodID to_string = (*env)->GetMethodID(env, throwable_class, "toString",
-                                                      "()Ljava/lang/String;");
+            to_string = (*env)->GetMethodID(env, throwable_class, "toString",
+                                            "()Ljava/lang/String;");
             if (to_string != NULL) {
-                jstring description = (jstring) (*env)->CallObjectMethod(env, throwable, to_string);
-                if (description != NULL) {
-                    const char *utf = (*env)->GetStringUTFChars(env, description, NULL);
-                    if (utf != NULL) {
-                        size_t length = bounded_length(utf, sizeof(text) - 1);
-                        memcpy(text, utf, length);
-                        text[length] = '\0';
-                        (*env)->ReleaseStringUTFChars(env, description, utf);
-                    }
-                    (*env)->DeleteLocalRef(env, description);
+                description = (jstring) (*env)->CallObjectMethod(env, throwable, to_string);
+                copy_java_string(env, description, text, sizeof(text));
+            }
+            if (text[0] == '\0') {
+                /* A cheaper call than toString(): at the end of a 64 MiB stack
+                 * even string concatenation inside toString() fails. */
+                get_name = (*env)->GetMethodID(env, throwable_class, "getName",
+                                               "()Ljava/lang/String;");
+                if (get_name != NULL) {
+                    description = (jstring) (*env)->CallObjectMethod(env, throwable, get_name);
+                    copy_java_string(env, description, text, sizeof(text));
                 }
             }
             (*env)->DeleteLocalRef(env, throwable_class);
@@ -552,8 +588,35 @@ static void report_upcall_exception(JNIEnv *env, const char *call_name, jmethodI
         if ((*env)->ExceptionCheck(env)) (*env)->ExceptionClear(env);
         (*env)->DeleteLocalRef(env, throwable);
     }
+    ++g_upcall_exception_reports;
+    if (g_upcall_exception_reports > JBED_UPCALL_REPORT_LIMIT) {
+        /* A retry loop calls the same throwing upcall thousands of times; the
+         * periodic count line shows how far the run got before the stack ran
+         * out without flooding the log. */
+        ++g_upcall_exception_suppressed;
+        if ((g_upcall_exception_suppressed % 1000) == 0) {
+            LOGE("VM upcall %s threw %s in %s again; %d throwing upcalls so far",
+                 call_name, text[0] != '\0' ? text : "a Java exception",
+                 trace_method_name(method), (int) g_upcall_exception_reports);
+        }
+        return;
+    }
     LOGE("VM upcall %s threw %s in %s; clearing it before the VM sees it", call_name,
          text[0] != '\0' ? text : "a Java exception", trace_method_name(method));
+    if (text[0] != '\0') return;
+    /*
+     * No description at all: ART would not run Throwable.toString()/getName(),
+     * which happens when the current stack cannot hold another Java frame. The
+     * repeated return addresses below are then the recursion itself.
+     */
+    ++g_undescribed_exception_reports;
+    LOGE("VM upcall %s threw an undescribed exception in %s; throwable=%p class=%p "
+         "toString=%p name=%p sp=0x%08x",
+         call_name, trace_method_name(method), (void *) throwable, (void *) throwable_class,
+         (void *) to_string, (void *) get_name, (unsigned int) sp);
+    if (g_undescribed_exception_reports <= 3) {
+        log_stack_repeats("VM upcall exception stack-repeats", sp, 512);
+    }
 }
 
 static uintptr_t crash_pc(void *context) {
@@ -711,6 +774,21 @@ static void write_crash_log(const char *buffer, size_t length) {
         (void) write(fd, buffer, length);
         close(fd);
     }
+    /*
+     * Mirror the record into the regular compatibility log and into logcat.
+     * The device has no logcat collector, so a crash record that only lands in
+     * native-crash.log costs an extra collection step; the same lines in
+     * native.log are already part of every report.
+     */
+    fd = open(JBED_NATIVE_LOG_PATH, O_WRONLY | O_CREAT | O_APPEND, 0664);
+    if (fd >= 0) {
+        (void) write(fd, buffer, length);
+        close(fd);
+    }
+    if (length > 0) {
+        __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, "%.*s",
+                            (int) (length > 0 ? length - 1 : 0), buffer);
+    }
 }
 
 static size_t begin_crash_line(char *line) {
@@ -722,6 +800,107 @@ static size_t begin_crash_line(char *line) {
 static void end_crash_line(char *line, size_t offset, size_t capacity) {
     if (offset + 1 < capacity) line[offset++] = '\n';
     write_crash_log(line, offset);
+}
+
+/*
+ * ART detects an implicit stack overflow through a dedicated register instead
+ * of faulting on the guard page, so an exhausted native stack can produce a
+ * StackOverflowError with no signal and no crash record. The shim performs the
+ * same check on every upcall: it reads the page at sp - 8192 only after
+ * confirming that sp is still at least 32 KiB above the mapping's start, so a
+ * healthy stack can never fault here and the report that follows has room for
+ * its own frames.
+ *
+ * When the stack turns out to be exhausted, the words of the exhausted stack
+ * make the recursion visible: a runaway retry fills it with the return
+ * addresses of the same few functions, so printing the repeated ones names the
+ * function that must stop being re-entered (the offsets are mapped against the
+ * module list, giving "module+offset" that a disassembler can resolve).
+ */
+static void log_stack_repeats(const char *label, uintptr_t sp, int word_limit) {
+    char line[JBED_CRASH_LINE_LENGTH];
+    uintptr_t words[6];
+    int counts[6];
+    const struct mapped_region *region;
+    size_t offset;
+    int word_count = 0;
+    int index;
+    int i;
+    uintptr_t address;
+
+    region = find_region(sp, 0);
+    if (region == NULL) return;
+    if (sp < region->start || sp - region->start < 0x800) return;
+    if ((uintptr_t) word_limit * sizeof(uintptr_t) > sp - region->start) {
+        word_limit = (int) ((sp - region->start) / sizeof(uintptr_t));
+    }
+    for (i = 0; i < word_limit; ++i) {
+        address = *(const volatile uintptr_t *) (sp + (uintptr_t) i * sizeof(uintptr_t));
+        address &= ~(uintptr_t) 1u;
+        if (find_region(address, 1) == NULL) continue;
+        for (index = 0; index < word_count; ++index) {
+            if (words[index] == address) {
+                ++counts[index];
+                break;
+            }
+        }
+        if (index == word_count && word_count < (int) (sizeof(words) / sizeof(words[0]))) {
+            words[word_count] = address;
+            counts[word_count] = 1;
+            ++word_count;
+        }
+    }
+    offset = begin_crash_line(line);
+    offset = append_text(line, offset, sizeof(line), label, bounded_length(label, sizeof(line)));
+    offset = append_text(line, offset, sizeof(line), " depth=", sizeof(" depth=") - 1);
+    offset = append_decimal(line, offset, sizeof(line), (unsigned long) word_limit);
+    offset = append_text(line, offset, sizeof(line), " sp=", sizeof(" sp=") - 1);
+    offset = append_marker_hex(line, offset, sizeof(line), "0x", sizeof("0x") - 1, sp);
+    for (i = 0; i < word_count; ++i) {
+        if (counts[i] < 2) continue;
+        offset = append_text(line, offset, sizeof(line), " ", 1);
+        offset = append_marker_hex(line, offset, sizeof(line), "0x", sizeof("0x") - 1, words[i]);
+        offset = append_text(line, offset, sizeof(line), " x", sizeof(" x") - 1);
+        offset = append_decimal(line, offset, sizeof(line), (unsigned long) counts[i]);
+    }
+    end_crash_line(line, offset, sizeof(line));
+}
+
+#define JBED_STACK_PROBE_CLEARANCE 0x8000u
+#define JBED_STACK_PROBE_DISTANCE 0x2000u
+
+/*
+ * The probe itself, split out so a host test can exercise the thresholds with a
+ * fake stack: it answers "is the stack this sp points into already used up?" by
+ * reading one page 8 KiB below sp. The read is issued only when sp is still
+ * JBED_STACK_PROBE_CLEARANCE above the mapping's start, so on a healthy stack
+ * the page belongs to the (committed, zero-filled) unused part of the thread
+ * stack and the read can never fault.
+ */
+static int stack_bottom_reached(uintptr_t sp) {
+    const struct mapped_region *region = find_region(sp, 0);
+    volatile uintptr_t guard;
+
+    if (region == NULL || sp < region->start) return 0;
+    if (sp - region->start < JBED_STACK_PROBE_CLEARANCE) return 0;
+    guard = *(const volatile uintptr_t *) (sp - JBED_STACK_PROBE_DISTANCE);
+    return guard == 0;
+}
+
+static void check_implicit_stack_overflow(JNIEnv *env) {
+    static volatile sig_atomic_t reported;
+    uintptr_t sp = (uintptr_t) &env;
+    const struct mapped_region *region;
+
+    if (reported) return;
+    if (!stack_bottom_reached(sp)) return;
+    region = find_region(sp, 0);
+    reported = 1;
+    LOGE("native stack exhausted without a signal: sp=0x%08x base=0x%08x size=%u thread=%d; "
+         "the next upcall into Java cannot run",
+         (unsigned int) sp, (unsigned int) region->start,
+         (unsigned int) (region->end - region->start), current_tid());
+    log_stack_repeats("native stack-repeats", sp, 4096);
 }
 
 static size_t append_region(char *line, size_t offset, size_t capacity,
@@ -3680,6 +3859,9 @@ static jclass JNICALL hooked_find_class(JNIEnv *env, const char *name) {
 static jmethodID JNICALL hooked_get_method_id(JNIEnv *env, jclass clazz,
                                                const char *name, const char *signature) {
     jmethodID result;
+    /* The VM resolves methods from inside its retry loops, so these two hooks
+     * are the most frequent places the shim runs while the stack is used up. */
+    check_implicit_stack_overflow(env);
     clear_pending_exception(env);
     result = g_original_get_method_id(env, clazz, name, signature);
     if (result != NULL) {
@@ -3831,6 +4013,7 @@ JBED_VALUE_CALL_HOOKS(jboolean, CallStaticBooleanMethod, "CallStaticBooleanMetho
 static jmethodID JNICALL hooked_get_static_method_id(JNIEnv *env, jclass clazz,
                                                       const char *name, const char *signature) {
     jmethodID result;
+    check_implicit_stack_overflow(env);
     clear_pending_exception(env);
     result = g_original_table->GetStaticMethodID(env, clazz, name, signature);
     if (result != NULL) {
