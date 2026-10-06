@@ -135,7 +135,7 @@ public class JbedApp extends Application {
                 public void onServiceDisconnected(ComponentName className) {
                     JbedFileLog.warn(JbedApp.TAG, "onServiceDisconnected " + className);
                     Log.w(JbedApp.TAG, "WARNING: diconnect from Service!");
-                    Toast.makeText(activity, R.string.PRJ_SDCARD_ERROR_MESSAGE, 0).show();
+                    Toast.makeText(activity, R.string.PRJ_JBED_SERVICE_ERROR, Toast.LENGTH_LONG).show();
                     JbedApp.this.clearOnServiceDisconnect();
                 }
             };

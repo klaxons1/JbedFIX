@@ -667,12 +667,15 @@ static jmethodID JNICALL hooked_get_method_id(JNIEnv *env, jclass clazz,
 static void maybe_enable_low_quantum_for_vm_state(JNIEnv *env, jmethodID method,
                                                    jboolean commit, jint old_state,
                                                    jint new_state, jint reason) {
+    (void) env;
     (void) old_state;
     (void) reason;
     if (g_vm_state_change_method != NULL && method == g_vm_state_change_method &&
         commit && new_state == 3 && !g_patched_low_jbed_run_quantum) {
-        LOGI("vmStateChange foreground commit intercepted; lowering scheduler quantum before returning to VM");
-        Java_com_esmertec_android_jbed_service_JbedEngine_nativeEnableLowSchedulerQuantum(env, NULL);
+        /* Java marks the request and applies it after nativeJbedRun returns.
+         * Do not mprotect/patch libjbedvm while this callback is still inside
+         * the VM: that timing caused SIGBUS on ARM ART. */
+        LOGI("vmStateChange foreground commit intercepted; deferring scheduler patch until callback returns");
     }
 }
 

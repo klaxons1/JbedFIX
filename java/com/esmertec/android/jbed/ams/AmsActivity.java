@@ -26,7 +26,6 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.TextView;
-import android.widget.Toast;
 import com.esmertec.android.jbed.JbedApp;
 import com.esmertec.android.jbed.JbedConfig;
 import com.esmertec.android.jbed.JbedFileLog;
@@ -286,15 +285,9 @@ public class AmsActivity extends ListActivity implements AmsConstants {
                     AmsActivity.this.mIsServiceConnected = false;
                     JbedFileLog.error(TAG,
                             "JbedService died while startVm was waiting for VM bootstrap", e);
-                    AmsActivity.this.runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            if (!AmsActivity.this.isFinishing()) {
-                                Toast.makeText(AmsActivity.this,
-                                        R.string.AMS_MIDLET_INIT_ERROR, Toast.LENGTH_LONG).show();
-                            }
-                        }
-                    });
+                    // JbedApp.onServiceDisconnected() emits one generic VM
+                    // failure toast. Do not show a second misleading MIDlet
+                    // initialization toast here.
                 }
             }
         }.start();

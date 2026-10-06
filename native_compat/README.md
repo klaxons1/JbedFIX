@@ -79,16 +79,18 @@ staged scheduler workarounds. It currently provides targeted ART workarounds:
   legacy static callbacks. `JbedMidpManager.getString` returns `"<unknown>"`;
   `JbedFileManager.getRoots` returns a synthesized one-root `sdcard/` payload;
 - uses a staged scheduler patch: bootstrap runs the original `nativeJbedRun`
-  wrapper at `Jbed_run(20)`, then the cloned `JNIEnv` intercepts the legacy
-  foreground `vmStateChange` `CallBooleanMethod` before it returns to the VM and
-  lowers the wrapper to `Jbed_run(1)`, patches the matching `Jbed_iterate`
-  minimum-quantum assertion guard from 20 to 1, and patches the later
-  scheduled-execution gate from `quantum < 20` to `quantum < 1`. Java repeats
-  this low-quantum patch from the `StackOverflowError` fallback as a safety net and resets the
-  native-call/scheduler flags skipped when ART throws through the old native
-  frame. This keeps execution inside the proprietary VM while minimizing
-  scheduler stack pressure; it is not a complete fix for the proprietary
-  scheduler;
+  wrapper at `Jbed_run(20)`, then the cloned `JNIEnv` observes the legacy
+  foreground `vmStateChange` `CallBooleanMethod` and asks Java to defer the
+  patch until the native callback has returned. Java then lowers the wrapper to
+  `Jbed_run(1)`, patches the matching `Jbed_iterate` minimum-quantum assertion
+  guard from 20 to 1, and patches the later scheduled-execution gate from
+  `quantum < 20` to `quantum < 1`. Applying the patch after the callback avoids
+  an ARM ART SIGBUS observed when code was mprotected while the VM was still
+  executing that callback. Java repeats this low-quantum patch from the
+  `StackOverflowError` fallback as a safety net and resets the native-call/
+  scheduler flags skipped when ART throws through the old native frame. This
+  keeps execution inside the proprietary VM while minimizing scheduler stack
+  pressure; it is not a complete fix for the proprietary scheduler;
 - registers an `AmsConnection.nativeRequestLocalInstall()` bridge for local
   JAR/JAD selection. `AmsConnection` enqueues this call onto `JbedThread`;
   calling it directly from the Binder thread crashes because the old VM expects

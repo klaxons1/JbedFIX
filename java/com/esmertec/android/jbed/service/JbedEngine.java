@@ -35,6 +35,7 @@ public class JbedEngine implements JbedConstants {
     private boolean mEventPending = false;
     private boolean mShutdownVM = false;
     private boolean mRestartVM = false;
+    private volatile boolean mLowSchedulerQuantumRequested = false;
     int mVmChangeReason = 1;
     final JbedService.LifecycleListener mLifecycleListener = new JbedService.LifecycleListener() { // from class: com.esmertec.android.jbed.service.JbedEngine.2
         @Override // com.esmertec.android.jbed.service.JbedService.LifecycleListener
@@ -309,6 +310,21 @@ public class JbedEngine implements JbedConstants {
         }
     }
 
+    /**
+     * Apply the binary scheduler patch only after the native callback frame has
+     * returned. Patching libjbedvm from inside CallBooleanMethod was enough to
+     * produce SIGBUS on some ARM ART builds while the VM was still executing
+     * that callback.
+     */
+    private void applyRequestedLowSchedulerQuantum() {
+        if (!this.mLowSchedulerQuantumRequested) {
+            return;
+        }
+        this.mLowSchedulerQuantumRequested = false;
+        JbedFileLog.info(TAG, "applying deferred low scheduler quantum after native callback returned");
+        nativeEnableLowSchedulerQuantum();
+    }
+
     public void requestVmBackground() {
         requestVmState(2, 8);
     }
@@ -461,18 +477,20 @@ public class JbedEngine implements JbedConstants {
                 JbedFileLog.info(JbedEngine.TAG, "calling nativeJbedRequestState(3)");
                 JbedEngine.this.nativeJbedRequestState(3);
                 JbedFileLog.info(JbedEngine.TAG, "nativeJbedRequestState(3) returned");
+                JbedEngine.this.applyRequestedLowSchedulerQuantum();
                 while (!JbedEngine.this.mShutdownVM) {
                     JbedEngine.this.mEventPending = false;
                     int delay;
                     try {
                         delay = JbedEngine.this.nativeJbedRun();
+                        JbedEngine.this.applyRequestedLowSchedulerQuantum();
                     } catch (StackOverflowError e) {
                         JbedFileLog.error(JbedEngine.TAG,
                                 "StackOverflow in nativeJbedRun; recovering scheduler", e);
                         Log.e(JbedEngine.TAG, "StackOverflow in nativeJbedRun, recovering native scheduler state and using delay fallback 100ms", e);
                         try {
                             nativeRecoverAfterStackOverflow();
-                            nativeEnableLowSchedulerQuantum();
+                            JbedEngine.this.applyRequestedLowSchedulerQuantum();
                         } catch (Throwable hookError) {
                             Log.w(JbedEngine.TAG, "unable to recover native scheduler state after nativeJbedRun overflow", hookError);
                         }
@@ -537,8 +555,8 @@ public class JbedEngine implements JbedConstants {
                     if (newState == 3) {
                     if (!this.mJbedThread.mIsVmInitialized) {
                         LogTag.serviceDebug(TAG, "wakeup main thread after vm has been started totally!!");
-                        JbedFileLog.info(TAG, "VM reached foreground; enabling low scheduler quantum");
-                        nativeEnableLowSchedulerQuantum();
+                        JbedFileLog.info(TAG, "VM reached foreground; deferring low scheduler quantum until native callback returns");
+                        this.mLowSchedulerQuantumRequested = true;
                         this.mJbedThread.mIsVmInitialized = true;
                         this.mJbedThread.notify();
                         JbedFileLog.info(TAG, "initializing native push subsystem");
