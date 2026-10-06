@@ -188,6 +188,30 @@ NativeAms constructed okay
 Scheduler.setForeground from null to com.jbed.ams.NativeAms
 ```
 
+### Platform fault mitigation on the current branch
+
+The last instrumented runs pinned the remaining fault inside libcore's
+`AsynchronousCloseMonitor` (`/apex/com.android.art/lib/libandroidio.so`): a
+`strd` storing the new node into `blockedThreadList` faults because the `this`
+pointer is odd and unmapped. TLS writes, raw syscalls, allocator stubs and
+thread creation inside `libjbedvm.so` were all excluded, so the shim now keeps
+the legacy VM and the platform runtime apart instead of guessing further:
+
+- the VM's `sigaction`/`signal` GOT slots are interposed and the VM's timer
+  ticks are forwarded to the VM handler only when the interrupted `pc` lies in
+  VM code; ticks that hit ART/libcore/libc are counted and dropped;
+- the VM's 12-byte Android 2.x `struct sigaction` is translated and sanitized
+  before it reaches bionic;
+- libandroidio's four `async_close_monitor_*` entry points are replaced by
+  `movs r0, #0; bx lr` / `bx lr` stubs so the blocked-thread list is never
+  built or walked, at the cost of async-close interruption of blocking I/O.
+
+Each layer has an on-device opt-out marker
+(`disable-rt-signal-hooks.patch`, `disable-monitor-emulation.patch`) and the
+crash record lists the resulting counters, so the next run shows which layer
+engaged. See the "Platform-library guard rails" section of
+`native_compat/README.md` for details and trade-offs.
+
 ### FileConnection bridge
 
 `JbedFileManager.getRoots()` is reached through the old native JNI bridge but returns null with a pending Java exception on this ART runtime. Its precise failure did not safely produce a Java stack trace: attempting `ExceptionDescribe()` itself hit the already constrained Jbed thread stack.

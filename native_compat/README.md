@@ -103,6 +103,57 @@ staged scheduler workarounds. It currently provides targeted ART workarounds:
   populated but the native AMS scheduler does not reach `NativeAms.nativeGetEvent()`
   after stack overflow.
 
+## Platform-library guard rails
+
+The crash that motivates this block was decoded to libcore's
+`AsynchronousCloseMonitor` inside `/apex/com.android.art/lib/libandroidio.so`:
+the constructor inserts itself at the head of `blockedThreadList` with a `strd`
+and faults because the `this` pointer it was handed is an odd, unmapped value.
+Every VM-side explanation (TLS writes, raw syscalls, allocator/thread stubs) was
+checked and excluded, so the corrupted pointer reaches the constructor from
+outside the proprietary VM. The shim therefore keeps the legacy VM and the
+platform runtime from crossing into each other:
+
+- **VM timer-tick filter.** libjbedvm runs its Java threads inside one OS thread
+  with `setitimer(ITIMER_VIRTUAL)` plus a handler for signal 34. The shim
+  interposes the VM's GOT slots for `sigaction`/`signal` (through the ELF32
+  relocation table of the *loaded* library, so no PLT rewriting is needed) and
+  installs its own filter for the VM's timer interval. A tick is forwarded to
+  the VM handler only when the interrupted `pc` is VM code: inside
+  `libjbedvm.so`, in `/data/app/.../lib/arm/*`, or in an unnamed executable
+  `[anon]` region. Ticks that landed anywhere else (ART, libcore, libc, APEX
+  libraries) are counted in the crash record and dropped, so the legacy
+  scheduler can no longer preempt the platform runtime in the middle of an
+  operation. Create `/storage/emulated/0/jbedfix/disable-rt-signal-hooks.patch`
+  to keep the ORIGINAL dispositions.
+  Trade-off: while the VM is executing inside a platform library (for example
+  inside libc) it is no longer preemptible.
+- **Android 2.x `struct sigaction` translation.** The VM passes a 12-byte
+  KitKat-era `struct sigaction` (handler, 4-byte mask, flags) where Android 11
+  expects 16 bytes. `vm_sigaction_handler`/`vm_sigaction_flags`/
+  `vm_sigaction_mask_to_modern` read the legacy layout, and
+  `sanitize_sigaction_flags` keeps only `SA_RESTART`, `SA_NODEFER` and
+  `SA_SIGINFO`; without this, bionic would pick up garbage as flags and
+  `SA_RESETHAND` from the neighbouring stack word could silently disarm the
+  filter after the first tick.
+- **Platform monitor emulation.** The four exported entry points of
+  `libandroidio.so`, `async_close_monitor_{create,was_signalled,
+  signal_blocked_threads,destroy}`, are replaced by `movs r0, #0; bx lr` /
+  `bx lr` stubs, so `blockedThreadList` is never built, walked or unlinked and
+  the corrupted pointer cannot be stored. Create
+  `/storage/emulated/0/jbedfix/disable-monitor-emulation.patch` to skip this.
+  Trade-off: asynchronous-close interruption of blocking I/O is disabled for
+  the process (`was_signalled` always reports "not signalled").
+- **How the text is written.** `write_process_memory` patches through
+  `/proc/self/mem` first, which keeps the mapping's permissions untouched, and
+  falls back to a temporary `mprotect(RWX)`; both paths read the bytes back and
+  flush the instruction cache, which ARM32 needs for modified code.
+- The crash record now carries
+  `guards sigactionInterposed=… signalInterposed=… monitorStubs=… vmSigAction
+  calls=… filtered=… forwarded=… refused=… last=…`, and `native.log` prints
+  the interposition, each intercepted/filtered/refused disposition and every
+  stub that was written.
+
 ## Surface software bridge
 
 The `main` branch reference commit `1b9e561` includes an Android 2.x
@@ -203,8 +254,11 @@ installed at all - swallowing the signal would change its meaning.
 
 Diagnostics can be disabled per launch without rebuilding by creating
 `/storage/emulated/0/jbedfix/disable-crash-handler.patch`,
-`/storage/emulated/0/jbedfix/disable-jni-trace.patch` or
-`/storage/emulated/0/jbedfix/disable-blocked-thread-observer.patch`.
+`/storage/emulated/0/jbedfix/disable-jni-trace.patch`,
+`/storage/emulated/0/jbedfix/disable-blocked-thread-observer.patch`,
+`/storage/emulated/0/jbedfix/disable-timer-tick-filter.patch`,
+`/storage/emulated/0/jbedfix/disable-rt-signal-hooks.patch` or
+`/storage/emulated/0/jbedfix/disable-monitor-emulation.patch`.
 
 If logcat is available, collect it in addition to these files: the chained
 handler lets ART emit its normal tombstone, which contains the full unwind this
