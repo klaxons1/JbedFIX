@@ -291,7 +291,7 @@ public class AmsActivity extends ListActivity implements AmsConstants {
                         public void run() {
                             if (!AmsActivity.this.isFinishing()) {
                                 Toast.makeText(AmsActivity.this,
-                                        R.string.AMS_MIDP_INIT_ERROR, Toast.LENGTH_LONG).show();
+                                        R.string.AMS_MIDLET_INIT_ERROR, Toast.LENGTH_LONG).show();
                             }
                         }
                     });
