@@ -114,17 +114,60 @@ They deliberately avoid Android 11's private SurfaceFlinger ABI. The current
 bridge permits VM initialisation and framebuffer writes; presenting this buffer
 on a modern Java Surface is a later step.
 
-The compatibility shim also mirrors its JNI, linker, and scheduler markers to
+## Native crash diagnostics
+
+`libjbedcompat.so` mirrors its JNI, linker, and scheduler markers to
 `/storage/emulated/0/jbedfix/native.log` in addition to Android's log buffer.
-It installs a small signal marker for native crashes at
-`/storage/emulated/0/jbedfix/native-crash.log`, including the fault address,
-program counter (`pc`), stack pointer (`sp`), link register (`lr`), ARM
-argument registers (`r0`–`r3`) and the executable mapping (`pcModule`)
-containing the PC. It also records the PC/module offsets and the caller module
-for `lr`. If the PC or LR is inside `libjbedvm.so`, the corresponding offset
-can be looked up directly in `docs/libjbedvm.so.c`; unlike `si_addr`, these
-values identify the failing instruction and its caller. This is intended for devices
-where logcat cannot be collected.
+It also installs observing handlers for `SIGSEGV`, `SIGABRT`, `SIGBUS`,
+`SIGILL` and `SIGFPE`, and appends a crash record to
+`/storage/emulated/0/jbedfix/native-crash.log`. The handlers run on a private
+128 KiB alternate signal stack and chain to whatever handler ART had installed
+before them, so ART's tombstones, implicit null checks and `StackOverflowError`
+handling keep working; the shim never replaces the previous disposition.
+
+A crash record contains, per line:
+
+- `signal=`/`code=`/`pid=`/`tid=`/`thread=`. `code` is `siginfo.si_code`: a
+  value `<= 0` (plus the appended `sent=1`) means the signal was sent by a
+  thread or process (`kill`/`tgkill`/`raise`) instead of being raised by the
+  hardware, so `address` (`si_addr`) is not a fault address at all.
+- `pc=`, `sp=`, `lr=`, `r0`–`r10`, `fp`, `ip` and `cpsr`.
+- `pcModule=`/`pcModuleBase=`/`pcModuleOffset=` and the same triple for `lr`,
+  plus `vmBase=` and `vmPcOffset=` when the PC is inside `libjbedvm.so`. The
+  offsets are relative to the *mapping* containing the address, which is
+  reproducible across launches even though module bases are randomized. When
+  the PC or LR is inside the VM image, its offset can be looked up directly in
+  `docs/libjbedvm.so.c`; unlike `si_addr`, these values identify the failing
+  instruction and its caller.
+- `faultModule=`/`faultModuleBase=`/`faultModuleOffset=`/`perms=` for
+  `si_addr`, or `faultModule=unmapped` when it is not inside any mapping.
+- `frame=N fp=… return=<module>+0x…` — the frame-pointer chain, which names the
+  caller of the crashing function.
+- `stack-scan <module>+0x… …` — return addresses found in the words above `sp`
+  (bounded by the stack mapping), for frames built without frame pointers.
+- `jni-trace …` — the last VM → Java upcalls seen by the cloned `JNIEnv` table
+  with their Java method names, plus VM state transitions. This is the only
+  trace of what the VM was doing when the fault happened in platform code that
+  has no Java stack trace.
+
+Because module offsets are reproducible, the shim re-reads the previous crash
+record during the next launch and dumps the raw bytes around `pc`, `lr` and the
+fault address into `native.log`
+(`probe pc <module>+0x…: <hex bytes>`). Those bytes can be disassembled into ARM
+instructions to identify the faulting instruction without shell access to the
+device. An explicit request list can be placed in
+`/storage/emulated/0/jbedfix/probe.txt`, one
+`<module name> <offset hex> [<length hex>]` per line (`#` starts a comment);
+`offset` is relative to the mapping start, the default dump is 192 bytes
+starting 64 bytes before the offset, and every read is clamped to the mapping.
+
+Diagnostics can be disabled per launch without rebuilding by creating
+`/storage/emulated/0/jbedfix/disable-crash-handler.patch` or
+`/storage/emulated/0/jbedfix/disable-jni-trace.patch`.
+
+If logcat is available, collect it in addition to these files: the chained
+handler lets ART emit its normal tombstone, which contains the full unwind this
+shim only approximates.
 
 For a controlled bootstrap comparison, create the empty marker file
 `/storage/emulated/0/jbedfix/disable-startup-quantum.patch` before launching
