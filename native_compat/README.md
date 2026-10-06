@@ -127,11 +127,35 @@ handling keep working; the shim never replaces the previous disposition.
 
 A crash record contains, per line:
 
-- `signal=`/`code=`/`pid=`/`tid=`/`thread=`. `code` is `siginfo.si_code`: a
-  value `<= 0` (plus the appended `sent=1`) means the signal was sent by a
-  thread or process (`kill`/`tgkill`/`raise`) instead of being raised by the
-  hardware, so `address` (`si_addr`) is not a fault address at all.
-- `pc=`, `sp=`, `lr=`, `r0`–`r10`, `fp`, `ip` and `cpsr`.
+- `signal=`/`code=`/`pid=`/`tid=`/`thread=`/`blockedThreadSignals=`. `code` is
+  `siginfo.si_code`: a value `<= 0` (plus the appended `sent=1`) means the
+  signal was sent by a thread or process (`kill`/`tgkill`/`raise`) instead of
+  being raised by the hardware, so `address` (`si_addr`) is not a fault address
+  at all. For a bus error, `code=1` is `BUS_ADRALN` (misaligned access) and
+  `code=2` is `BUS_ADRERR` (non-existent physical address).
+  `blockedThreadSignals` counts the deliveries of libcore's `__SIGRTMIN+2`
+  (signal 34): the AsynchronousCloseMonitor sends it from
+  `IoBridge.closeAndSignalBlockedThreads`, i.e. whenever Java closes a
+  `FileDescriptor`, so a non-zero count means the platform was closing
+  descriptors during this run.
+- `pc=`/`sp=`/`lr=` and `r0`–`r10`, `fp`, `ip`, `cpsr`. Registers that point
+  into a mapping are annotated (`r1->/apex/.../libandroidio.so+0x2a64`,
+  `r10->anon[rw-p]`, `r4->unmapped`).
+- `pc-offsets:` the numbers a disassembler needs: the module's ELF base, the
+  executable mapping's start, `pc` relative to both (`offsetFromElfBase=` and
+  `offsetFromExecRegion=`), how far the executable mapping starts from the ELF
+  base (`execStartFromElfBase=`) and, for the fault address, `faultMod8=` plus
+  `faultAlignment=`. When `execStartFromElfBase` is `0x1000`, the mapping start
+  is one page *after* the ELF base, so an offset taken from the mapping start is
+  one page less than the file offset of that instruction.
+- `pc-words:` the instruction words at `pc-16 … pc+4`, printed in the order the
+  current state uses (ARM: big-endian word; Thumb: little-endian), which is what
+  a disassembler expects. The last word is the faulting instruction.
+- `pc-module-maps:` every mapping of that module with its permissions, address
+  and distance from the ELF base.
+- `pc-module-rw+0x…:` the first 96 bytes of the module's writable segment,
+  where the AsynchronousCloseMonitor keeps its mutex and the head of its
+  blocked-thread list; a corrupted head is visible here directly.
 - `pcModule=`/`pcModuleBase=`/`pcModuleOffset=` and the same triple for `lr`,
   plus `vmBase=` and `vmPcOffset=` when the PC is inside `libjbedvm.so`. The
   offsets are relative to the *mapping* containing the address, which is
@@ -152,18 +176,35 @@ A crash record contains, per line:
 
 Because module offsets are reproducible, the shim re-reads the previous crash
 record during the next launch and dumps the raw bytes around `pc`, `lr` and the
-fault address into `native.log`
-(`probe pc <module>+0x…: <hex bytes>`). Those bytes can be disassembled into ARM
-instructions to identify the faulting instruction without shell access to the
-device. An explicit request list can be placed in
-`/storage/emulated/0/jbedfix/probe.txt`, one
-`<module name> <offset hex> [<length hex>]` per line (`#` starts a comment);
-`offset` is relative to the mapping start, the default dump is 192 bytes
-starting 64 bytes before the offset, and every read is clamped to the mapping.
+fault address into `/storage/emulated/0/jbedfix/probe.log`. The crash handler
+also records the page address it derives for the faulting offset and appends the
+same two offsets to `/storage/emulated/0/jbedfix/probe.txt`, so the next launch
+dumps both interpretations of the offset side by side. A request list can also be
+placed in `probe.txt` by hand, one
+`<module name> <offset hex> [<length hex>] [key=value …]` per line (`#` starts a
+comment); `offset` is relative to the mapping start, the default dump is 192
+bytes starting 64 bytes before the offset, and every read is clamped to the
+mapping. `probe.log` also receives the module's ELF header, program headers,
+dynamic table and mapping list, which is what identifies how the loader placed
+the module's first page.
+
+Everything above is written from data the shim already has, so a record can be
+copied from a phone by hand: the fields are short and each one is decoded by the
+shim, and `probe.log` only has to be collected when the byte-level dump is
+needed.
+
+The shim also installs an observing handler for libcore's blocked-thread signal
+(signal 34) and chains to the handler libcore installed, keeping its flags (no
+`SA_RESTART`) so the signal still interrupts a blocked syscall exactly as
+before. Each delivery is counted in the crash record and appended to
+`native.log`, which shows whether a descriptor close was in flight around the
+fault. If nothing installed a handler for that signal yet, the observer is not
+installed at all - swallowing the signal would change its meaning.
 
 Diagnostics can be disabled per launch without rebuilding by creating
-`/storage/emulated/0/jbedfix/disable-crash-handler.patch` or
-`/storage/emulated/0/jbedfix/disable-jni-trace.patch`.
+`/storage/emulated/0/jbedfix/disable-crash-handler.patch`,
+`/storage/emulated/0/jbedfix/disable-jni-trace.patch` or
+`/storage/emulated/0/jbedfix/disable-blocked-thread-observer.patch`.
 
 If logcat is available, collect it in addition to these files: the chained
 handler lets ART emit its normal tombstone, which contains the full unwind this
