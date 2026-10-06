@@ -37,6 +37,8 @@
 #define JBED_PUBLIC_LOG_DIR "/storage/emulated/0/jbedfix"
 #define JBED_NATIVE_LOG_PATH JBED_PUBLIC_LOG_DIR "/native.log"
 #define JBED_DISABLE_STARTUP_PATCH_MARKER JBED_PUBLIC_LOG_DIR "/disable-startup-quantum.patch"
+/* PT_LOAD image size from lib/armeabi/libjbedvm.so; used to validate pc offsets. */
+#define JBED_LIBVM_IMAGE_SIZE 0x31abf8u
 
 /*
  * The Android log buffer is not available on every test device. Keep the
@@ -183,7 +185,8 @@ static void native_crash_signal_handler(int signal_number, siginfo_t *signal_inf
                                crash_sp(context));
     length = append_marker_hex(line, length, sizeof(line), " vmBase=0x", sizeof(" vmBase=0x") - 1,
                                vm_base);
-    if (vm_base != 0 && pc >= vm_base) {
+    if (vm_base != 0 && pc >= vm_base
+            && (pc & ~(uintptr_t) 1u) - vm_base < JBED_LIBVM_IMAGE_SIZE) {
         length = append_marker_hex(line, length, sizeof(line), " vmPcOffset=0x",
                                    sizeof(" vmPcOffset=0x") - 1,
                                    (pc & ~(uintptr_t) 1u) - vm_base);
