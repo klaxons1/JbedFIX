@@ -26,6 +26,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <signal.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <sys/system_properties.h>
@@ -73,6 +74,91 @@ static void native_file_log(int priority, const char *format, ...) {
 
 #define LOGE(...) native_file_log(ANDROID_LOG_ERROR, __VA_ARGS__)
 #define LOGI(...) native_file_log(ANDROID_LOG_INFO, __VA_ARGS__)
+
+/* A native signal does not reach Java's uncaught-exception handler. Leave a
+ * small async-signal-safe marker before re-raising it so Android still creates
+ * its normal tombstone while devices without logcat retain the crash reason. */
+static volatile sig_atomic_t g_crash_handler_active;
+
+static size_t append_decimal(char *buffer, size_t offset, size_t capacity, unsigned long value) {
+    char digits[24];
+    size_t count = 0;
+    if (value == 0) {
+        if (offset < capacity) buffer[offset++] = '0';
+        return offset;
+    }
+    while (value != 0 && count < sizeof(digits)) {
+        digits[count++] = (char) ('0' + (value % 10));
+        value /= 10;
+    }
+    while (count > 0 && offset < capacity) {
+        buffer[offset++] = digits[--count];
+    }
+    return offset;
+}
+
+static size_t append_hex(char *buffer, size_t offset, size_t capacity, uintptr_t value) {
+    static const char hex[] = "0123456789abcdef";
+    char digits[2 * sizeof(uintptr_t)];
+    size_t count = 0;
+    if (value == 0) {
+        if (offset < capacity) buffer[offset++] = '0';
+        return offset;
+    }
+    while (value != 0 && count < sizeof(digits)) {
+        digits[count++] = hex[value & 0xfu];
+        value >>= 4;
+    }
+    while (count > 0 && offset < capacity) {
+        buffer[offset++] = digits[--count];
+    }
+    return offset;
+}
+
+static void native_crash_signal_handler(int signal_number, siginfo_t *signal_info, void *context) {
+    static const char prefix[] = "FATAL/jbed-jni-compat native signal=";
+    static const char address_marker[] = " address=0x";
+    static const char newline[] = "\n";
+    char line[160];
+    size_t length = 0;
+    int fd;
+
+    (void) context;
+    if (g_crash_handler_active) _exit(128 + signal_number);
+    g_crash_handler_active = 1;
+    memcpy(line + length, prefix, sizeof(prefix) - 1);
+    length += sizeof(prefix) - 1;
+    length = append_decimal(line, length, sizeof(line), (unsigned long) signal_number);
+    memcpy(line + length, address_marker, sizeof(address_marker) - 1);
+    length += sizeof(address_marker) - 1;
+    length = append_hex(line, length, sizeof(line),
+                        signal_info == NULL ? 0 : (uintptr_t) signal_info->si_addr);
+    memcpy(line + length, newline, sizeof(newline) - 1);
+    length += sizeof(newline) - 1;
+
+    fd = open(JBED_PUBLIC_LOG_DIR "/native-crash.log", O_WRONLY | O_CREAT | O_APPEND, 0664);
+    if (fd >= 0) {
+        (void) write(fd, line, length);
+        close(fd);
+    }
+    signal(signal_number, SIG_DFL);
+    raise(signal_number);
+    _exit(128 + signal_number);
+}
+
+static void install_native_crash_handlers(void) {
+    static const int signals[] = {SIGSEGV, SIGABRT, SIGBUS, SIGILL, SIGFPE};
+    struct sigaction action;
+    size_t i;
+
+    memset(&action, 0, sizeof(action));
+    sigemptyset(&action.sa_mask);
+    action.sa_sigaction = native_crash_signal_handler;
+    action.sa_flags = SA_SIGINFO | SA_RESETHAND;
+    for (i = 0; i < sizeof(signals) / sizeof(signals[0]); ++i) {
+        sigaction(signals[i], &action, NULL);
+    }
+}
 
 /* dword_31C864 in the original ELF; its first LOAD segment has vaddr zero. */
 #define JBED_ENGINE_LOCAL_REF_OFFSET 0x31c864u
@@ -830,6 +916,8 @@ Java_com_esmertec_android_jbed_service_JbedEngine_nativeReleaseJniLifetimeHook(J
 JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
     (void) reserved;
     JNIEnv *env = NULL;
+    install_native_crash_handlers();
+    LOGI("installed native crash marker handlers");
     if ((*vm)->GetEnv(vm, (void **) &env, JNI_VERSION_1_6) != JNI_OK) return JNI_ERR;
 
     ensure_jbed_base();

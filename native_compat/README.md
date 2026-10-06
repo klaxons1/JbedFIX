@@ -114,6 +114,9 @@ on a modern Java Surface is a later step.
 
 The compatibility shim also mirrors its JNI, linker, and scheduler markers to
 `/storage/emulated/0/jbedfix/native.log` in addition to Android's log buffer.
-This is intended for devices where logcat cannot be collected.
+It installs a small signal marker for native crashes at
+`/storage/emulated/0/jbedfix/native-crash.log`, then re-raises the signal so
+Android can still create its normal tombstone. This is intended for devices
+where logcat cannot be collected.
 
 The next load attempt may expose additional unavailable legacy framework APIs.

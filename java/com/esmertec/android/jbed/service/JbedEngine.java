@@ -454,9 +454,13 @@ public class JbedEngine implements JbedConstants {
             }
             JbedEngine.this.mHandler.obtainMessage(2).sendToTarget();
             do {
+                JbedFileLog.info(JbedEngine.TAG, "calling nativeOnEnterRestartVMLoop");
                 JbedEngine.this.nativeOnEnterRestartVMLoop();
+                JbedFileLog.info(JbedEngine.TAG, "calling nativeJbedInitVmLifeCycle");
                 JbedEngine.this.nativeJbedInitVmLifeCycle();
+                JbedFileLog.info(JbedEngine.TAG, "calling nativeJbedRequestState(3)");
                 JbedEngine.this.nativeJbedRequestState(3);
+                JbedFileLog.info(JbedEngine.TAG, "nativeJbedRequestState(3) returned");
                 while (!JbedEngine.this.mShutdownVM) {
                     JbedEngine.this.mEventPending = false;
                     int delay;
@@ -530,13 +534,16 @@ public class JbedEngine implements JbedConstants {
                 }
             }
             synchronized (this.mJbedThread) {
-                if (newState == 3) {
+                    if (newState == 3) {
                     if (!this.mJbedThread.mIsVmInitialized) {
                         LogTag.serviceDebug(TAG, "wakeup main thread after vm has been started totally!!");
+                        JbedFileLog.info(TAG, "VM reached foreground; enabling low scheduler quantum");
                         nativeEnableLowSchedulerQuantum();
                         this.mJbedThread.mIsVmInitialized = true;
                         this.mJbedThread.notify();
+                        JbedFileLog.info(TAG, "initializing native push subsystem");
                         nativeInitializePush();
+                        JbedFileLog.info(TAG, "native push subsystem initialized");
                     }
                 }
             }

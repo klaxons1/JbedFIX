@@ -27,6 +27,7 @@ The APK also writes a diagnostic trace to:
 ```text
 /storage/emulated/0/jbedfix/jbed.log
 /storage/emulated/0/jbedfix/native.log
+/storage/emulated/0/jbedfix/native-crash.log
 ```
 
 `jbed.log` records application lifecycle events, the complete external VIEW
