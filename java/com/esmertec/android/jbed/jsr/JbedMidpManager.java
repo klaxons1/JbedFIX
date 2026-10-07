@@ -15,6 +15,7 @@ import android.provider.Telephony;
 import android.telephony.TelephonyManager;
 import android.util.Log;
 import com.esmertec.android.jbed.JbedConfig;
+import com.esmertec.android.jbed.JbedFileLog;
 import com.esmertec.android.jbed.JbedConstants;
 import com.esmertec.android.jbed.JbedProvider;
 import com.esmertec.android.jbed.service.JbedService;
@@ -84,7 +85,25 @@ public class JbedMidpManager implements JbedService.LifecycleListener, JbedConst
 
     static {
         $assertionsDisabled = !JbedMidpManager.class.desiredAssertionStatus();
-        nativeInitialization();
+        /*
+         * nativeInitialization() is registered by the VM itself. If that call
+         * throws (the VM may not register it before this class is first used),
+         * the class would stay uninitialised forever: every later getString()
+         * call - and the VM's AMS calls it for every label - would fail with
+         * ExceptionInInitializerError before its own try/catch could run. The
+         * VM then receives null for every string it asks for. Keep the class
+         * usable instead and record the failure once.
+         */
+        try {
+            nativeInitialization();
+        } catch (Throwable e) {
+            try {
+                Log.e(TAG, "nativeInitialization failed; continuing without VM callbacks", e);
+                JbedFileLog.error(TAG, "nativeInitialization failed; continuing without VM callbacks", e);
+            } catch (Throwable ignored) {
+                // A failing logger must not fail the class initialiser.
+            }
+        }
     }
 
     public JbedMidpManager(Handler handler) {
