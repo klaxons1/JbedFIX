@@ -883,6 +883,7 @@
     <string name="PRJ_DRM_CONSTRAINT_START_DATE">Start date</string>
     <string name="PRJ_DRM_CONSTRAINT_END_DATE">End date</string>
     <string name="PRJ_SDCARD_ERROR_MESSAGE">Maybe no sd card or sd card is busy, please check it.</string>
+    <string name="PRJ_JBED_SERVICE_ERROR">Jbed VM stopped unexpectedly. Check the jbedfix log files.</string>
     <string name="PRJ_APN_SETTING">APN settings</string>
     <string name="PRJ_INSTALL_LOCATION">Install location</string>
     <string name="PRJ_ROTATE_COMMAND">Rotate</string>

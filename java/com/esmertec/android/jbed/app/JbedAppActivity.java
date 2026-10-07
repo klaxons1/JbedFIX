@@ -16,6 +16,7 @@ import android.view.View;
 import android.widget.AbsoluteLayout;
 import com.esmertec.android.jbed.JbedApp;
 import com.esmertec.android.jbed.JbedConstants;
+import com.esmertec.android.jbed.JbedFileLog;
 import com.esmertec.android.jbed.JbedSettings;
 import com.esmertec.android.jbed.LogTag;
 import com.esmertec.android.jbed.R;
@@ -243,6 +244,7 @@ public class JbedAppActivity extends Activity implements JbedConstants {
     @Override // android.app.Activity
     public void onCreate(Bundle icicle) {
         super.onCreate(icicle);
+        JbedFileLog.intent(TAG, "JbedAppActivity.onCreate", getIntent());
         Intent intent = getIntent();
         SmsIntent = (Intent) intent.getParcelableExtra(JbedConstants.ACTION_JBED_PUSH_SMS);
         this.mIsFullScreen = intent.getBooleanExtra(AmsConstants.FULL_SCREEN_FLAG, false);

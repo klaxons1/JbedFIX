@@ -883,6 +883,7 @@
     <string name="PRJ_DRM_CONSTRAINT_START_DATE">Дата начала</string>
     <string name="PRJ_DRM_CONSTRAINT_END_DATE">Дата окончания</string>
     <string name="PRJ_SDCARD_ERROR_MESSAGE">Возможно карта памяти SD отсутствует или занята, проверьте ее.</string>
+    <string name="PRJ_JBED_SERVICE_ERROR">Виртуальная машина Jbed неожиданно остановилась. Проверьте файлы логов jbedfix.</string>
     <string name="PRJ_APN_SETTING">Параметры точки доступа</string>
     <string name="PRJ_INSTALL_LOCATION">Расположение</string>
     <string name="PRJ_ROTATE_COMMAND">Повернуть</string>

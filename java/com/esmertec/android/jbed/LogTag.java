@@ -31,48 +31,56 @@ public class LogTag {
     }
 
     public static void amsDebug(String tag, String msg) {
+        JbedFileLog.info(tag, "AMS " + msg);
         if (sAmsDebug) {
             Log.d(tag, msg);
         }
     }
 
     public static void amsVerbose(String tag, String msg) {
+        JbedFileLog.info(tag, "AMS " + msg);
         if (sAmsVerbose) {
             Log.v(tag, msg);
         }
     }
 
     public static void amsError(String tag, String msg) {
+        JbedFileLog.error(tag, "AMS " + msg, null);
         if (sAmsError) {
             Log.e(tag, msg);
         }
     }
 
     public static void amsWarning(String tag, String msg) {
+        JbedFileLog.warn(tag, "AMS " + msg);
         if (sAmsWarning) {
             Log.w(tag, msg);
         }
     }
 
     public static void appDebug(String tag, String msg) {
+        JbedFileLog.info(tag, "APP " + msg);
         if (sAppDebug) {
             Log.d(tag, msg);
         }
     }
 
     public static void appVerbose(String tag, String msg) {
+        JbedFileLog.info(tag, "APP " + msg);
         if (sAppVerbose) {
             Log.v(tag, msg);
         }
     }
 
     public static void appWarning(String tag, String msg) {
+        JbedFileLog.warn(tag, "APP " + msg);
         if (sAppWarning) {
             Log.w(tag, msg);
         }
     }
 
     public static void serviceDebug(String tag, String msg) {
+        JbedFileLog.info(tag, "SERVICE " + msg);
         if (sServiceDebug) {
             Log.d(tag, msg);
         }

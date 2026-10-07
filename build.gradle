@@ -10,19 +10,20 @@ def uiShimOutput = file('lib/armeabi/libui.so')
 def surfaceShimOutput = file('lib/armeabi/libsurfaceflinger_client.so')
 def pngShimOutput = file('lib/armeabi/libpng.so')
 def jbedCompatOutput = file('lib/armeabi/libjbedcompat.so')
-def ndkVersionForDrmShim = '26.3.11579264'
+// NDK r25 still supports API-19 ARM32 targets used for Android 4.4.2 tests.
+def ndkVersionForDrmShim = '25.2.9519653'
 
 tasks.register('buildDrmCompatibilityShim') {
     group = 'build'
-    description = 'Builds the ARM32 libdrm1 compatibility shim needed by the legacy Jbed VM.'
+    description = 'Builds the ARM32 native compatibility shims needed by the legacy Jbed VM.'
+    inputs.files(fileTree('native_compat') {
+        include '*.c'
+        include '*.S'
+        include '*.sh'
+    })
     outputs.files(drmShimOutput, utilsShimOutput, skiaShimOutput, cutilsShimOutput, uiShimOutput, surfaceShimOutput, pngShimOutput, jbedCompatOutput)
 
     doLast {
-        if (drmShimOutput.exists() && utilsShimOutput.exists() && skiaShimOutput.exists() && cutilsShimOutput.exists() && uiShimOutput.exists() && surfaceShimOutput.exists() && pngShimOutput.exists() && jbedCompatOutput.exists()) {
-            logger.lifecycle("Using existing native compatibility shims")
-            return
-        }
-
         def sdkRoot = System.getenv('ANDROID_HOME') ?: System.getenv('ANDROID_SDK_ROOT')
         if (sdkRoot == null) {
             throw new GradleException('ANDROID_HOME or ANDROID_SDK_ROOT is required to build libdrm1.so')
@@ -59,7 +60,10 @@ android {
     buildToolsVersion '34.0.0'
 
     defaultConfig {
-        minSdk 21
+        // Android 4.4.2 is API 19. Keep this low enough to install on KitKat
+        // test devices while retaining targetSdk 22 for Android 11 text-reloc
+        // compatibility policy.
+        minSdk 19
         // libjbedvm.so has text relocations from its Android 2.x build. Keep
         // the legacy target level so Android's linker applies its legacy-app
         // compatibility policy instead of enforcing the API-23+ rejection.

@@ -5,6 +5,7 @@ import android.os.Handler;
 import android.util.Log;
 import android.widget.Toast;
 import com.esmertec.android.jbed.JbedConfig;
+import com.esmertec.android.jbed.JbedFileLog;
 import com.esmertec.android.jbed.LogTag;
 import com.esmertec.android.jbed.R;
 import com.esmertec.android.jbed.jsr.JbedFileManager;
@@ -142,13 +143,22 @@ public class AmsClient extends AmsClientBase implements AmsConstants {
     }
 
     public void requestInstallEvent(String installUrl) {
-        LogTag.amsDebug(TAG, "requestInstallEvent() with url is " + installUrl);
+        JbedFileLog.info(TAG, "requestInstallEvent url=" + installUrl);
+        Log.i(TAG, "requestInstallEvent() with url is " + installUrl);
+        if (installUrl == null || installUrl.length() == 0) {
+            JbedFileLog.warn(TAG, "requestInstallEvent ignored empty URL");
+            return;
+        }
         if (mInstalingUri == null || !mInstalingUri.equals(installUrl)) {
             LogTag.amsDebug(TAG, "requestInstallEvent() requestInstallLock");
             if (requestInstallLock()) {
                 mInstalingUri = installUrl;
                 requestEvent(5, 0, installUrl);
+            } else {
+                Log.w(TAG, "requestInstallEvent() ignored because install lock is held");
             }
+        } else {
+            Log.w(TAG, "requestInstallEvent() ignored duplicate uri " + installUrl);
         }
     }
 
