@@ -513,110 +513,48 @@ static void trace_and_clear_exception(JNIEnv *env, const char *call_name, uint32
 
 /*
  * A legacy Java callback that throws is the one upcall result the VM cannot
- * handle: the exception is cleared before the next call (the 2011 VM has no
- * notion of a pending ART exception) and the VM keeps the null it received.
- * Log which method did it, because a repeated null is what drives the VM's
- * retry loops.
+ * handle: the 2011 VM has no notion of a pending ART exception, so the shim
+ * clears it and the VM keeps whatever the call returned.
  *
- * Two cases matter for the current failure:
- *  - when the C stack is already exhausted, ART refuses to run any Java code,
- *    so even Throwable.toString() cannot produce a message. The report then
- *    prints the step that failed and the stack's repeated return addresses,
- *    which names the function that recursed;
- *  - when the same upcall throws forever, only the first few reports carry the
- *    full text, the rest are counted.
+ * The report deliberately makes no Java calls of its own. The previous version
+ * tried to read Throwable.toString()/Class.getName() through JNI, which (a)
+ * needs ART to run Java while the thread already has an exception pending, so
+ * it returned nothing anyway, and (b) put the shim's own calls into the JNI
+ * trace, where they look like VM upcalls of methods such as toString(). The
+ * exception is described by ART itself instead: ExceptionDescribe() prints the
+ * class, the message and the stack of the pending exception to logcat.
+ *
+ * Reports are capped: a retry loop reaches this path thousands of times, and
+ * the count is what matters after the first few.
  */
-#define JBED_UPCALL_REPORT_LIMIT 48
+#define JBED_UPCALL_REPORT_LIMIT 24
 static volatile sig_atomic_t g_upcall_exception_reports;
-static volatile sig_atomic_t g_upcall_exception_suppressed;
-static volatile sig_atomic_t g_undescribed_exception_reports;
-
-static void copy_java_string(JNIEnv *env, jstring value, char *text, size_t capacity) {
-    const char *utf;
-    if (env == NULL || value == NULL || capacity == 0) return;
-    utf = (*env)->GetStringUTFChars(env, value, NULL);
-    if (utf != NULL) {
-        size_t length = bounded_length(utf, capacity - 1);
-        memcpy(text, utf, length);
-        text[length] = '\0';
-        (*env)->ReleaseStringUTFChars(env, value, utf);
-    }
-    (*env)->DeleteLocalRef(env, value);
-    if ((*env)->ExceptionCheck(env)) (*env)->ExceptionClear(env);
-}
 
 static void report_upcall_exception(JNIEnv *env, const char *call_name, jmethodID method) {
-    jthrowable throwable = NULL;
-    jclass throwable_class = NULL;
-    jmethodID to_string = NULL;
-    jmethodID get_name = NULL;
-    jstring description = NULL;
-    char text[JBED_TRACE_NAME_LENGTH];
+    jthrowable throwable;
     uintptr_t sp = (uintptr_t) &throwable;
 
     if (env == NULL || method == NULL) return;
-    check_implicit_stack_overflow(env);
     if (!(*env)->ExceptionCheck(env)) return;
 
-    /* Read the exception's own description before clearing it: the class name
-     * and message are what make the next report actionable without a debugger,
-     * and the pending state must be gone before any further JNI call. */
     throwable = (*env)->ExceptionOccurred(env);
-    (*env)->ExceptionClear(env);
-    text[0] = '\0';
     if (throwable != NULL) {
-        throwable_class = (*env)->GetObjectClass(env, throwable);
-        if (throwable_class != NULL) {
-            to_string = (*env)->GetMethodID(env, throwable_class, "toString",
-                                            "()Ljava/lang/String;");
-            if (to_string != NULL) {
-                description = (jstring) (*env)->CallObjectMethod(env, throwable, to_string);
-                copy_java_string(env, description, text, sizeof(text));
-            }
-            if (text[0] == '\0') {
-                /* A cheaper call than toString(): at the end of a 64 MiB stack
-                 * even string concatenation inside toString() fails. */
-                get_name = (*env)->GetMethodID(env, throwable_class, "getName",
-                                               "()Ljava/lang/String;");
-                if (get_name != NULL) {
-                    description = (jstring) (*env)->CallObjectMethod(env, throwable, get_name);
-                    copy_java_string(env, description, text, sizeof(text));
-                }
-            }
-            (*env)->DeleteLocalRef(env, throwable_class);
-        }
-        if ((*env)->ExceptionCheck(env)) (*env)->ExceptionClear(env);
-        (*env)->DeleteLocalRef(env, throwable);
+        /* Prints "JNI DETECTED ERROR ..." / the exception class, message and
+         * stack, and does not need a Java frame of its own. */
+        (*env)->ExceptionDescribe(env);
     }
+    (*env)->ExceptionClear(env);
+
     ++g_upcall_exception_reports;
     if (g_upcall_exception_reports > JBED_UPCALL_REPORT_LIMIT) {
-        /* A retry loop calls the same throwing upcall thousands of times; the
-         * periodic count line shows how far the run got before the stack ran
-         * out without flooding the log. */
-        ++g_upcall_exception_suppressed;
-        if ((g_upcall_exception_suppressed % 1000) == 0) {
-            LOGE("VM upcall %s threw %s in %s again; %d throwing upcalls so far",
-                 call_name, text[0] != '\0' ? text : "a Java exception",
-                 trace_method_name(method), (int) g_upcall_exception_reports);
+        if ((g_upcall_exception_reports % 1000) == 0) {
+            LOGI("VM upcall %s keeps returning with a cleared exception; %d so far",
+                 call_name, (int) g_upcall_exception_reports);
         }
         return;
     }
-    LOGE("VM upcall %s threw %s in %s; clearing it before the VM sees it", call_name,
-         text[0] != '\0' ? text : "a Java exception", trace_method_name(method));
-    if (text[0] != '\0') return;
-    /*
-     * No description at all: ART would not run Throwable.toString()/getName(),
-     * which happens when the current stack cannot hold another Java frame. The
-     * repeated return addresses below are then the recursion itself.
-     */
-    ++g_undescribed_exception_reports;
-    LOGE("VM upcall %s threw an undescribed exception in %s; throwable=%p class=%p "
-         "toString=%p name=%p sp=0x%08x",
-         call_name, trace_method_name(method), (void *) throwable, (void *) throwable_class,
-         (void *) to_string, (void *) get_name, (unsigned int) sp);
-    if (g_undescribed_exception_reports <= 3) {
-        log_stack_repeats("VM upcall exception stack-repeats", sp, 512);
-    }
+    LOGE("VM upcall %s threw in %s (throwable=%p sp=0x%08x); cleared before the VM sees it",
+         call_name, trace_method_name(method), (void *) throwable, (unsigned int) sp);
 }
 
 static uintptr_t crash_pc(void *context) {
