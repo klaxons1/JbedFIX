@@ -102,8 +102,64 @@ wrapper + 0x14  completion/extension state
 The normalized, host-compilable implementation is
 `m3g_loader_stream.c/.h`. It keeps the proprietary core as typed callbacks and
 therefore does not incorrectly expose internal ARM calls as ELF symbols.
+`m3g_loader_binary.c/.h` now covers the proven binary framing independently of
+that callback boundary:
+
+```text
+12 bytes  ABJSR184 BB 0D 0A 1A 0A  (or BB SWERVE AB 0D 0A 1A 0A)
+1 byte    compression method: 0 raw, 1 zlib
+4 bytes   little-endian file size; body bytes = file_size - 13
+4 bytes   little-endian decompressed content size
+body      raw or zlib stream
+4 bytes   little-endian Adler-32 over compression, both sizes, and body
+```
+
+The ARM implementation uses zlib 1.2.3, `inflateInit_(..., 56)`,
+`inflate(..., Z_SYNC_FLUSH)` and a 1024-byte output buffer for method 1. The
+object stream emitted after decompression consists of
+`uint8_t type + uint32 little-endian length + payload`; standard types 1..22
+are accepted in JSR-184 mode, 1..24 in SWERVE mode, and 255 is the extension
+record. The global factory table is also recovered from `sub_2F7784` /
+`sub_2F7984`:
+
+| type | M3G class | constructor allocation |
+|---:|---|---:|
+| 1 | AnimationController | `0x34` |
+| 2 | AnimationTrack | `0x28` |
+| 3 | Appearance | `0x38` |
+| 4 | Background | `0x40` |
+| 5 | Camera | `0xf8` |
+| 6 | CompositingMode | `0x30` |
+| 7 | Fog | `0x30` |
+| 8 | Group | `0x20` |
+| 9 | Image2D | `0x98` |
+| 10 | Image3D | `0x48` |
+| 11 | IndexBuffer | `0x44` |
+| 12 | KeyframeSequence | `0xbc` |
+| 13 | Light | `0x34` |
+| 14 | Material | `0xbc` |
+| 15 | Mesh | `0xf4` |
+| 16 | MorphingMesh | `0x168` |
+| 17 | PolygonMode | `0x40` |
+| 18 | SkinnedMesh | `0xb4` |
+| 19 | Sprite3D | `0x50` |
+| 20 | Texture2D | `0x58` |
+| 21 | TriangleStripArray | `0x78` |
+| 22 | VertexArray | `0xb0` |
+| 23 | VertexBuffer | `0x198` |
+| 24 | World | `0x64` |
+| 255 | extension object | `0x24` |
+
+Types 26 and 27 also have internal factory entries (`0x4c` and `0x50`),
+but the main binary acceptance path does not treat them as standard file
+objects. The normalized source leaves zlib and object construction as typed
+callbacks, because substituting host implementations would hide ABI and
+ownership differences.
+
 `tests/m3g_loader_stream_test.c` covers named streaming, XREF recursion,
 `-11` buffer completion, PNG fallback, roots and lifetime.
+`tests/m3g_loader_binary_test.c` covers byte-fragmented binary headers,
+Adler verification, object records and rejection paths.
 
 ## Parallel recovery tracks started
 

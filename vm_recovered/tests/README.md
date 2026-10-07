@@ -12,7 +12,11 @@ fake typed callbacks to exercise the recovered control flow:
 - a failed M3G start takes the temporary PNG root fallback;
 - core root count/access and wrapper lifetime are checked.
 
-Run it from the repository root with:
+The binary test feeds a JSR-184 frame one byte at a time, verifies the native
+Adler-32 coverage, checks the raw object-record framing and exercises invalid
+magic, unsupported compression and invalid object types.
+
+Run the tests from the repository root with:
 
 ```sh
 cc -std=c11 -Wall -Wextra -Werror \
@@ -21,4 +25,11 @@ cc -std=c11 -Wall -Wextra -Werror \
   vm_recovered/tests/m3g_loader_stream_test.c \
   -o /tmp/m3g_loader_stream_test
 /tmp/m3g_loader_stream_test
+
+cc -std=c11 -Wall -Wextra -Werror \
+  -Ivm_recovered/src/m3g \
+  vm_recovered/src/m3g/m3g_loader_binary.c \
+  vm_recovered/tests/m3g_loader_binary_test.c \
+  -o /tmp/m3g_loader_binary_test
+/tmp/m3g_loader_binary_test
 ```
