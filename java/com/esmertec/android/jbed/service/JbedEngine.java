@@ -559,9 +559,14 @@ public class JbedEngine implements JbedConstants {
                             }
                         }
                     }
-                    Runnable r = this.mPendingEventQueue.poll();
-                    if (r != null) {
-                        r.run();
+                    /* Do not dispatch queued Java events after a native
+                     * overflow requested lifecycle teardown. A queued event
+                     * could re-enter the damaged VM before nativeOnExit... */
+                    if (!JbedEngine.this.mShutdownVM) {
+                        Runnable r = this.mPendingEventQueue.poll();
+                        if (r != null) {
+                            r.run();
+                        }
                     }
                 }
                 JbedEngine.this.mShutdownVM = false;
