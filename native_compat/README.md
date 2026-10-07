@@ -94,7 +94,8 @@ staged scheduler workarounds. It currently provides targeted ART workarounds:
 - records a scheduler snapshot around the first twelve `nativeJbedRun()` calls
   in `native.log`. Each snapshot includes the lifecycle globals from
   `Jbed_run()` (`requested`, `reason`, `committed`, `lastNotified` and
-  `controlSignal`) plus the native-call frame, current scheduled object,
+  `controlSignal`) plus the scheduler's current time, next deadline, timer
+  flags, quantum-patch status, native-call frame, current scheduled object,
   scheduled/waiting counts, AMS upcall queue and general upcall queue heads.
   This distinguishes the `Jbed_run()` `INT_MAX` idle path from an empty queue,
   a state-transition request that was never committed, and a scheduler that

@@ -3241,6 +3241,10 @@ static void install_native_crash_handlers(void) {
 #define JBED_VM_COMMITTED_STATE_OFFSET 0x32030cu
 #define JBED_VM_LAST_NOTIFIED_STATE_OFFSET 0x320310u
 #define JBED_VM_CONTROL_SIGNAL_OFFSET 0x320314u
+#define JBED_SCHEDULER_NEXT_DEADLINE_OFFSET 0x320234u
+#define JBED_SCHEDULER_NOW_OFFSET 0x32025cu
+#define JBED_SCHEDULER_TIMER_FLAG_OFFSET 0x320251u
+#define JBED_SCHEDULER_DUE_FLAG_OFFSET 0x320252u
 #define JBED_STACK_OVERFLOW_DELTA_OFFSET 0x3200ecu
 #define JBED_FATAL_ERROR_PC_OFFSET 0x3200f0u
 #define JBED_FATAL_ERROR_SP_OFFSET 0x3200f4u
@@ -3613,6 +3617,12 @@ static uint8_t read_u8(uintptr_t offset) {
     return *(uint8_t *) (g_jbed_base + offset);
 }
 
+static uint64_t read_u64(uintptr_t offset) {
+    uint64_t value;
+    memcpy(&value, (const void *) (g_jbed_base + offset), sizeof(value));
+    return value;
+}
+
 static void dump_upcall_queue(const char *label, const char *name, uint32_t queue_ptr) {
     int index = 0;
     while (queue_ptr != 0 && index < 4) {
@@ -3688,12 +3698,19 @@ static void dump_scheduler_state(const char *label) {
     uint32_t call_state_frame = read_u32(JBED_NATIVE_CALL_STATE_FRAME_OFFSET);
     uint32_t ams_queue = read_u32(JBED_AMS_UPCALL_QUEUE_OFFSET);
     uint32_t queue_list = read_u32(JBED_UPCALL_QUEUE_LIST_OFFSET);
+    uint64_t scheduler_now = read_u64(JBED_SCHEDULER_NOW_OFFSET);
+    uint64_t scheduler_deadline = read_u64(JBED_SCHEDULER_NEXT_DEADLINE_OFFSET);
     LOGI("%s lifecycle: requested=%u reason=%u committed=%u lastNotified=%u controlSignal=0x%08x",
          label, read_u32(JBED_VM_REQUESTED_STATE_OFFSET),
          read_u32(JBED_VM_REQUEST_REASON_OFFSET),
          read_u32(JBED_VM_COMMITTED_STATE_OFFSET),
          read_u32(JBED_VM_LAST_NOTIFIED_STATE_OFFSET),
          read_u32(JBED_VM_CONTROL_SIGNAL_OFFSET));
+    LOGI("%s timing: now=0x%016llx nextDeadline=0x%016llx timerFlag=%u dueFlag=%u "
+         "startupQuantumPatched=%d lowQuantumPatched=%d",
+         label, (unsigned long long) scheduler_now, (unsigned long long) scheduler_deadline,
+         read_u8(JBED_SCHEDULER_TIMER_FLAG_OFFSET), read_u8(JBED_SCHEDULER_DUE_FLAG_OFFSET),
+         g_patched_startup_jbed_run_quantum, g_patched_low_jbed_run_quantum);
     LOGI("%s scheduler: active=%u callBase=0x%08x callAdr=0x%08x callFrame=0x%08x "
          "eventTable=0x%08x current=0x%08x scheduled=%u waiting=%u amsQueue=0x%08x queues=0x%08x",
          label, read_u8(JBED_VM_NATIVE_ACTIVE_OFFSET), call_state_base, call_state_adr,
