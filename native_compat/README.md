@@ -79,19 +79,23 @@ staged scheduler workarounds. It currently provides targeted ART workarounds:
   legacy static callbacks. `JbedMidpManager.getString` returns `"<unknown>"`;
   `JbedFileManager.getRoots` returns a synthesized one-root `sdcard/` payload;
 - uses a staged scheduler patch: bootstrap runs the original `nativeJbedRun`
-  wrapper at `Jbed_run(20)`, then the cloned `JNIEnv` observes the legacy
-  foreground `vmStateChange` `CallBooleanMethod`. The native hook applies the
-  low-quantum patch immediately after the original Java callback returns, before
-  control goes back to `libjbedvm`; this is early enough to prevent the next
-  scheduler pass from recursing at quantum 20, while avoiding an ARM ART SIGBUS
-  observed when code was mprotected from inside the callback. It lowers the
-  wrapper to `Jbed_run(1)`, patches the matching `Jbed_iterate` minimum-quantum
-  assertion guard from 20 to 1, and patches the later scheduled-execution gate
-  from `quantum < 20` to `quantum < 1`. Java repeats this low-quantum patch from
-  the `StackOverflowError` fallback as a safety net and resets the native-call/
-  scheduler flags skipped when ART throws through the old native frame. This
-  keeps execution inside the proprietary VM while minimizing scheduler stack
-  pressure; it is not a complete fix for the proprietary scheduler;
+  wrapper at `Jbed_run(20)`. After the first bootstrap run returns, Java installs
+  the fully guarded low-quantum patch before entering the foreground pass; this
+  is earlier than waiting for the foreground callback to return. The cloned
+  `JNIEnv` still observes the legacy foreground `vmStateChange` `CallBooleanMethod`
+  and applies the patch immediately after that callback as a fallback, before
+  control goes back to `libjbedvm`; this avoids the ARM ART SIGBUS observed when
+  code was mprotected from inside the callback. The patch lowers the wrapper to
+  `Jbed_run(1)`, changes the matching `Jbed_iterate` minimum-quantum assertion
+  guard from 20 to 1, and changes the later scheduled-execution gate from
+  `quantum < 20` to `quantum < 1`. Java also resets the native-call/scheduler
+  flags skipped when ART throws through the old native frame. If a
+  `StackOverflowError` still escapes `nativeJbedRun`, the first occurrence does
+  not continue the damaged scheduler: after the native recovery snapshot it
+  closes the current lifecycle with `nativeOnExitRestartVMLoop()` and performs
+  one clean `nativeOnEnterRestartVMLoop()`/`nativeJbedInitVmLifeCycle()` pass.
+  A later overflow retains the bounded delay fallback as a last diagnostic
+  safety net; this is not a complete fix for the proprietary scheduler;
 - records a scheduler snapshot around the first twelve `nativeJbedRun()` calls
   in `native.log`. Each snapshot includes the lifecycle globals from
   `Jbed_run()` (`requested`, `reason`, `committed`, `lastNotified` and

@@ -35,6 +35,7 @@ public class JbedEngine implements JbedConstants {
     private boolean mEventPending = false;
     private boolean mShutdownVM = false;
     private boolean mRestartVM = false;
+    private boolean mNativeOverflowRestarted = false;
     private volatile boolean mLowSchedulerQuantumRequested = false;
     int mVmChangeReason = 1;
     final JbedService.LifecycleListener mLifecycleListener = new JbedService.LifecycleListener() { // from class: com.esmertec.android.jbed.service.JbedEngine.2
@@ -473,6 +474,17 @@ public class JbedEngine implements JbedConstants {
             }
             JbedEngine.this.mHandler.obtainMessage(2).sendToTarget();
             do {
+                /* A native overflow requests exactly one clean lifecycle restart.
+                 * Clear the loop request before entering the fresh VM pass so a
+                 * normal shutdown from the restarted VM is not accidentally
+                 * turned into another restart. */
+                boolean cleanRestart = JbedEngine.this.mRestartVM;
+                JbedEngine.this.mRestartVM = false;
+                if (cleanRestart) {
+                    JbedFileLog.info(JbedEngine.TAG,
+                            "starting clean VM lifecycle pass after native scheduler overflow");
+                    JbedEngine.this.mJbedThread.mIsVmInitialized = false;
+                }
                 JbedFileLog.info(JbedEngine.TAG, "calling nativeOnEnterRestartVMLoop");
                 JbedEngine.this.nativeOnEnterRestartVMLoop();
                 JbedFileLog.info(JbedEngine.TAG, "calling nativeJbedInitVmLifeCycle");
@@ -501,10 +513,21 @@ public class JbedEngine implements JbedConstants {
                             nativeDumpSchedulerState(nativeRunNumber, false);
                         }
                         JbedEngine.this.applyRequestedLowSchedulerQuantum();
+                        /* The foreground callback can be the operation that
+                         * overflows the 20-quantum scheduler before it returns.
+                         * Once the bootstrap call has returned successfully,
+                         * install the fully guarded one-step scheduler before
+                         * entering that foreground pass. */
+                        if (nativeRunNumber == 1 && !JbedEngine.this.mShutdownVM) {
+                            JbedFileLog.info(JbedEngine.TAG,
+                                    "bootstrap nativeJbedRun returned; enabling low scheduler quantum before foreground pass");
+                            nativeEnableLowSchedulerQuantum();
+                        }
                     } catch (StackOverflowError e) {
+                        boolean requestCleanRestart = !JbedEngine.this.mNativeOverflowRestarted;
                         JbedFileLog.error(JbedEngine.TAG,
                                 "StackOverflow in nativeJbedRun; recovering scheduler", e);
-                        Log.e(JbedEngine.TAG, "StackOverflow in nativeJbedRun, recovering native scheduler state and using delay fallback 100ms", e);
+                        Log.e(JbedEngine.TAG, "StackOverflow in nativeJbedRun, recovering native scheduler state", e);
                         try {
                             nativeRecoverAfterStackOverflow();
                             JbedEngine.this.applyRequestedLowSchedulerQuantum();
@@ -512,7 +535,18 @@ public class JbedEngine implements JbedConstants {
                             Log.w(JbedEngine.TAG, "unable to recover native scheduler state after nativeJbedRun overflow", hookError);
                         }
                         unblockStartupWaiterAfterNativeOverflow();
-                        delay = 100;
+                        if (requestCleanRestart) {
+                            JbedEngine.this.mNativeOverflowRestarted = true;
+                            JbedEngine.this.mRestartVM = true;
+                            JbedEngine.this.mShutdownVM = true;
+                            /* The waiter has already been released above. Keep
+                             * the next lifecycle pass responsible for publishing
+                             * the real foreground transition again. */
+                            JbedEngine.this.mJbedThread.mIsVmInitialized = false;
+                            JbedFileLog.info(JbedEngine.TAG,
+                                    "native overflow will not continue damaged scheduler; requesting clean VM restart");
+                        }
+                        delay = 0;
                     }
                     if (delay >= 10 && !JbedEngine.this.mShutdownVM) {
                         synchronized (this) {

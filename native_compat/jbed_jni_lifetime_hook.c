@@ -3106,7 +3106,7 @@ static void emulate_platform_monitor(const char *reason) {
         }
         ++patched;
         g_monitor_stubs_written = (sig_atomic_t) patched;
-        LOGI("monitor emulation: %s at 0x%lx (%s) replaced by a %u-byte stub", 
+        LOGI("monitor emulation: %s at 0x%lx (%s) replaced by a %u-byte stub",
              g_monitor_entry_points[index].name, (unsigned long) address,
              thumb ? "thumb" : "arm", (unsigned) stub_length);
     }
