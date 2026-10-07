@@ -82,18 +82,28 @@ wrapper + 0x14  completion/extension state
 `swvLoaderLoadNamed` (`0x2cb50c`) performs:
 
 1. `loader_onDataStart`;
-2. repeated callback reads into a 1024-byte buffer;
+2. repeated callback reads into a 1024-byte buffer, with the requested name
+   only on the first read and `NULL` thereafter;
 3. `loader_onData` streaming into the Swerve M3G loader;
-4. XREF enumeration through `loader_getXREFName`;
-5. callback-based loading of external referenced files;
-6. `loader_resolveXREF` for each external object;
-7. `loader_onDataEnd`;
-8. fallback to `swvPNGLoadNamed` when the stream is not accepted as M3G.
+4. XREF enumeration through `loader_getXREFName` at index zero. Resolving an
+   entry mutates the pending list, so the next entry is again index zero;
+5. byte names widened to zero-terminated UTF-16 names;
+6. recursive external loading with the current core extension state;
+7. `loader_resolveXREF` followed by release of the temporary external handle;
+8. `loader_onDataEnd` and completion state;
+9. fallback to `swvPNGLoadNamed` when the stream is not accepted as M3G.
 
-`swvLoaderLoadBuffer` (`0x2cb794`) is the memory-buffer equivalent and also
-falls back to PNG. Root access is mediated by `swvLoaderGetRootCount` and
-`swvLoaderGetRoot`; a temporary root at wrapper `+0x10` is returned first when
-present.
+`swvLoaderLoadBuffer` (`0x2cb794`) is the memory-buffer equivalent. It keeps
+`-11` as the core's end marker until converting it to `-1` immediately before
+`loader_onDataEnd`; it also falls back to PNG. Root access is mediated by
+`swvLoaderGetRootCount` and `swvLoaderGetRoot`; a temporary root at wrapper
+`+0x10` is returned as the sole root when present.
+
+The normalized, host-compilable implementation is
+`m3g_loader_stream.c/.h`. It keeps the proprietary core as typed callbacks and
+therefore does not incorrectly expose internal ARM calls as ELF symbols.
+`tests/m3g_loader_stream_test.c` covers named streaming, XREF recursion,
+`-11` buffer completion, PNG fallback, roots and lifetime.
 
 ## Parallel recovery tracks started
 

@@ -48,9 +48,11 @@ as anonymous ARM code.
 ## Source status
 
 `m3g_object3d_fields.c` is the first normalized, host-compilable slice of the
-recovered core. It intentionally does not pretend to be the complete engine:
-object allocation, GC/refcount release, rendering, loader and fixed-point math
-are separate modules still being recovered.
+recovered core. `m3g_loader_stream.c` now provides the normalized loader
+boundary with typed callbacks, XREF recursion and PNG fallback. The source
+still intentionally does not pretend to be the complete engine: object
+allocation, GC/refcount release, rendering and fixed-point math are separate
+modules still being recovered.
 
 The raw Hex-Rays bodies remain in `docs/libjbedvm.so.c`; every normalized source
 file here records its original addresses and confidence level.
