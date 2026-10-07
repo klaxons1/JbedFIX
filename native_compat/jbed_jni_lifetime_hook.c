@@ -3305,6 +3305,7 @@ static jbed_upcall_poll_fn g_jbed_upcall_poll;
 
 static void clear_pending_exception(JNIEnv *env);
 static void dump_scheduler_state(const char *label);
+static void enable_low_scheduler_quantum_native(void);
 
 static int get_android_api_level(void) {
     char sdk[PROP_VALUE_MAX];
@@ -3512,10 +3513,7 @@ static void patch_native_jbed_run_startup_quantum(void) {
     }
 }
 
-JNIEXPORT void JNICALL
-Java_com_esmertec_android_jbed_service_JbedEngine_nativeEnableLowSchedulerQuantum(JNIEnv *env, jclass clazz) {
-    (void) env;
-    (void) clazz;
+static void enable_low_scheduler_quantum_native(void) {
     int wrapper_ok;
     int guard_ok;
     int body_ok;
@@ -3561,6 +3559,13 @@ Java_com_esmertec_android_jbed_service_JbedEngine_nativeEnableLowSchedulerQuantu
              JBED_NATIVE_JBED_RUN_STARTUP_QUANTUM, JBED_NATIVE_JBED_RUN_LOW_QUANTUM,
              JBED_NATIVE_JBED_RUN_LOW_QUANTUM);
     }
+}
+
+JNIEXPORT void JNICALL
+Java_com_esmertec_android_jbed_service_JbedEngine_nativeEnableLowSchedulerQuantum(JNIEnv *env, jclass clazz) {
+    (void) env;
+    (void) clazz;
+    enable_low_scheduler_quantum_native();
 }
 
 JNIEXPORT void JNICALL
@@ -3892,24 +3897,34 @@ static void maybe_enable_low_quantum_for_vm_state(JNIEnv *env, jmethodID method,
     }
     if (g_vm_state_change_method != NULL && method == g_vm_state_change_method &&
         commit && new_state == 3 && !g_patched_low_jbed_run_quantum) {
-        /* Java marks the request and applies it after nativeJbedRun returns.
-         * Do not mprotect/patch libjbedvm while this callback is still inside
-         * the VM: that timing caused SIGBUS on ARM ART. */
-        LOGI("vmStateChange foreground commit intercepted; deferring scheduler patch until callback returns");
+        /* The patch is applied by apply_low_quantum_after_vm_callback(), only
+         * after the original Java callback has returned to this native hook. */
+        LOGI("vmStateChange foreground commit intercepted; applying scheduler patch after callback returns");
     }
+}
+
+static void apply_low_quantum_after_vm_callback(jmethodID method, jboolean commit,
+                                                 jint new_state) {
+    if (g_vm_state_change_method == NULL || method != g_vm_state_change_method ||
+            !commit || new_state != 3 || g_patched_low_jbed_run_quantum) {
+        return;
+    }
+    LOGI("applying low scheduler quantum immediately after vmStateChange callback");
+    enable_low_scheduler_quantum_native();
 }
 
 static jboolean JNICALL hooked_call_boolean_method(JNIEnv *env, jobject obj, jmethodID method, ...) {
     va_list args;
     jboolean result;
+    jboolean state_change = JNI_FALSE;
+    jboolean commit = JNI_FALSE;
+    jint new_state = 0;
 
     trace_and_clear_exception(env, "CallBooleanMethod", JBED_TRACE_CALL_BOOLEAN, method);
     va_start(args, method);
     if (g_vm_state_change_method != NULL && method == g_vm_state_change_method) {
         va_list inspect;
-        jboolean commit;
         jint old_state;
-        jint new_state;
         jint reason;
 
         va_copy(inspect, args);
@@ -3918,20 +3933,27 @@ static jboolean JNICALL hooked_call_boolean_method(JNIEnv *env, jobject obj, jme
         new_state = va_arg(inspect, jint);
         reason = va_arg(inspect, jint);
         va_end(inspect);
+        state_change = JNI_TRUE;
         maybe_enable_low_quantum_for_vm_state(env, method, commit, old_state, new_state, reason);
     }
     result = g_original_table->CallBooleanMethodV(env, obj, method, args);
     va_end(args);
+    if (state_change) {
+        apply_low_quantum_after_vm_callback(method, commit, new_state);
+    }
     return result;
 }
 
 static jboolean JNICALL hooked_call_boolean_method_v(JNIEnv *env, jobject obj, jmethodID method, va_list args) {
+    jboolean result;
+    jboolean state_change = JNI_FALSE;
+    jboolean commit = JNI_FALSE;
+    jint new_state = 0;
+
     trace_and_clear_exception(env, "CallBooleanMethodV", JBED_TRACE_CALL_BOOLEAN, method);
     if (g_vm_state_change_method != NULL && method == g_vm_state_change_method) {
         va_list inspect;
-        jboolean commit;
         jint old_state;
-        jint new_state;
         jint reason;
 
         va_copy(inspect, args);
@@ -3940,17 +3962,28 @@ static jboolean JNICALL hooked_call_boolean_method_v(JNIEnv *env, jobject obj, j
         new_state = va_arg(inspect, jint);
         reason = va_arg(inspect, jint);
         va_end(inspect);
+        state_change = JNI_TRUE;
         maybe_enable_low_quantum_for_vm_state(env, method, commit, old_state, new_state, reason);
     }
-    return g_original_table->CallBooleanMethodV(env, obj, method, args);
+    result = g_original_table->CallBooleanMethodV(env, obj, method, args);
+    if (state_change) {
+        apply_low_quantum_after_vm_callback(method, commit, new_state);
+    }
+    return result;
 }
 
 static jboolean JNICALL hooked_call_boolean_method_a(JNIEnv *env, jobject obj, jmethodID method, const jvalue *args) {
+    jboolean result;
+
     trace_and_clear_exception(env, "CallBooleanMethodA", JBED_TRACE_CALL_BOOLEAN, method);
     if (g_vm_state_change_method != NULL && method == g_vm_state_change_method && args != NULL) {
         maybe_enable_low_quantum_for_vm_state(env, method, args[0].z, args[1].i, args[2].i, args[3].i);
     }
-    return g_original_table->CallBooleanMethodA(env, obj, method, args);
+    result = g_original_table->CallBooleanMethodA(env, obj, method, args);
+    if (g_vm_state_change_method != NULL && method == g_vm_state_change_method && args != NULL) {
+        apply_low_quantum_after_vm_callback(method, args[0].z, args[2].i);
+    }
+    return result;
 }
 
 /*
