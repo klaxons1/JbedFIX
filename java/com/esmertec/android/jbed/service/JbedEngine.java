@@ -12,6 +12,7 @@ import android.view.WindowManager;
 import android.widget.Toast;
 import com.esmertec.android.jbed.JbedConfig;
 import com.esmertec.android.jbed.JbedConstants;
+import com.esmertec.android.jbed.JbedFileLog;
 import com.esmertec.android.jbed.JbedSettings;
 import com.esmertec.android.jbed.LogTag;
 import com.esmertec.android.jbed.jsr.JbedMidpManager;
@@ -34,6 +35,7 @@ public class JbedEngine implements JbedConstants {
     private boolean mEventPending = false;
     private boolean mShutdownVM = false;
     private boolean mRestartVM = false;
+    private volatile boolean mLowSchedulerQuantumRequested = false;
     int mVmChangeReason = 1;
     final JbedService.LifecycleListener mLifecycleListener = new JbedService.LifecycleListener() { // from class: com.esmertec.android.jbed.service.JbedEngine.2
         @Override // com.esmertec.android.jbed.service.JbedService.LifecycleListener
@@ -99,6 +101,12 @@ public class JbedEngine implements JbedConstants {
     /** Releases the global JNI reference created by the compatibility hook. */
     private static native void nativeReleaseJniLifetimeHook();
 
+    /** Lowers the VM scheduler quantum after NativeAms has reached foreground. */
+    private static native void nativeEnableLowSchedulerQuantum();
+
+    /** Resets legacy VM native-call flags after ART reports StackOverflowError. */
+    private static native void nativeRecoverAfterStackOverflow();
+
     static {
         VMCHANGE_ALLOW_MAPS.put(2, 22);
         VMCHANGE_ALLOW_MAPS.put(1, 31);
@@ -162,6 +170,12 @@ public class JbedEngine implements JbedConstants {
                         return;
                     case 9:
                         new ToastVmBlocker(JbedEngine.this).run();
+                        return;
+                    case 10:
+                        if (msg.obj instanceof Runnable && JbedEngine.this.mJbedThread != null) {
+                            JbedEngine.this.mJbedThread.mPendingEventQueue.add((Runnable) msg.obj);
+                            JbedEngine.this.wakeUp();
+                        }
                         return;
                 }
             }
@@ -296,6 +310,21 @@ public class JbedEngine implements JbedConstants {
         }
     }
 
+    /**
+     * Apply the binary scheduler patch only after the native callback frame has
+     * returned. Patching libjbedvm from inside CallBooleanMethod was enough to
+     * produce SIGBUS on some ARM ART builds while the VM was still executing
+     * that callback.
+     */
+    private void applyRequestedLowSchedulerQuantum() {
+        if (!this.mLowSchedulerQuantumRequested) {
+            return;
+        }
+        this.mLowSchedulerQuantumRequested = false;
+        JbedFileLog.info(TAG, "applying deferred low scheduler quantum after native callback returned");
+        nativeEnableLowSchedulerQuantum();
+    }
+
     public void requestVmBackground() {
         requestVmState(2, 8);
     }
@@ -351,10 +380,10 @@ public class JbedEngine implements JbedConstants {
         private int mViewWidth;
 
         public JbedThread() {
-            // The 2011 VM schedules its own Java-isolate frames through this
-            // Android thread. ART's default ~1 MiB stack overflows during AMS
-            // bootstrap; use a bounded but practical legacy VM stack.
-            super(null, null, "JbedThread", 4L * 1024L * 1024L);
+            // Diagnostic headroom for the legacy native VM. The scheduler now reaches
+            // the install handler but still overflows a 16MiB ART host stack, so use
+            // a large stack to distinguish finite deep recursion from an infinite loop.
+            super(null, null, "JbedThread", 64L * 1024L * 1024L);
             this.mViewWidth = -1;
             this.mViewHeight = -1;
             this.mBytesPerPixel = -1;
@@ -373,6 +402,16 @@ public class JbedEngine implements JbedConstants {
                         wait();
                     }
                 } catch (Exception e) {
+                }
+            }
+        }
+
+        private void unblockStartupWaiterAfterNativeOverflow() {
+            synchronized (this) {
+                if (!this.mIsVmInitialized) {
+                    Log.w(JbedEngine.TAG, "nativeJbedRun overflowed after foreground transition; unblocking AMS startup wait");
+                    this.mIsVmInitialized = true;
+                    notifyAll();
                 }
             }
         }
@@ -414,17 +453,60 @@ public class JbedEngine implements JbedConstants {
 
         @Override // java.lang.Thread, java.lang.Runnable
         public void run() {
+            JbedFileLog.info(JbedEngine.TAG, "JbedThread.run started stack="
+                    + Thread.currentThread().getStackTrace().length);
             LogTag.serviceDebug(JbedEngine.TAG, "Jbed Thread Started");
-            nativeInstallJniLifetimeHook();
-            JbedEngine.this.nativeInitializeSubsystems(JbedEngine.this.getCommandLine(), 50);
+            try {
+                nativeInstallJniLifetimeHook();
+                JbedFileLog.info(JbedEngine.TAG, "nativeInstallJniLifetimeHook returned");
+                JbedEngine.this.nativeInitializeSubsystems(JbedEngine.this.getCommandLine(), 50);
+                JbedFileLog.info(JbedEngine.TAG, "nativeInitializeSubsystems returned");
+            } catch (RuntimeException exception) {
+                JbedFileLog.error(JbedEngine.TAG, "native VM initialization failed", exception);
+                throw exception;
+            } catch (Error error) {
+                JbedFileLog.error(JbedEngine.TAG, "native VM initialization failed", error);
+                throw error;
+            }
             JbedEngine.this.mHandler.obtainMessage(2).sendToTarget();
             do {
+                JbedFileLog.info(JbedEngine.TAG, "calling nativeOnEnterRestartVMLoop");
                 JbedEngine.this.nativeOnEnterRestartVMLoop();
+                JbedFileLog.info(JbedEngine.TAG, "calling nativeJbedInitVmLifeCycle");
                 JbedEngine.this.nativeJbedInitVmLifeCycle();
+                JbedFileLog.info(JbedEngine.TAG, "calling nativeJbedRequestState(3)");
                 JbedEngine.this.nativeJbedRequestState(3);
+                JbedFileLog.info(JbedEngine.TAG, "nativeJbedRequestState(3) returned");
+                JbedEngine.this.applyRequestedLowSchedulerQuantum();
+                int nativeRunCount = 0;
                 while (!JbedEngine.this.mShutdownVM) {
                     JbedEngine.this.mEventPending = false;
-                    int delay = JbedEngine.this.nativeJbedRun();
+                    int delay;
+                    int nativeRunNumber = ++nativeRunCount;
+                    boolean logNativeRun = nativeRunNumber <= 12 || (nativeRunNumber % 100) == 0;
+                    if (logNativeRun) {
+                        JbedFileLog.info(JbedEngine.TAG, "entering nativeJbedRun #" + nativeRunNumber);
+                    }
+                    try {
+                        delay = JbedEngine.this.nativeJbedRun();
+                        if (logNativeRun) {
+                            JbedFileLog.info(JbedEngine.TAG, "nativeJbedRun #" + nativeRunNumber
+                                    + " returned delay=" + delay);
+                        }
+                        JbedEngine.this.applyRequestedLowSchedulerQuantum();
+                    } catch (StackOverflowError e) {
+                        JbedFileLog.error(JbedEngine.TAG,
+                                "StackOverflow in nativeJbedRun; recovering scheduler", e);
+                        Log.e(JbedEngine.TAG, "StackOverflow in nativeJbedRun, recovering native scheduler state and using delay fallback 100ms", e);
+                        try {
+                            nativeRecoverAfterStackOverflow();
+                            JbedEngine.this.applyRequestedLowSchedulerQuantum();
+                        } catch (Throwable hookError) {
+                            Log.w(JbedEngine.TAG, "unable to recover native scheduler state after nativeJbedRun overflow", hookError);
+                        }
+                        unblockStartupWaiterAfterNativeOverflow();
+                        delay = 100;
+                    }
                     if (delay >= 10 && !JbedEngine.this.mShutdownVM) {
                         synchronized (this) {
                             if (!JbedEngine.this.mEventPending) {
@@ -480,12 +562,16 @@ public class JbedEngine implements JbedConstants {
                 }
             }
             synchronized (this.mJbedThread) {
-                if (newState == 3) {
+                    if (newState == 3) {
                     if (!this.mJbedThread.mIsVmInitialized) {
                         LogTag.serviceDebug(TAG, "wakeup main thread after vm has been started totally!!");
+                        JbedFileLog.info(TAG, "VM reached foreground; deferring low scheduler quantum until native callback returns");
+                        this.mLowSchedulerQuantumRequested = true;
                         this.mJbedThread.mIsVmInitialized = true;
                         this.mJbedThread.notify();
+                        JbedFileLog.info(TAG, "initializing native push subsystem");
                         nativeInitializePush();
+                        JbedFileLog.info(TAG, "native push subsystem initialized");
                     }
                 }
             }

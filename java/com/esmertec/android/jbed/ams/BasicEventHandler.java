@@ -707,21 +707,34 @@ public class BasicEventHandler {
         boolean mIsOnlySdcard = false;
         private final boolean isCompressJarFile = true;
         private final String[] excludeFolders = JbedConfig.getExcludeSearchFolder().split(":");
+        /* Drop-in folder used by the compatibility shim for its logs. JAR/JAD
+         * files placed there are offered in this list as well, so tests do not
+         * depend on how the platform exposes the rest of external storage. */
+        private static final String JBEDFIX_DROP_FOLDER = "/storage/emulated/0/jbedfix";
 
         /* JADX INFO: Access modifiers changed from: private */
         public void collectLocalInstallFiles() {
+            /* The compatibility shim's drop folder first: JAR/JAD files copied
+             * next to /storage/emulated/0/jbedfix/native.log. Walking the whole
+             * external-storage root here is unusable on Android 11 - it would
+             * recurse through every media directory - so this list is limited to
+             * that folder plus the VM's own LocalInstall directory. */
+            findAllMidlets(new File(JBEDFIX_DROP_FOLDER));
             if (!this.mIsOnlySdcard) {
                 File dir = new File(JbedSettings.getInstance(this.mContext).getLocalInstallDir());
                 findAllMidlets(dir);
             }
-            JbedFileManager manager = new JbedFileManager(this.mContext, null);
-            List<String> roots = manager.getRootPathList();
-            for (int i = 0; i < roots.size(); i++) {
-                File dir2 = new File(roots.get(i));
-                findAllMidlets(dir2);
-            }
             Collections.sort(mLocalInsallFiles, FileEntry.FILE_COMPARATOR);
             compressJarFiles();
+        }
+
+        private static boolean containsLocalInstallFile(String path) {
+            for (FileEntry entry : mLocalInsallFiles) {
+                if (entry.mPath != null && entry.mPath.equals(path)) {
+                    return true;
+                }
+            }
+            return false;
         }
 
         /* JADX INFO: Access modifiers changed from: private */
@@ -799,7 +812,27 @@ public class BasicEventHandler {
                 final AlertDialog dialog = new AlertDialog.Builder(getContext()).setTitle(R.string.AMS_LOCAL_FILES_INSTALLED).setItems((CharSequence[]) mLocalInsallFiles.toArray(new CharSequence[mLocalInsallFiles.size()]), new DialogInterface.OnClickListener() { // from class: com.esmertec.android.jbed.ams.BasicEventHandler.AndroidListLocallInstallEventHandler.4
                     @Override // android.content.DialogInterface.OnClickListener
                     public void onClick(DialogInterface dialog2, int pos) {
-                        String fileUri = "file:///" + ((FileEntry) AndroidListLocallInstallEventHandler.mLocalInsallFiles.get(pos)).mPath;
+                        FileEntry selected = (FileEntry) AndroidListLocallInstallEventHandler.mLocalInsallFiles.get(pos);
+                        String fileUri = "file:///" + selected.mPath;
+                        Log.i("AmsEventHandler", "local MIDlet selected for install: " + fileUri);
+                        if (LocalSuiteInstaller.isEnabled()) {
+                            // The proprietary installer overflows the host thread
+                            // stack on Android 11 as soon as it consumes a local
+                            // install event, so the suite is registered in the
+                            // Jbed storage directly and the list is refreshed.
+                            String installError = LocalSuiteInstaller.install(
+                                    AndroidListLocallInstallEventHandler.this.mContext,
+                                    selected.mPath);
+                            if (installError == null) {
+                                dialog2.dismiss();
+                                AndroidListLocallInstallEventHandler.this.mHandler
+                                        .obtainMessage(AmsConstants.HANDLE_REFRESH_LIST)
+                                        .sendToTarget();
+                                return;
+                            }
+                            Log.w("AmsEventHandler", "direct suite install refused (" + installError
+                                    + "); asking the VM to install " + fileUri);
+                        }
                         ((AmsClient) AndroidListLocallInstallEventHandler.this.mClient).requestInstallEvent(fileUri);
                         dialog2.dismiss();
                     }
@@ -828,6 +861,7 @@ public class BasicEventHandler {
                     }
                 }
             }
+            LogTag.amsDebug("AmsEventHandler", "scan local MIDlet files under " + root.getPath());
             File[] files = root.listFiles(new FileFilter() { // from class: com.esmertec.android.jbed.ams.BasicEventHandler.AndroidListLocallInstallEventHandler.6
                 @Override // java.io.FileFilter
                 public boolean accept(File f) {
@@ -846,9 +880,17 @@ public class BasicEventHandler {
             });
             if (files != null) {
                 for (int i2 = 0; i2 < files.length; i2++) {
+                    /* A folder that is also listed as a root, or a second
+                     * spelling of the same path, must not produce a duplicate
+                     * entry in the MIDlet list. */
+                    if (containsLocalInstallFile(files[i2].getPath())) {
+                        continue;
+                    }
                     LogTag.amsDebug("AmsEventHandler", "Add a midlet file " + files[i2].getPath());
                     mLocalInsallFiles.add(new FileEntry(files[i2]));
                 }
+            } else {
+                LogTag.amsWarning("AmsEventHandler", "unable to list local MIDlet files under " + root.getPath());
             }
         }
 

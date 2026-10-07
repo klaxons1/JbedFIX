@@ -28,6 +28,7 @@ import android.widget.AdapterView;
 import android.widget.TextView;
 import com.esmertec.android.jbed.JbedApp;
 import com.esmertec.android.jbed.JbedConfig;
+import com.esmertec.android.jbed.JbedFileLog;
 import com.esmertec.android.jbed.LogTag;
 import com.esmertec.android.jbed.R;
 import com.esmertec.android.jbed.app.JbedAppActivity;
@@ -124,6 +125,7 @@ public class AmsActivity extends ListActivity implements AmsConstants {
 
     @Override // android.app.Activity
     protected void onCreate(Bundle icicle) {
+        JbedFileLog.intent(TAG, "AmsActivity.onCreate", getIntent());
         LogTag.appDebug(TAG, "LIFECYCLE Ams onCreate");
         super.onCreate(icicle);
         setContentView(R.layout.ams_list);
@@ -153,6 +155,13 @@ public class AmsActivity extends ListActivity implements AmsConstants {
                             }
                         }
                         if (!JbedConfig.Menu.isReconfigEnable() || !AmsActivity.this.mCurSelectedItem.isFolder() || AmsActivity.this.mCurSelectedItem.mModifiableContent) {
+                            if (AmsActivity.this.mCurSelectedItem.isFolder()
+                                    && JbedFileManager.SDCARD_FOLDER_NAME.equals(AmsActivity.this.mCurSelectedItem.mName)
+                                    && AmsActivity.this.mCurSelectedItem.getChildCount() == 0) {
+                                LogTag.amsDebug(AmsActivity.TAG, "empty sdcard selector folder selected; scanning external storage for local MIDlet files");
+                                client.requestListLocalInstall(true);
+                                return;
+                            }
                             AmsActivity.this.refreshList(AmsActivity.this.loadListOrderId(), AmsActivity.this.mCurSelectedItem);
                         } else {
                             FolderNameI18N folderNameI18N = new FolderNameI18N(AmsActivity.this);
@@ -273,7 +282,12 @@ public class AmsActivity extends ListActivity implements AmsConstants {
                     }
                     AmsActivity.this.mPendingQueue.clear();
                 } catch (RemoteException e) {
-                    throw new RuntimeException("failed to call mJbedService.startVm()");
+                    AmsActivity.this.mIsServiceConnected = false;
+                    JbedFileLog.error(TAG,
+                            "JbedService died while startVm was waiting for VM bootstrap", e);
+                    // JbedApp.onServiceDisconnected() emits one generic VM
+                    // failure toast. Do not show a second misleading MIDlet
+                    // initialization toast here.
                 }
             }
         }.start();
@@ -288,6 +302,25 @@ public class AmsActivity extends ListActivity implements AmsConstants {
     /* JADX INFO: Access modifiers changed from: private */
     public AmsClient getAmsClient() {
         return getApp().getAmsClient(this.mHandler);
+    }
+
+    @Override // android.app.Activity
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        JbedFileLog.intent(TAG, "AmsActivity.onNewIntent", intent);
+        Message processMessage = Message.obtain(this.mHandler, new Runnable() {
+            @Override
+            public void run() {
+                AmsActivity.this.processIntent();
+            }
+        });
+        if (this.mIsServiceConnected && getAmsClient() != null) {
+            processMessage.sendToTarget();
+        } else {
+            this.mPendingQueue.add(processMessage);
+            JbedFileLog.warn(TAG, "queued external intent until Jbed service connects");
+        }
     }
 
     @Override // android.app.ListActivity, android.app.Activity
@@ -642,14 +675,54 @@ public class AmsActivity extends ListActivity implements AmsConstants {
     }
 
     /* JADX INFO: Access modifiers changed from: private */
+    private Uri getIntentFileUri(Intent intent) {
+        Uri data = intent.getData();
+        if (data != null) {
+            return data;
+        }
+        try {
+            if (intent.getClipData() != null && intent.getClipData().getItemCount() > 0) {
+                Uri clipUri = intent.getClipData().getItemAt(0).getUri();
+                if (clipUri != null) {
+                    return clipUri;
+                }
+            }
+            Object stream = intent.getParcelableExtra(Intent.EXTRA_STREAM);
+            if (stream instanceof Uri) {
+                return (Uri) stream;
+            }
+        } catch (Throwable throwable) {
+            JbedFileLog.error(TAG, "unable to read URI from external intent", throwable);
+        }
+        return null;
+    }
+
+    private String getInstallMimeType(Intent intent, Uri uri) {
+        String type = intent.getType();
+        if (!TextUtils.isEmpty(type)) {
+            return type;
+        }
+        String path = uri == null ? null : uri.getPath();
+        if (path != null) {
+            String lowerPath = path.toLowerCase(java.util.Locale.US);
+            if (lowerPath.endsWith(".jad")) {
+                return AmsInstallerProxy.JAD_MIMIE_TYPE;
+            }
+            if (lowerPath.endsWith(".jar")) {
+                return AmsInstallerProxy.JAR_MIMIE_TYPE;
+            }
+        }
+        return null;
+    }
+
+    /* JADX INFO: Access modifiers changed from: private */
     public void processIntent() {
-        String uriJad;
+        String uriJad = null;
         Intent intent = getIntent();
-        String action = intent.getAction();
-        Bundle bundle = intent.getExtras();
-        if (bundle == null) {
-            uriJad = null;
-        } else {
+        JbedFileLog.intent(TAG, "AmsActivity.processIntent", intent);
+        String action = intent == null ? null : intent.getAction();
+        Bundle bundle = intent == null ? null : intent.getExtras();
+        if (bundle != null) {
             String chapi_URL = bundle.getString("chapiURL");
             String chapi_contentType = bundle.getString("contentType");
             String chapi_action = bundle.getString("action");
@@ -659,20 +732,39 @@ public class AmsActivity extends ListActivity implements AmsConstants {
                 LogTag.amsDebug(TAG, "onCreate() contentType = " + chapi_contentType);
                 LogTag.amsDebug(TAG, "onCreate() action = " + chapi_action);
                 LogTag.amsDebug(TAG, "onCreate() appName = " + chapi_appName);
-                getAmsClient().requestChapiEvent(chapi_URL, chapi_contentType, chapi_action, chapi_appName);
+                if (getAmsClient() != null) {
+                    getAmsClient().requestChapiEvent(chapi_URL, chapi_contentType, chapi_action, chapi_appName);
+                } else {
+                    JbedFileLog.warn(TAG, "CHAPI intent arrived before AMS client was ready");
+                }
                 return;
             }
             uriJad = bundle.getString("uri");
         }
-        LogTag.amsDebug(TAG, "processIntent() uriJad = " + uriJad);
-        if (action != null && action.equals("android.intent.action.VIEW")) {
-            if (uriJad == null) {
-                AmsInstallerProxy installer = new AmsInstallerProxy(this, getAmsClient(), intent.getData(), intent.getType());
-                installer.requestInstall();
-            } else {
-                AmsInstallerProxy installer2 = new AmsInstallerProxy(this, getAmsClient(), intent.getData(), intent.getType(), Uri.parse(uriJad));
-                installer2.requestInstall();
-            }
+        if (!Intent.ACTION_VIEW.equals(action)) {
+            return;
+        }
+        Uri fileUri = getIntentFileUri(intent);
+        Uri jadUri = uriJad == null ? null : Uri.parse(uriJad);
+        String mimeType = getInstallMimeType(intent, fileUri);
+        JbedFileLog.info(TAG, "resolved install uri=" + fileUri + " jadUri=" + jadUri
+                + " mime=" + mimeType);
+        if (fileUri == null) {
+            JbedFileLog.error(TAG, "VIEW intent has no data URI or EXTRA_STREAM", null);
+            return;
+        }
+        AmsClient client = getAmsClient();
+        if (client == null) {
+            JbedFileLog.warn(TAG, "VIEW intent dropped because AMS client is null");
+            return;
+        }
+        try {
+            AmsInstallerProxy installer = jadUri == null
+                    ? new AmsInstallerProxy(this, client, fileUri, mimeType)
+                    : new AmsInstallerProxy(this, client, fileUri, mimeType, jadUri);
+            installer.requestInstall();
+        } catch (Throwable throwable) {
+            JbedFileLog.error(TAG, "failed to create external-install request", throwable);
         }
     }
 

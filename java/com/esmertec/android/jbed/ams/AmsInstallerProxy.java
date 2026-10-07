@@ -1,9 +1,13 @@
 package com.esmertec.android.jbed.ams;
 
+import android.content.ContentResolver;
 import android.content.Context;
 import android.database.Cursor;
 import android.net.Uri;
+import android.provider.OpenableColumns;
+import android.text.TextUtils;
 import android.util.Log;
+import com.esmertec.android.jbed.JbedFileLog;
 import com.esmertec.android.jbed.JbedProvider;
 import com.esmertec.android.jbed.LogTag;
 import com.esmertec.android.jbed.R;
@@ -45,7 +49,10 @@ public class AmsInstallerProxy implements AmsConstants {
         this.mLocalUri = localUri;
         this.mMimeType = mimeType;
         this.mLocalJadUri = null;
-        Log.d(TAG, "AmsInstallerProxy()1 mMimeType = " + this.mMimeType + ",mLocalUri.getPath() = " + this.mLocalUri.getPath());
+        JbedFileLog.info(TAG, "AmsInstallerProxy localUri=" + this.mLocalUri
+                + " mime=" + this.mMimeType);
+        Log.d(TAG, "AmsInstallerProxy()1 mMimeType = " + this.mMimeType
+                + ",mLocalUri=" + this.mLocalUri);
     }
 
     public AmsInstallerProxy(Context context, AmsClient client, Uri localUri, String mimeType, Uri localJadUri) {
@@ -57,7 +64,11 @@ public class AmsInstallerProxy implements AmsConstants {
         this.mLocalUri = localUri;
         this.mMimeType = mimeType;
         this.mLocalJadUri = localJadUri;
-        this.mLocalJadUri = Uri.parse(this.mLocalJadUri.toString().replaceFirst("//@", "//"));
+        if (this.mLocalJadUri != null) {
+            this.mLocalJadUri = Uri.parse(this.mLocalJadUri.toString().replaceFirst("//@", "//"));
+        }
+        JbedFileLog.info(TAG, "AmsInstallerProxy localUri=" + this.mLocalUri
+                + " jadUri=" + this.mLocalJadUri + " mime=" + this.mMimeType);
     }
 
     /* JADX WARN: Code duplicated, block: B:10:0x007e A[Catch: all -> 0x009d, TRY_ENTER, TRY_LEAVE, TryCatch #0 {all -> 0x009d, blocks: (B:4:0x0064, B:6:0x006a, B:10:0x007e), top: B:19:0x0064 }] */
@@ -158,43 +169,123 @@ public class AmsInstallerProxy implements AmsConstants {
     /* JADX WARN: Code duplicated, block: B:24:0x00d7 A[Catch: all -> 0x00df, TRY_ENTER, TRY_LEAVE, TryCatch #1 {all -> 0x00df, blocks: (B:16:0x0077, B:18:0x007d, B:24:0x00d7), top: B:31:0x0077, outer: #0 }] */
     public void requestInstall() {
         Uri destInstallUri = this.mLocalUri;
+        String displayUri = String.valueOf(destInstallUri);
         try {
-            if (this.mMimeType.equals(JAD_MIMIE_TYPE)) {
-                if (this.mLocalJadUri != null) {
-                    destInstallUri = this.mLocalJadUri;
-                }
-            } else if (this.mMimeType.equals(JAR_MIMIE_TYPE) && destInstallUri.getScheme().trim().equals("content")) {
-                Cursor c = this.mContext.getContentResolver().query(destInstallUri, this.MIDLET_PROJECTION, null, null, JbedCalendarTodo.Tasks.ID);
-                if (c == null) {
-                    Log.w(TAG, "ERROR: requestInstall() failed to query drm uri");
-                    if (c != null) {
-                        c.close();
-                    }
-                } else {
-                    try {
-                        if (c.moveToFirst()) {
-                            String uriString = c.getString(1);
-                            destInstallUri = Uri.parse("file:///" + uriString);
-                        } else {
-                            Log.w(TAG, "ERROR: requestInstall() failed to query drm uri");
-                        }
-                        if (c != null) {
-                            c.close();
-                        }
-                    } catch (Throwable th) {
-                        if (c != null) {
-                            c.close();
-                        }
-                        throw th;
-                    }
-                }
+            if (destInstallUri == null) {
+                throw new IOException("external VIEW intent did not contain a URI");
             }
-            LogTag.amsDebug(TAG, "requestInstall  " + destInstallUri.toString() + " mMimeType=" + this.mMimeType);
-            this.mClient.requestInstallEvent(convertIntoJbedInstallPath(destInstallUri.toString()));
+            String path = destInstallUri.getPath();
+            String lowerPath = path == null ? "" : path.toLowerCase(java.util.Locale.US);
+            boolean isJad = JAD_MIMIE_TYPE.equals(this.mMimeType) || lowerPath.endsWith(".jad");
+            boolean isJar = JAR_MIMIE_TYPE.equals(this.mMimeType)
+                    || "application/x-java-archive".equals(this.mMimeType)
+                    || "application/x-jar".equals(this.mMimeType)
+                    || "application/zip".equals(this.mMimeType)
+                    || "application/octet-stream".equals(this.mMimeType)
+                    || lowerPath.endsWith(".jar");
+            if ("content".equalsIgnoreCase(destInstallUri.getScheme()) && !isJad && !isJar) {
+                String displayName = queryDisplayName(this.mContext.getContentResolver(), destInstallUri);
+                String lowerName = displayName == null ? "" : displayName.toLowerCase(java.util.Locale.US);
+                isJad = lowerName.endsWith(".jad");
+                isJar = lowerName.endsWith(".jar");
+            }
+
+            if (isJad && this.mLocalJadUri != null) {
+                destInstallUri = this.mLocalJadUri;
+            }
+            if (isJar || isJad) {
+                destInstallUri = makeAppReadableUri(destInstallUri, isJar ? ".jar" : ".jad");
+            }
+            if (destInstallUri == null) {
+                throw new IOException("unable to resolve install URI");
+            }
+            displayUri = destInstallUri.toString();
+            String installUrl = convertIntoJbedInstallPath(displayUri);
+            JbedFileLog.info(TAG, "requestInstall source=" + this.mLocalUri
+                    + " resolved=" + displayUri + " mime=" + this.mMimeType
+                    + " isJar=" + isJar + " isJad=" + isJad
+                    + " installUrl=" + installUrl);
+            LogTag.amsDebug(TAG, "requestInstall " + installUrl + " mMimeType=" + this.mMimeType);
+            this.mClient.requestInstallEvent(installUrl);
         } catch (Exception e) {
-            this.mClient.requestShowError(this.mContext.getString(R.string.AMS_INTERNAL_INSTALLER_ERROR, destInstallUri.toString()));
-            Log.e(TAG, " faile to install " + destInstallUri.toString(), e);
+            JbedFileLog.error(TAG, "external install failed for " + displayUri, e);
+            if (this.mClient != null) {
+                this.mClient.requestShowError(this.mContext.getString(
+                        R.string.AMS_INTERNAL_INSTALLER_ERROR, displayUri));
+            }
+            Log.e(TAG, "failed to install " + displayUri, e);
         }
+    }
+
+    /**
+     * A content URI is only readable while the file manager's grant is alive;
+     * the native installer cannot open content:// itself. Copy it to the app's
+     * cache and pass a file:// URI to the legacy Jbed VM. The cache is retained
+     * until a later run because installation is asynchronous.
+     */
+    private Uri makeAppReadableUri(Uri source, String extension) throws IOException {
+        if (source == null || !"content".equalsIgnoreCase(source.getScheme())) {
+            return source;
+        }
+        ContentResolver resolver = this.mContext.getContentResolver();
+        String name = queryDisplayName(resolver, source);
+        if (TextUtils.isEmpty(name)) {
+            name = "jbed-import" + extension;
+        }
+        name = sanitizeFileName(name);
+        if (!name.toLowerCase(java.util.Locale.US).endsWith(extension)) {
+            name = name + extension;
+        }
+        File importDir = new File(this.mContext.getCacheDir(), "jbed-import");
+        if (!importDir.exists() && !importDir.mkdirs()) {
+            throw new IOException("cannot create " + importDir);
+        }
+        File destination = File.createTempFile("jbed-", "-" + name, importDir);
+        InputStream input = resolver.openInputStream(source);
+        if (input == null) {
+            destination.delete();
+            throw new IOException("content resolver returned no stream for " + source);
+        }
+        try {
+            FileOutputStream output = new FileOutputStream(destination);
+            try {
+                byte[] buffer = new byte[8192];
+                int read;
+                while ((read = input.read(buffer)) != -1) {
+                    output.write(buffer, 0, read);
+                }
+                output.flush();
+            } finally {
+                output.close();
+            }
+        } finally {
+            input.close();
+        }
+        JbedFileLog.info(TAG, "copied content URI " + source + " to " + destination
+                + " bytes=" + destination.length());
+        return Uri.fromFile(destination);
+    }
+
+    private String queryDisplayName(ContentResolver resolver, Uri source) {
+        Cursor cursor = null;
+        try {
+            cursor = resolver.query(source, new String[]{OpenableColumns.DISPLAY_NAME}, null, null, null);
+            if (cursor != null && cursor.moveToFirst()) {
+                return cursor.getString(0);
+            }
+        } catch (Throwable throwable) {
+            JbedFileLog.warn(TAG, "unable to query content display name: " + throwable);
+        } finally {
+            if (cursor != null) {
+                cursor.close();
+            }
+        }
+        return source.getLastPathSegment();
+    }
+
+    private String sanitizeFileName(String name) {
+        String sanitized = name.replaceAll("[^A-Za-z0-9._-]", "_");
+        return TextUtils.isEmpty(sanitized) ? "jbed-import" : sanitized;
     }
 
     public Uri copyFileTo(String srcFullName, String fileName) {

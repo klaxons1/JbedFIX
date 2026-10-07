@@ -239,7 +239,21 @@ public class AmsClientBase implements AmsConstants {
     }
 
     public static String getEventName(int eventId) {
-        return eventId < 10000 ? eventNames[eventId] : eventAndroidNames[eventId - 10000];
+        // Bounds checked. The native VM names its own events (up to
+        // EVENT_TW_EVER_LAUNCHED) and asks about Android-side ids up to
+        // HANDLE_* (10031), but eventAndroidNames only holds five entries. The
+        // original lookup therefore threw ArrayIndexOutOfBoundsException from a
+        // log line inside AmsConnection.fetchEvent(); the compatibility hook
+        // cleared the exception, the VM received null for the event and called
+        // fetchEvent again until the JbedThread stack overflowed.
+        if (eventId >= 0 && eventId < eventNames.length) {
+            return eventNames[eventId];
+        }
+        int androidIndex = eventId - 10000;
+        if (androidIndex >= 0 && androidIndex < eventAndroidNames.length) {
+            return eventAndroidNames[androidIndex];
+        }
+        return "EVENT_" + eventId;
     }
 
     public void bringMidletToForeground(boolean isFullScreen) {
