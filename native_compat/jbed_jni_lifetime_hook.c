@@ -805,11 +805,10 @@ static void end_crash_line(char *line, size_t offset, size_t capacity) {
 /*
  * ART detects an implicit stack overflow through a dedicated register instead
  * of faulting on the guard page, so an exhausted native stack can produce a
- * StackOverflowError with no signal and no crash record. The shim performs the
- * same check on every upcall: it reads the page at sp - 8192 only after
- * confirming that sp is still at least 32 KiB above the mapping's start, so a
- * healthy stack can never fault here and the report that follows has room for
- * its own frames.
+ * StackOverflowError with no signal and no crash record. The shim watches for
+ * the same moment from the hooks the VM calls while it retries, and reports it
+ * while 64 KiB of stack is still left, which is what makes printing the report
+ * itself safe.
  *
  * When the stack turns out to be exhausted, the words of the exhausted stack
  * make the recursion visible: a runaway retry fills it with the return
@@ -829,10 +828,16 @@ static void log_stack_repeats(const char *label, uintptr_t sp, int word_limit) {
     uintptr_t address;
 
     region = find_region(sp, 0);
-    if (region == NULL) return;
-    if (sp < region->start || sp - region->start < 0x800) return;
-    if ((uintptr_t) word_limit * sizeof(uintptr_t) > sp - region->start) {
-        word_limit = (int) ((sp - region->start) / sizeof(uintptr_t));
+    if (region == NULL || sp < region->start || sp >= region->end) return;
+    /*
+     * Older frames live at higher addresses, so the scan runs from sp towards
+     * the end of the mapping. It must stop at that end: the page right above a
+     * stack mapping is a PROT_NONE guard, and reading it killed the process
+     * once already.
+     */
+    if (region->end - sp < sizeof(uintptr_t)) return;
+    if ((uintptr_t) word_limit * sizeof(uintptr_t) > region->end - sp) {
+        word_limit = (int) ((region->end - sp) / sizeof(uintptr_t));
     }
     for (i = 0; i < word_limit; ++i) {
         address = *(const volatile uintptr_t *) (sp + (uintptr_t) i * sizeof(uintptr_t));
@@ -866,33 +871,37 @@ static void log_stack_repeats(const char *label, uintptr_t sp, int word_limit) {
     end_crash_line(line, offset, sizeof(line));
 }
 
-#define JBED_STACK_PROBE_CLEARANCE 0x8000u
-#define JBED_STACK_PROBE_DISTANCE 0x2000u
-
 /*
- * The probe itself, split out so a host test can exercise the thresholds with a
- * fake stack: it answers "is the stack this sp points into already used up?" by
- * reading one page 8 KiB below sp. The read is issued only when sp is still
- * JBED_STACK_PROBE_CLEARANCE above the mapping's start, so on a healthy stack
- * the page belongs to the (committed, zero-filled) unused part of the thread
- * stack and the read can never fault.
+ * "Is this stack used up?" is answered by the position of sp inside its
+ * mapping, never by reading memory: a thread stack grows down, so sp reaching
+ * the low end of the mapping means the recursion is about to hit the guard
+ * page. Reading below sp instead (the first version of this probe) proves
+ * nothing - on a mostly unused 64 MiB stack that area is simply zero, so the
+ * read reported an exhausted stack that was not exhausted, and the scan that
+ * followed walked past the mapping into the guard page.
  */
+#define JBED_STACK_PROBE_CLEARANCE 0x10000u   /* 64 KiB of stack still left */
+#define JBED_STACK_PROBE_MINIMUM 0x100000u    /* ignore small stacks entirely */
+
 static int stack_bottom_reached(uintptr_t sp) {
     const struct mapped_region *region = find_region(sp, 0);
-    volatile uintptr_t guard;
 
-    if (region == NULL || sp < region->start) return 0;
-    if (sp - region->start < JBED_STACK_PROBE_CLEARANCE) return 0;
-    guard = *(const volatile uintptr_t *) (sp - JBED_STACK_PROBE_DISTANCE);
-    return guard == 0;
+    if (region == NULL || sp < region->start || sp >= region->end) return 0;
+    if (region->end - region->start < JBED_STACK_PROBE_MINIMUM) return 0;
+    return (sp - region->start) < JBED_STACK_PROBE_CLEARANCE;
 }
 
 static void check_implicit_stack_overflow(JNIEnv *env) {
     static volatile sig_atomic_t reported;
+    static volatile sig_atomic_t samples;
     uintptr_t sp = (uintptr_t) &env;
     const struct mapped_region *region;
 
     if (reported) return;
+    /* The hooks that call this run many times per frame; every 64th call is
+     * enough to cross a 64 KiB window, and the mapping lookup stays off the
+     * hot path. */
+    if ((++samples & 0x3F) != 0) return;
     if (!stack_bottom_reached(sp)) return;
     region = find_region(sp, 0);
     reported = 1;
