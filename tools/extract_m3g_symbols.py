@@ -66,11 +66,19 @@ def main() -> int:
     if args.csv:
         args.csv.parent.mkdir(parents=True, exist_ok=True)
         with args.csv.open("w", newline="") as stream:
-            writer = csv.DictWriter(stream, fieldnames=["layer", "name", "address", "size"])
+            writer = csv.DictWriter(
+                stream,
+                fieldnames=["layer", "name", "address", "size"],
+                lineterminator="\n",
+            )
             writer.writeheader()
             writer.writerows(rows)
     else:
-        writer = csv.DictWriter(__import__("sys").stdout, fieldnames=["layer", "name", "address", "size"])
+        writer = csv.DictWriter(
+            __import__("sys").stdout,
+            fieldnames=["layer", "name", "address", "size"],
+            lineterminator="\n",
+        )
         writer.writeheader()
         writer.writerows(rows)
     return 0

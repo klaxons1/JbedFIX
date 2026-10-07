@@ -95,9 +95,37 @@ falls back to PNG. Root access is mediated by `swvLoaderGetRootCount` and
 `swvLoaderGetRoot`; a temporary root at wrapper `+0x10` is returned first when
 present.
 
+## Parallel recovery tracks started
+
+The direct-field pass now covers all major object families in one normalized
+module, `m3g_recovered_fields.c`:
+
+- scene graph: `Node.scope`, picking/rendering flags, alpha factor, World
+  camera/background slots;
+- rendering resources: Mesh and MorphingMesh counts, Graphics3D dimensions,
+  pitch, depth range and depth-buffer flag;
+- materials/textures: Material shininess/color tracking, Fog density/mode,
+  Texture2D blend/wrap/filter fields, Background color;
+- lights: mode, color, intensity, spot parameters and attenuation;
+- animation: KeyframeSequence duration, repeat mode, dimensions,
+  interpolation and valid range;
+- sprites: crop rectangle and scaled flag.
+
+The transform track recovered the exact 68-byte matrix state at
+`Transform + 0x0c`: sixteen IEEE-754 single-precision words plus a state word.
+`sub_2D8174` initializes diagonal elements to `0x3f800000` and state to `63`.
+This is now implemented in `m3g_transform_layout.c`; it does not guess a
+fixed-point scale.
+
+The renderer and loader tracks are also started at their real core boundaries:
+`graphics3d_*`, `swvLoader*`, `loader_onData*`, XREF resolution, and PNG
+fallback are listed with original addresses. Their complex allocation,
+reference-count and callback internals remain opaque until their callee graphs
+are typed.
+
 ## M3G object modules to recover next
 
-1. `Transform` fixed-point matrix layout and `sub_2D3AEC`/`sub_2E06D8` math;
+1. `Transform` remaining matrix operations and fixed-point helpers;
 2. `VertexArray`, `VertexBuffer`, `IndexBuffer` storage and range checks;
 3. `Appearance`, `Material`, `Texture2D`, `PolygonMode`, `CompositingMode`;
 4. `Node`, `Group`, `World`, camera/light traversal;
@@ -108,4 +136,5 @@ present.
 
 The JNI surface is already completely inventoried. The remaining work is to
 replace opaque `sub_2D...`/`sub_2E...` calls in the Swerve core with typed
-recompilable modules, starting with transform/math and loader formats.
+recompilable modules across all tracks, rather than treating the JNI surface as
+the engine itself.
