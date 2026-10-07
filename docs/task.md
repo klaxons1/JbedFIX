@@ -286,7 +286,7 @@ proprietary VM scheduler/AMS path, not a stack-size limit.
 
 ### FileConnection bridge
 
-`JbedFileManager.getRoots()` is reached through the old native JNI bridge but returns null with a pending Java exception on this ART runtime. Its precise failure did not safely produce a Java stack trace: attempting `ExceptionDescribe()` itself hit the already constrained Jbed thread stack.
+`JbedFileManager.getRoots()` is reached through the old native JNI bridge but returns null with a pending Java exception on this ART runtime. `ExceptionDescribe()` is not a non-Java diagnostic on this ART build: it enters `Throwable.printStackTrace()`, which appeared in the JNI trace as repeated Java upcalls and added stack pressure during recovery. The hook therefore suppresses it by default; `/storage/emulated/0/jbedfix/describe-upcall-exceptions.patch` enables it only for an explicit one-off diagnostic run.
 
 The compatibility shim now bypasses the two unsafe legacy static JNI callbacks entirely (`088a580`): it supplies `"<unknown>"` for native i18n and synthesizes a one-root `sdcard/` FileConnection payload for `getRoots`, without entering Android Java. The root path is chosen from `EXTERNAL_STORAGE`, `/storage/emulated/0`, `/sdcard`, then `/mnt/sdcard`. This is enough to stop NativeAms from treating storage as absent, but full FileConnection behavior is still not proven. Separately, `JbedFileManager` maps legacy `/mnt/sdcard` to Android's actual legacy external-storage path when its normal Java method can run (`043ce2f`).
 

@@ -334,6 +334,15 @@ Diagnostics can be disabled per launch without rebuilding by creating
 `/storage/emulated/0/jbedfix/disable-rt-signal-hooks.patch` or
 `/storage/emulated/0/jbedfix/disable-monitor-emulation.patch`.
 
+Upcall exception descriptions are intentionally disabled in the normal path:
+ART's `ExceptionDescribe()` enters `Throwable.printStackTrace()` and can add
+another Java recursion while the Jbed thread is recovering from a deep native
+stack. To temporarily request the full ART description for one diagnostic run,
+create `/storage/emulated/0/jbedfix/describe-upcall-exceptions.patch`. The
+shim still records the exception fact and clears the pending exception in the
+normal path; the marker is opt-in because the description is not safe for the
+bootstrap recovery path.
+
 If logcat is available, collect it in addition to these files: the chained
 handler lets ART emit its normal tombstone, which contains the full unwind this
 shim only approximates.

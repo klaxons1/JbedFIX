@@ -248,6 +248,8 @@ static uintptr_t g_last_find_class;
 /* Diagnostics can be turned off on-device without rebuilding the APK. */
 #define JBED_DISABLE_CRASH_HANDLER_MARKER JBED_PUBLIC_LOG_DIR "/disable-crash-handler.patch"
 #define JBED_DISABLE_JNI_TRACE_MARKER JBED_PUBLIC_LOG_DIR "/disable-jni-trace.patch"
+#define JBED_DESCRIBE_UPCALL_EXCEPTIONS_MARKER \
+    JBED_PUBLIC_LOG_DIR "/describe-upcall-exceptions.patch"
 #define JBED_DISABLE_BLOCKED_THREAD_OBSERVER_MARKER \
     JBED_PUBLIC_LOG_DIR "/disable-blocked-thread-observer.patch"
 static int g_jni_trace_enabled = 1;
@@ -516,19 +518,32 @@ static void trace_and_clear_exception(JNIEnv *env, const char *call_name, uint32
  * handle: the 2011 VM has no notion of a pending ART exception, so the shim
  * clears it and the VM keeps whatever the call returned.
  *
- * The report deliberately makes no Java calls of its own. The previous version
- * tried to read Throwable.toString()/Class.getName() through JNI, which (a)
- * needs ART to run Java while the thread already has an exception pending, so
- * it returned nothing anyway, and (b) put the shim's own calls into the JNI
- * trace, where they look like VM upcalls of methods such as toString(). The
- * exception is described by ART itself instead: ExceptionDescribe() prints the
- * class, the message and the stack of the pending exception to logcat.
+ * The report deliberately makes no Java calls of its own. In particular,
+ * ExceptionDescribe() is disabled by default: on the Android 11 ART build it
+ * enters Java's Throwable.printStackTrace(), which becomes another VM upcall
+ * while the Jbed thread is already recovering from a deep native stack. The
+ * resulting trace showed dozens of getString/printStackTrace pairs and made
+ * the bootstrap recursion worse. Create the marker below only when a one-off
+ * ART exception description is needed.
  *
  * Reports are capped: a retry loop reaches this path thousands of times, and
  * the count is what matters after the first few.
  */
 #define JBED_UPCALL_REPORT_LIMIT 24
 static volatile sig_atomic_t g_upcall_exception_reports;
+static int g_describe_upcall_exceptions = -1;
+
+static int should_describe_upcall_exceptions(void) {
+    if (g_describe_upcall_exceptions < 0) {
+        g_describe_upcall_exceptions =
+                access(JBED_DESCRIBE_UPCALL_EXCEPTIONS_MARKER, F_OK) == 0;
+        if (g_describe_upcall_exceptions) {
+            LOGI("upcall exception descriptions enabled by %s",
+                 JBED_DESCRIBE_UPCALL_EXCEPTIONS_MARKER);
+        }
+    }
+    return g_describe_upcall_exceptions;
+}
 
 static void report_upcall_exception(JNIEnv *env, const char *call_name, jmethodID method) {
     jthrowable throwable;
@@ -538,14 +553,14 @@ static void report_upcall_exception(JNIEnv *env, const char *call_name, jmethodI
     if (!(*env)->ExceptionCheck(env)) return;
 
     throwable = (*env)->ExceptionOccurred(env);
-    if (throwable != NULL) {
-        /* Prints "JNI DETECTED ERROR ..." / the exception class, message and
-         * stack, and does not need a Java frame of its own. */
+    ++g_upcall_exception_reports;
+    if (throwable != NULL && g_upcall_exception_reports <= JBED_UPCALL_REPORT_LIMIT &&
+            should_describe_upcall_exceptions()) {
+        /* Opt-in only: ART implements this by entering Throwable.printStackTrace. */
         (*env)->ExceptionDescribe(env);
     }
     (*env)->ExceptionClear(env);
 
-    ++g_upcall_exception_reports;
     if (g_upcall_exception_reports > JBED_UPCALL_REPORT_LIMIT) {
         if ((g_upcall_exception_reports % 1000) == 0) {
             LOGI("VM upcall %s keeps returning with a cleared exception; %d so far",
