@@ -91,6 +91,14 @@ staged scheduler workarounds. It currently provides targeted ART workarounds:
   scheduler flags skipped when ART throws through the old native frame. This
   keeps execution inside the proprietary VM while minimizing scheduler stack
   pressure; it is not a complete fix for the proprietary scheduler;
+- records a scheduler snapshot around the first twelve `nativeJbedRun()` calls
+  in `native.log`. Each snapshot includes the lifecycle globals from
+  `Jbed_run()` (`requested`, `reason`, `committed`, `lastNotified` and
+  `controlSignal`) plus the native-call frame, current scheduled object,
+  scheduled/waiting counts, AMS upcall queue and general upcall queue heads.
+  This distinguishes the `Jbed_run()` `INT_MAX` idle path from an empty queue,
+  a state-transition request that was never committed, and a scheduler that
+  returned a real timer delay;
 - logs *which* exception a legacy Java callback threw, with its class and
   message (`VM upcall <call> threw <java.lang.FooException: ...> in
   <Class.method>`), before clearing it. This is what identified the current

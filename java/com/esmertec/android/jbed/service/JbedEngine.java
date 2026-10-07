@@ -104,6 +104,9 @@ public class JbedEngine implements JbedConstants {
     /** Lowers the VM scheduler quantum after NativeAms has reached foreground. */
     private static native void nativeEnableLowSchedulerQuantum();
 
+    /** Emits the legacy VM lifecycle and queue state around a native run. */
+    private static native void nativeDumpSchedulerState(int runNumber, boolean beforeRun);
+
     /** Resets legacy VM native-call flags after ART reports StackOverflowError. */
     private static native void nativeRecoverAfterStackOverflow();
 
@@ -488,10 +491,14 @@ public class JbedEngine implements JbedConstants {
                         JbedFileLog.info(JbedEngine.TAG, "entering nativeJbedRun #" + nativeRunNumber);
                     }
                     try {
+                        if (logNativeRun) {
+                            nativeDumpSchedulerState(nativeRunNumber, true);
+                        }
                         delay = JbedEngine.this.nativeJbedRun();
                         if (logNativeRun) {
                             JbedFileLog.info(JbedEngine.TAG, "nativeJbedRun #" + nativeRunNumber
                                     + " returned delay=" + delay);
+                            nativeDumpSchedulerState(nativeRunNumber, false);
                         }
                         JbedEngine.this.applyRequestedLowSchedulerQuantum();
                     } catch (StackOverflowError e) {

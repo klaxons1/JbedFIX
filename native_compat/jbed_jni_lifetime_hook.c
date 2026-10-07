@@ -3235,6 +3235,12 @@ static void install_native_crash_handlers(void) {
 #define JBED_NATIVE_CALL_STATE_BASE_OFFSET 0x3200ccu
 #define JBED_NATIVE_CALL_STATE_LIMIT_OFFSET 0x3200d0u
 #define JBED_NATIVE_CALL_STATE_FRAME_OFFSET 0x3200d4u
+/* Jbed_requestState()/Jbed_run() lifecycle globals from libjbedvm.so.c. */
+#define JBED_VM_REQUESTED_STATE_OFFSET 0x320304u
+#define JBED_VM_REQUEST_REASON_OFFSET 0x320308u
+#define JBED_VM_COMMITTED_STATE_OFFSET 0x32030cu
+#define JBED_VM_LAST_NOTIFIED_STATE_OFFSET 0x320310u
+#define JBED_VM_CONTROL_SIGNAL_OFFSET 0x320314u
 #define JBED_STACK_OVERFLOW_DELTA_OFFSET 0x3200ecu
 #define JBED_FATAL_ERROR_PC_OFFSET 0x3200f0u
 #define JBED_FATAL_ERROR_SP_OFFSET 0x3200f4u
@@ -3554,6 +3560,19 @@ Java_com_esmertec_android_jbed_service_JbedEngine_nativeEnableLowSchedulerQuantu
 }
 
 JNIEXPORT void JNICALL
+Java_com_esmertec_android_jbed_service_JbedEngine_nativeDumpSchedulerState(JNIEnv *env, jclass clazz,
+                                                                            jint run_number,
+                                                                            jboolean before_run) {
+    char label[64];
+
+    (void) env;
+    (void) clazz;
+    snprintf(label, sizeof(label), "run-%d-%s", (int) run_number,
+             before_run ? "before" : "after");
+    dump_scheduler_state(label);
+}
+
+JNIEXPORT void JNICALL
 Java_com_esmertec_android_jbed_service_JbedEngine_nativeRecoverAfterStackOverflow(JNIEnv *env, jclass clazz) {
     (void) env;
     (void) clazz;
@@ -3669,6 +3688,12 @@ static void dump_scheduler_state(const char *label) {
     uint32_t call_state_frame = read_u32(JBED_NATIVE_CALL_STATE_FRAME_OFFSET);
     uint32_t ams_queue = read_u32(JBED_AMS_UPCALL_QUEUE_OFFSET);
     uint32_t queue_list = read_u32(JBED_UPCALL_QUEUE_LIST_OFFSET);
+    LOGI("%s lifecycle: requested=%u reason=%u committed=%u lastNotified=%u controlSignal=0x%08x",
+         label, read_u32(JBED_VM_REQUESTED_STATE_OFFSET),
+         read_u32(JBED_VM_REQUEST_REASON_OFFSET),
+         read_u32(JBED_VM_COMMITTED_STATE_OFFSET),
+         read_u32(JBED_VM_LAST_NOTIFIED_STATE_OFFSET),
+         read_u32(JBED_VM_CONTROL_SIGNAL_OFFSET));
     LOGI("%s scheduler: active=%u callBase=0x%08x callAdr=0x%08x callFrame=0x%08x "
          "eventTable=0x%08x current=0x%08x scheduled=%u waiting=%u amsQueue=0x%08x queues=0x%08x",
          label, read_u8(JBED_VM_NATIVE_ACTIVE_OFFSET), call_state_base, call_state_adr,
@@ -4273,9 +4298,10 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
         {"nativeInstallJniLifetimeHook", "()V", (void *) Java_com_esmertec_android_jbed_service_JbedEngine_nativeInstallJniLifetimeHook},
         {"nativeReleaseJniLifetimeHook", "()V", (void *) Java_com_esmertec_android_jbed_service_JbedEngine_nativeReleaseJniLifetimeHook},
         {"nativeEnableLowSchedulerQuantum", "()V", (void *) Java_com_esmertec_android_jbed_service_JbedEngine_nativeEnableLowSchedulerQuantum},
+        {"nativeDumpSchedulerState", "(IZ)V", (void *) Java_com_esmertec_android_jbed_service_JbedEngine_nativeDumpSchedulerState},
         {"nativeRecoverAfterStackOverflow", "()V", (void *) Java_com_esmertec_android_jbed_service_JbedEngine_nativeRecoverAfterStackOverflow},
     };
-    if ((*env)->RegisterNatives(env, engine, methods, 4) != JNI_OK) return JNI_ERR;
+    if ((*env)->RegisterNatives(env, engine, methods, 5) != JNI_OK) return JNI_ERR;
 
     jclass ams_connection = (*env)->FindClass(env, "com/esmertec/android/jbed/ams/AmsConnection");
     if (ams_connection == NULL) return JNI_ERR;
