@@ -1,9 +1,22 @@
 # Реверс встроенного Jbed AOT-компилятора
 
+## Это именно AOT, а не просто ROM с Java-классами
+
+В контексте Jbed **AOT означает перевод class-файлов из JAR в машинный код во время установки**. Это не Android `dex2oat` и не обычная загрузка заранее скомпилированного системного ROM: входом является новый JAR, а выходом — ARM/Thumb code blocks, class objects, method code ranges, stack maps и fixup/reference tables.
+
+Историческое название этой технологии у Esmertec — **TBCC (Target Bytecode Compiler)**, также описываемая как *flash compilation*: встроенный compiler получает Java bytecode и строит native code при load/install time. То есть `STEP_PRECOMPILE` — не косметическая проверка JAR, а настоящий target-side AOT pass.
+
+Важно не смешивать два слоя:
+
+1. **compiler implementation** — `Compiler`, `TranslateMethod`, `compileDirect`, Thumb coder, allocator, fixup generator;
+2. **ROM image** — уже скомпилированные классы самого Jbed и metadata, в которой эти классы и compiler доступны runtime.
+
+Текущий `tools/extract_jbed_aot.py` разбирает второй слой и извлекает карту compiler metadata. Это полезная база для reverse engineering, но сам extractor ещё не является декодером `compileToRam` и не создаёт native output.
+
 ## Что именно находится в `libjbedvm.so`
 
 Это не отдельный ELF-компилятор и не JNI-библиотека, которую можно запустить
-как `jbedc`. Встроенный компилятор является частью ROM-образа Jbed: Java-классы
+как `jbedc`. Встроенный compiler является частью ROM-образа Jbed: Java-классы
 AMS, ZIP/JAR-инсталлятора, verifier-а и backend-а заранее скомпилированы самим
 Jbed в ARM-образ. Во время установки MIDlet этот код читает обычные class-файлы
 из JAR и создаёт Jbed-specific code/storage representation.
@@ -89,6 +102,48 @@ requestInstall
 ARM Thumb-specific code emission. `compileToRam`, `moveHeapBlock`, `allocFromEnd`
 и `prepareJarCompileToRam` показывают, что компилятор сначала может собирать
 code blocks в RAM, а затем переносить их в persistent/XIP representation.
+
+## Уникальна ли эта технология
+
+**Сам принцип не уникален.** Jbed — один из ранних embedded Java runtime, где
+новый bytecode компилируется непосредственно на target при загрузке. Внешнее
+описание Jbed 1999 года прямо называет это *flash compilation* / TBCC и
+отличает от interpreter и JIT. В том же описании указано, что dynamically
+loaded code компилируется немедленно и запускается на native speed:
+[Dr. Dobb's, 1999](https://jacobfilipp.com/DrDobbs/articles/DDJ/1999/9911/9911h/9911h.htm).
+
+Для данной ветки Jbed есть более точное название: **FastBCC**. В бинарнике
+присутствуют package/field names `com/jbed/tbcc`, `tbccLabel` и
+`fThresholdSize`, а также отдельные группы `Vfy_*`, `Translate*`, `stackMap*`
+и `Compile*`. Это совпадает с описанием FastBCC как load-time native compiler,
+который выполняет translation во время обязательной bytecode verification,
+то есть в один проход, а не сначала полностью verify, потом отдельно compile:
+[описание FastBCC](https://linuxdevices.org/speedup-for-java-based-embedded-apps/).
+
+Именно **FastBCC-подход** является отличительной частью Jbed и был оформлен
+Myriad/Esmertec в патенте на combined verification and translation; патент
+описывает хранение stack status/types, проход по basic blocks и последующую
+генерацию optimized machine code:
+[US6964039B2](https://patents.google.com/patent/US6964039B2/en). Вторая патентная
+ветка описывает fast single-sequential-pass translation, где предыдущие
+переведённые инструкции и comprehensive stack maps заменяют тяжёлый
+многоходовый optimizing compiler:
+[US6978451B2](https://patents.google.com/patent/US6978451B2/en).
+
+**Уникален, вероятно, конкретный инженерный вариант Jbed**, но это более
+осторожное утверждение, чем «уникальный AOT вообще». В нём сочетаются:
+
+- компиляция целого JAR прямо на ARM-устройстве при установке;
+- отсутствие необходимости хранить и исполнять обычный JVM interpreter path;
+- привязка к ROM class IDs и runtime class-reference tables;
+- ARM Thumb-specific `FCoder`, RAM-to-persistent code block path и fixup pass;
+- встроенные stack maps, code ranges и class-object serialization для
+  маленького embedded runtime.
+
+Такое сочетание является proprietary Jbed format/backend, а не стандартным
+`.class` → native file format. Без исходников конкурирующих embedded JVM нельзя
+доказать, что ни один другой продукт не делал то же самое; можно утверждать
+только, что формат и backend Jbed не являются обычным Java AOT ABI.
 
 ## Что уже доказано и что ещё нельзя честно утверждать
 
