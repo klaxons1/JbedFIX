@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:orientation="vertical" android:layout_width="match_parent" android:layout_height="match_parent">
+    <FrameLayout android:id="@+id/gameViewport" android:background="#000000" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1">
+        <FrameLayout android:id="@+id/frameParent" android:layout_gravity="center" android:layout_width="match_parent" android:layout_height="match_parent">
+            <com.esmertec.android.jbed.app.JbedView android:id="@+id/jbedView" android:focusable="true" android:visibility="visible" android:layout_width="match_parent" android:layout_height="match_parent" android:layout_gravity="center">
+                <requestFocus />
+            </com.esmertec.android.jbed.app.JbedView>
+            <AbsoluteLayout android:id="@+id/videoParent" android:layout_width="match_parent" android:layout_height="match_parent">
+                <AbsoluteLayout android:id="@+id/videoRegionView" android:layout_width="match_parent" android:layout_height="match_parent">
+                    <com.esmertec.android.jbed.jsr.JbedVideoView android:id="@+id/jbedVideoView" android:focusable="true" android:visibility="visible" android:layout_width="match_parent" android:layout_height="match_parent" />
+                </AbsoluteLayout>
+            </AbsoluteLayout>
+            <AbsoluteLayout android:id="@+id/nativeWidgetView" android:layout_width="match_parent" android:layout_height="match_parent" />
+        </FrameLayout>
+    </FrameLayout>
+    <com.esmertec.android.jbed.app.JbedControls android:id="@+id/gameControls" android:layout_width="match_parent" android:layout_height="wrap_content" />
+</LinearLayout>

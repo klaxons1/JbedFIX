@@ -2,14 +2,17 @@ name: Build APK
 
 on:
   push:
-    branches: ["main", "arena/019fcc77-mbwandroid"]
   pull_request:
-    branches: ["main", "arena/019fcc77-mbwandroid"]
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
         with:
@@ -22,10 +25,8 @@ jobs:
           distribution: 'temurin'
           cache: 'gradle'
 
-      - name: Setup Android SDK
-        run: |
-          echo "ANDROID_HOME=/usr/local/lib/android/sdk" >> $GITHUB_ENV
-          echo "/usr/local/lib/android/sdk/platform-tools" >> $GITHUB_PATH
+      - name: Install Android build dependencies
+        run: '"$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install "platforms;android-34" "build-tools;34.0.0" "ndk;25.2.9519653"'
 
       - name: Cache debug keystore
         uses: actions/cache@v4
@@ -48,18 +49,21 @@ jobs:
           fi
 
       - name: Build with Gradle
-        run: ./gradlew assembleRelease --no-daemon --parallel
+        run: ./gradlew :app:assembleRelease --no-daemon --parallel
 
       - name: Sign APK
         run: |
-          find . -name "*.apk" -not -path "*/.*" -exec $ANDROID_HOME/build-tools/34.0.0/apksigner sign \
+          "$ANDROID_HOME/build-tools/34.0.0/apksigner" sign \
             --ks debug.keystore \
             --ks-pass pass:android \
             --key-pass pass:android \
-            {} \;
+            --out app/build/outputs/apk/release/app-release.apk \
+            app/build/outputs/apk/release/app-release-unsigned.apk
+          "$ANDROID_HOME/build-tools/34.0.0/apksigner" verify app/build/outputs/apk/release/app-release.apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: app-release
-          path: '**/*.apk'
+          path: app/build/outputs/apk/release/app-release.apk
+          if-no-files-found: error

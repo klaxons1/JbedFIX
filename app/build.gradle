@@ -1,0 +1,79 @@
+plugins {
+    id 'com.android.application'
+}
+
+def compatibilitySources = rootProject.file('native/compat')
+def generatedJniLibs = layout.buildDirectory.dir('generated/jniLibs')
+def compatibilityLibraries = [
+    'libdrm1.so', 'libutils.so', 'libskia.so', 'libcutils.so',
+    'libui.so', 'libsurfaceflinger_client.so', 'libpng.so', 'libjbedcompat.so'
+]
+// NDK r25 supports the API-19 ARM32 target used by this project.
+def compatibilityNdkVersion = '25.2.9519653'
+
+def buildNativeCompatibility = tasks.register('buildNativeCompatibility') {
+    group = 'build'
+    description = 'Builds the ARM32 native compatibility shims needed by the legacy Jbed VM.'
+    inputs.files(fileTree(compatibilitySources) {
+        include '*.c'
+        include '*.h'
+        include '*.S'
+        include '*.sh'
+    })
+    inputs.property('ndkVersion', compatibilityNdkVersion)
+    outputs.files(compatibilityLibraries.collect { name ->
+        generatedJniLibs.map { it.file("armeabi/${name}") }
+    })
+
+    doLast {
+        def ndkRoot = new File(android.sdkDirectory, "ndk/${compatibilityNdkVersion}")
+        if (!new File(ndkRoot, 'source.properties').isFile()) {
+            throw new GradleException("Install Android NDK ${compatibilityNdkVersion}; see docs/building.md")
+        }
+        exec {
+            environment 'ANDROID_NDK_HOME', ndkRoot.absolutePath
+            commandLine 'bash', new File(compatibilitySources, 'build.sh').absolutePath,
+                    generatedJniLibs.get().dir('armeabi').asFile.absolutePath
+        }
+    }
+}
+
+tasks.named('preBuild').configure {
+    dependsOn(buildNativeCompatibility)
+}
+
+// Native libraries are merged before APK packaging. Explicitly wire the shim
+// task here as well: relying on preBuild alone is not sufficient on every AGP
+// task graph, and would allow native merging to scan generated files too early.
+tasks.matching { it.name.startsWith('merge') && (it.name.endsWith('NativeLibs') || it.name.endsWith('JniLibFolders')) }.configureEach {
+    dependsOn(buildNativeCompatibility)
+}
+
+android {
+    namespace 'com.esmertec.android.jbed'
+    compileSdk 34
+    buildToolsVersion '34.0.0'
+
+    defaultConfig {
+        // Android 4.4.2 is API 19. Keep this low enough to install on KitKat
+        // test devices while retaining targetSdk 22 for Android 11 text-reloc
+        // compatibility policy.
+        minSdk 19
+        // libjbedvm.so has text relocations from its Android 2.x build. Keep
+        // the legacy target level so Android's linker applies its legacy-app
+        // compatibility policy instead of enforcing the API-23+ rejection.
+        targetSdk 22
+        versionCode 1
+        versionName '1.0'
+    }
+
+    sourceSets {
+        main {
+            jniLibs.srcDir generatedJniLibs
+        }
+    }
+
+    lint {
+        abortOnError false
+    }
+}

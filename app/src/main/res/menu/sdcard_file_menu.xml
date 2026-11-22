@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/sdcard_install_item"
+        android:title="@string/AMS_INSTALL_FORM_COMMAND"/>
+    <item
+        android:id="@+id/sdcard_delete_item"
+        android:title="@string/AMS_REMOVE_COMMAND_SHORT"/>
+</menu>
