@@ -1,4 +1,4 @@
-#include "drm.h"
+#include "drm_svc.h"
 #include "io_files.h"
 #include "vm_helpers.h"
 #include "jbni_objects.h"
@@ -8,18 +8,6 @@
 #include <stdlib.h>
 #include <sys/stat.h>
 #include <unistd.h>
-
-extern int SVC_drm_openSession(DrmSvcInput);
-extern int SVC_drm_closeSession(int);
-extern int SVC_drm_installRights(DrmSvcInput, DrmSvcRights *);
-extern int SVC_drm_deleteRights(const char *);
-extern int SVC_drm_getDeliveryMethod(int);
-extern int SVC_drm_getRightsIssuer(int, char *);
-extern int SVC_drm_getRightsInfo(int, DrmSvcRights *);
-extern int SVC_drm_checkRights(int, int);
-extern int SVC_drm_consumeRights(int, int);
-extern int SVC_drm_getContentType(int, char *);
-extern int SVC_drm_getContent(int, int, void *, int);
 
 extern int android_LOGD(const char *, ...);
 extern int android_midp_platformRequest(const uint16_t *, int);

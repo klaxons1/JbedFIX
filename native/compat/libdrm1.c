@@ -10,24 +10,25 @@
  * cleanly rather than have its rights checked or consumed.
  */
 
-#include <stdarg.h>
+#include "../platform/drm_svc.h"
 
-/* The old SVC DRM API reports non-zero values for errors. Returning -1 also
- * ensures that callers which expect an integer session handle never receive a
- * valid handle from the compatibility layer. The exact old proprietary method
- * signatures are not public; varargs are intentional because ELF resolution
- * is by symbol name and every operation is rejected before arguments matter.
- */
-#define DRM_STUB(name) int name(int ignored, ...) { (void) ignored; return -1; }
-
-DRM_STUB(SVC_drm_openSession)
-DRM_STUB(SVC_drm_closeSession)
-DRM_STUB(SVC_drm_getDeliveryMethod)
-DRM_STUB(SVC_drm_deleteRights)
-DRM_STUB(SVC_drm_getRightsIssuer)
-DRM_STUB(SVC_drm_getContentType)
-DRM_STUB(SVC_drm_getRightsInfo)
-DRM_STUB(SVC_drm_checkRights)
-DRM_STUB(SVC_drm_installRights)
-DRM_STUB(SVC_drm_consumeRights)
-DRM_STUB(SVC_drm_getContent)
+/* No proprietary provider is shipped. Never create a valid session or
+ * authorize content; leave output buffers untouched on every failure. */
+int SVC_drm_openSession(DrmSvcInput input) { (void)input; return -1; }
+int SVC_drm_closeSession(int session) { (void)session; return -1; }
+int SVC_drm_installRights(DrmSvcInput input, DrmSvcRights *rights)
+{ (void)input; (void)rights; return -1; }
+int SVC_drm_deleteRights(const char *uid) { (void)uid; return -1; }
+int SVC_drm_getDeliveryMethod(int session) { (void)session; return -1; }
+int SVC_drm_getRightsIssuer(int session, char *issuer)
+{ (void)session; (void)issuer; return -1; }
+int SVC_drm_getRightsInfo(int session, DrmSvcRights *rights)
+{ (void)session; (void)rights; return -1; }
+int SVC_drm_checkRights(int session, int permission)
+{ (void)session; (void)permission; return -1; }
+int SVC_drm_consumeRights(int session, int permission)
+{ (void)session; (void)permission; return -1; }
+int SVC_drm_getContentType(int session, char *mime)
+{ (void)session; (void)mime; return -1; }
+int SVC_drm_getContent(int session, int offset, void *bytes, int size)
+{ (void)session; (void)offset; (void)bytes; (void)size; return -1; }
