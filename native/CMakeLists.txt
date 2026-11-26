@@ -27,9 +27,16 @@ add_subdirectory(compiler)
 add_subdirectory(platform)
 add_subdirectory(swerve)
 
+option(JBED_BUILD_ARM32_LINUX_TESTS "Build the real ARM runtime for Linux/Unicorn integration tests" OFF)
+if(JBED_BUILD_ARM32_LINUX_TESTS AND (ANDROID OR NOT CMAKE_SYSTEM_PROCESSOR MATCHES "^arm"))
+    message(FATAL_ERROR "JBED_BUILD_ARM32_LINUX_TESTS requires an ARM32 Linux toolchain")
+endif()
+if(JBED_BUILD_ARM32_LINUX_TESTS AND JBED_BUILD_HOST_TESTS)
+    message(FATAL_ERROR "Use separate build trees: host layout fixtures use synthetic addresses, the full ARM runtime uses native pointers")
+endif()
 set(runtime_sources runtime/boot_image.c runtime/bindings.c runtime/jbni.c
     runtime/arithmetic.c runtime/signals.c)
-if(ANDROID AND ANDROID_ABI STREQUAL "armeabi-v7a")
+if((ANDROID AND ANDROID_ABI STREQUAL "armeabi-v7a") OR JBED_BUILD_ARM32_LINUX_TESTS)
     target_compile_definitions(jbedcompiler PUBLIC JBED_NATIVE_ADDRESS_SPACE=1)
     list(APPEND runtime_sources runtime/arm32.c runtime/arm32.S runtime/execution.c compat/libdrm1.c
         runtime/class_init.c runtime/reflection.c runtime/events.c runtime/instance.c
@@ -40,13 +47,17 @@ if(ANDROID AND ANDROID_ABI STREQUAL "armeabi-v7a")
         runtime/scheduler.c runtime/java_string.c runtime/sysinfo.c runtime/array.c
         runtime/bundle.c runtime/guest_writer.c runtime/guest_rom.c runtime/guest_call.c
         runtime/guest_blocks.c runtime/deep_copy.c runtime/guest_queue.c runtime/guest_stackmap.c)
-    add_library(jbedruntime SHARED ${runtime_sources})
+    if(ANDROID)
+        add_library(jbedruntime SHARED ${runtime_sources})
+        target_link_options(jbedruntime PRIVATE -Wl,-u,jbed_android_initialize)
+    else()
+        add_library(jbedruntime STATIC ${runtime_sources})
+    endif()
     set_target_properties(jbedplatform PROPERTIES C_VISIBILITY_PRESET hidden
         CXX_VISIBILITY_PRESET hidden VISIBILITY_INLINES_HIDDEN YES)
     target_compile_options(jbedplatform PRIVATE -ffunction-sections -fdata-sections)
     target_compile_options(jbedruntime PRIVATE -mthumb -ffp-contract=off)
-    target_link_options(jbedruntime PRIVATE -Wl,--no-undefined -Wl,--gc-sections
-        -Wl,-u,jbed_android_initialize)
+    target_link_options(jbedruntime PRIVATE -Wl,--no-undefined -Wl,--gc-sections)
 else()
     add_library(jbedruntime STATIC ${runtime_sources})
 endif()
@@ -60,4 +71,14 @@ endif()
 set(JBED_BOOT_IMAGE "" CACHE FILEPATH "Generated C boot image to link into jbedruntime")
 if(JBED_BOOT_IMAGE)
     target_sources(jbedruntime PRIVATE "${JBED_BOOT_IMAGE}")
+endif()
+
+if(JBED_BUILD_ARM32_LINUX_TESTS)
+    if(NOT JBED_BOOT_IMAGE)
+        message(FATAL_ERROR "ARM32 ROM smoke tests need JBED_BOOT_IMAGE")
+    endif()
+    add_executable(jbed_arm32_rom_smoke runtime/tests/arm32_rom_smoke.c
+        runtime/tests/unicorn_platform.c runtime/tests/unicorn_platform.S)
+    target_link_libraries(jbed_arm32_rom_smoke PRIVATE jbedruntime)
+    target_link_options(jbed_arm32_rom_smoke PRIVATE -static -Wl,--gc-sections)
 endif()

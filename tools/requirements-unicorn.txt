@@ -1,0 +1,5 @@
+# Reproducible CPU emulator / static ARM32 Linux cross-build tooling.
+unicorn==2.1.4
+pyelftools==0.33
+ziglang==0.17.1
+cmake==4.4.5
