@@ -3,14 +3,8 @@
 build/
 .cxx/
 .externalNativeBuild/
-*.apk
-*.aab
-*.apks
-*.dex
-*.class
-*.o
-*.a
-*.so
+
+
 !app/src/main/jniLibs/armeabi/libjbedvm.so
 
 # Local configuration, signing keys and editor state.
@@ -40,5 +34,4 @@ __pycache__/
 *.idb.bak
 *.i64.bak
 
-# Whole-library decompiler exports are regenerated from the binaries.
-*.so.c
+
