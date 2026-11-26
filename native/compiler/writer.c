@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-void jbed_writer_fault(JbedWriter *w, JbedWriterFault fault, const char *message)
+_Noreturn void jbed_writer_fault(JbedWriter *w, JbedWriterFault fault, const char *message)
 {
     if (w->services && w->services->fault)
         w->services->fault(w->services->context, fault, message);

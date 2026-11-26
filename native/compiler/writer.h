@@ -190,7 +190,7 @@ typedef struct JbedCodeBlock {
     void (*deregister_anchor)(void *, struct JbedCodeBlock *);
 } JbedCodeBlock;
 
-void jbed_writer_fault(JbedWriter *, JbedWriterFault, const char *);
+_Noreturn void jbed_writer_fault(JbedWriter *, JbedWriterFault, const char *);
 void jbed_writer_init(JbedWriter *, const JbedWriterServices *);
 void jbed_writer_dispose(JbedWriter *);
 uint32_t jbed_writer_get_label(JbedWriter *);

@@ -44,11 +44,16 @@ endif()
 
 option(JBED_BUILD_HOST_COMPILER "Build the offline JAR compiler (requires libzip)" OFF)
 if(JBED_BUILD_HOST_COMPILER)
-    find_package(libzip CONFIG REQUIRED)
+    # Ubuntu's libzip CMake export also imports optional command-line tools
+    # (zipcmp, zipmerge, ziptool), which need not be installed with libzip-dev.
+    # Import only the library via pkg-config; the ROM tools do not use those
+    # executables. Keep this host-only so Android needs no libzip installation.
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules(JBED_LIBZIP REQUIRED IMPORTED_TARGET libzip)
     add_executable(jbedc host/jbedc.c host/host_inputs.c)
-    target_link_libraries(jbedc PRIVATE jbedcompiler libzip::zip)
+    target_link_libraries(jbedc PRIVATE jbedcompiler PkgConfig::JBED_LIBZIP)
     add_executable(jbedrom host/jbedrom.c host/host_inputs.c)
-    target_link_libraries(jbedrom PRIVATE jbedcompiler libzip::zip)
+    target_link_libraries(jbedrom PRIVATE jbedcompiler PkgConfig::JBED_LIBZIP)
     if(CMAKE_C_COMPILER_ID MATCHES "Clang|GNU")
         target_compile_options(jbedc PRIVATE -Wall -Wextra -Wpedantic)
         target_compile_options(jbedrom PRIVATE -Wall -Wextra -Wpedantic)

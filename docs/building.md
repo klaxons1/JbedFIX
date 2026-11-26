@@ -17,7 +17,7 @@ patched in memory. See [device constraints](compatibility.md) before installing.
 
 The separate `org.jbed.source` APK builds the reconstructed library and compiles
 its diagnostic ROM from `native/rom/runtime.jar`. It requires a host C compiler,
-CMake, libzip and zlib development files, plus these SDK packages:
+CMake, pkg-config, libzip and zlib development files, plus these SDK packages:
 
 ```sh
 "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install "platforms;android-35" "ndk;28.2.13676358" "cmake;3.22.1"
@@ -44,8 +44,8 @@ runs eleven self-contained CTest checks. Tests requiring the original binary
 are not included in this job. To reproduce it on Ubuntu:
 
 ```sh
-sudo apt-get install cmake ninja-build zlib1g-dev libzip-dev libpng-dev
-cmake -S native -B build/host -G Ninja -DCMAKE_BUILD_TYPE=Debug \\
+sudo apt-get install cmake ninja-build pkg-config zlib1g-dev libzip-dev libpng-dev
+cmake -S native -B build/host -G Ninja -DCMAKE_BUILD_TYPE=Debug \
   -DJBED_BUILD_HOST_COMPILER=ON -DJBED_BUILD_HOST_TESTS=ON
 cmake --build build/host --parallel 2
 ctest --test-dir build/host --output-on-failure --no-tests=error
