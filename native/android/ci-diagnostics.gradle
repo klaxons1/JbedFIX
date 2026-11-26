@@ -22,8 +22,14 @@ if (System.getenv('GITHUB_ACTIONS') == 'true') {
             for (Throwable cause = state.failure; cause != null; cause = cause.cause)
                 detail.append(cause.toString()).append('\n')
             detail.append(output[task.path] ?: '')
-            def escaped = detail.toString().replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
-            System.err.println("::error title=Gradle task ${task.path}::${escaped}")
+            // Checks truncate each annotation at 4K. Keep the useful tail and
+            // split it, rather than losing the actual compiler/linker error.
+            def text = detail.toString().takeRight(18000)
+            for (int start = 0; start < text.length(); start += 3000) {
+                def chunk = text.substring(start, Math.min(start + 3000, text.length()))
+                def escaped = chunk.replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
+                System.err.println("::error title=Gradle task ${task.path} part ${start.intdiv(3000) + 1}::${escaped}")
+            }
         }
     }
 }
