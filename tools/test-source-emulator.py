@@ -54,7 +54,12 @@ def main() -> int:
     avdmanager = sdk / "cmdline-tools/latest/bin/avdmanager"
     adb = sdk / "platform-tools/adb"
     emulator = sdk / "emulator/emulator"
-    env = dict(os.environ, ANDROID_HOME=str(sdk), ANDROID_SDK_ROOT=str(sdk), ANDROID_SERIAL="emulator-5554")
+    # sdkmanager/avdmanager and emulator versions differ in their default AVD
+    # directory (ANDROID_USER_HOME vs HOME). Give both the same explicit path.
+    avd_home = args.output.resolve() / "avd"
+    avd_home.mkdir(parents=True, exist_ok=True)
+    env = dict(os.environ, ANDROID_HOME=str(sdk), ANDROID_SDK_ROOT=str(sdk),
+               ANDROID_AVD_HOME=str(avd_home), ANDROID_SERIAL="emulator-5554")
     emulator_process = logcat = None
     handles = []
     adb_ready = False
