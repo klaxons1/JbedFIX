@@ -1,0 +1,21 @@
+// Runtime integration test, separate from the host/compiler tests. It can be
+// requested locally with :app:testSourceEmulator and runs after assembleDebug
+// in the existing Actions source-build job. No emulator is needed for a normal
+// local APK build. Native crashes and missing ARM32 translation fail this task.
+def sourceRoot = rootProject.file('../..')
+def emulatorSmoke = tasks.register('testSourceEmulator', Exec) {
+    group = 'verification'
+    description = 'Boot Android and exercise the ARM32 source runtime startup'
+    workingDir sourceRoot
+    dependsOn tasks.matching { it.name == 'assembleDebug' }
+    commandLine 'python3', new File(sourceRoot, 'tools/test-source-emulator.py'),
+        '--sdk', android.sdkDirectory,
+        '--apk', layout.buildDirectory.file('outputs/apk/debug/app-debug.apk').get().asFile,
+        '--output', layout.buildDirectory.dir('reports/emulator-smoke').get().asFile
+    onlyIf { layout.buildDirectory.file('outputs/apk/debug/app-debug.apk').get().asFile.exists() }
+}
+if (System.getenv('GITHUB_ACTIONS') == 'true') {
+    tasks.matching { it.name == 'assembleDebug' }.configureEach {
+        finalizedBy emulatorSmoke
+    }
+}

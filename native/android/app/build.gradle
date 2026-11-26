@@ -41,3 +41,5 @@ android {
         }
     }
 }
+
+apply from: rootProject.file('emulator.gradle')
