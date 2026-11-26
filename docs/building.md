@@ -29,6 +29,28 @@ Output: `native/android/app/build/outputs/apk/debug/app-debug.apk`. Run
 matrix/vertex-array operations; success returns 42. This is a ROM method runner.
 An alternate generated image can be selected with `-PjbedBootImage=PATH`.
 
+## GitHub Actions
+
+The **Build source APK** workflow runs on pushes, pull requests and manual
+dispatches. It builds the source runtime runner, not the legacy wrapper above;
+no original `libjbedvm.so` or private analysis files are needed. Download
+`jbed-source-debug-arm32` from the run's artifacts for the debug-signed APK.
+It requires Android ARM32 userspace and remains a diagnostic ROM runner, not
+a complete replacement MIDlet launcher. CI verifies compilation, linking,
+APK signature and native library packaging; it does not execute the APK.
+
+A separate host job builds the source libraries and `jbedc`/`jbedrom`, then
+runs eleven self-contained CTest checks. Tests requiring the original binary
+are not included in this job. To reproduce it on Ubuntu:
+
+```sh
+sudo apt-get install cmake ninja-build zlib1g-dev libzip-dev libpng-dev
+cmake -S native -B build/host -G Ninja -DCMAKE_BUILD_TYPE=Debug \\
+  -DJBED_BUILD_HOST_COMPILER=ON -DJBED_BUILD_HOST_TESTS=ON
+cmake --build build/host --parallel 2
+ctest --test-dir build/host --output-on-failure --no-tests=error
+```
+
 ## Focused checks
 
 The host PNG contract check uses a stub decoder:

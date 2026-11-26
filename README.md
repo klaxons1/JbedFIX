@@ -30,7 +30,11 @@ the migration is unfinished and the complete tree need not build as a unit.
 
 The handwritten `native/compiler/tests/rom_format_check.c` was also recovered
 from the workspace build directory. It checks ROM footer serialization and
-relocation; it is not wired into CMake.
+relocation; it is included in CTest when `JBED_BUILD_HOST_TESTS=ON`.
+
+GitHub Actions builds the source-runtime ARM32 APK and runs the self-contained
+host tests. Download `jbed-source-debug-arm32` from the **Build source APK** run.
+See [CI and local reproduction](docs/building.md#github-actions) for scope and commands.
 
 ## Build tools and inputs
 

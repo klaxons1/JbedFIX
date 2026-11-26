@@ -83,3 +83,23 @@ foreach(test IN ITEMS vm_exception vm_memory vm_mark vm_types vm_stackmap vm_com
     target_link_libraries(jbedcompiler_${test}_test PRIVATE jbedcompiler)
 endforeach()
 target_sources(jbedcompiler_vm_types_test PRIVATE tests/class_access_test.c)
+
+option(JBED_BUILD_HOST_TESTS "Build self-contained native tests (no original VM required)" OFF)
+if(JBED_BUILD_HOST_TESTS)
+    if(ANDROID)
+        message(FATAL_ERROR "JBED_BUILD_HOST_TESTS requires a host build")
+    endif()
+    enable_testing()
+    add_executable(jbedcompiler_rom_format_test tests/rom_format_check.c)
+    target_link_libraries(jbedcompiler_rom_format_test PRIVATE jbedcompiler)
+    # The other fixtures need the original ELF and are intentionally not
+    # registered here. Never silently skip them and call that full coverage.
+    foreach(test IN ITEMS verifier reader_pool block_stream coder rom_format
+            vm_exception vm_memory vm_mark vm_compactor vm_monitor)
+        set(target jbedcompiler_${test}_test)
+        set_target_properties(${target} PROPERTIES EXCLUDE_FROM_ALL FALSE)
+        # Assertions are the test oracle, including in Release host builds.
+        target_compile_options(${target} PRIVATE -UNDEBUG)
+        add_test(NAME ${test} COMMAND ${target})
+    endforeach()
+endif()
