@@ -1,22 +1,57 @@
-name: Build APK
+name: Build source APK
 
 on:
   push:
   pull_request:
-    branches: ["main"]
   workflow_dispatch:
 
 permissions:
   contents: read
 
+concurrency:
+  group: source-build-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  build:
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
+  host:
+    name: Host build and tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+
+      - name: Install host dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build zlib1g-dev libzip-dev libpng-dev
+
+      - name: Configure source libraries, ROM tools and tests
+        run: >-
+          cmake -S native -B build/host -G Ninja
+          -DCMAKE_BUILD_TYPE=Debug
+          -DJBED_BUILD_HOST_COMPILER=ON
+          -DJBED_BUILD_HOST_TESTS=ON
+
+      - name: Build
+        run: cmake --build build/host --parallel 2
+
+      - name: Test (no original VM binary required)
+        run: ctest --test-dir build/host --output-on-failure --no-tests=error
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
         with:
-          fetch-depth: 1
+          name: host-test-results
+          path: build/host/Testing/Temporary/LastTest.log
+          if-no-files-found: warn
+
+  build:
+    name: Source-built Android ARM32 APK
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
 
       - name: Set up JDK 17
         uses: actions/setup-java@v5
@@ -25,45 +60,55 @@ jobs:
           distribution: 'temurin'
           cache: 'gradle'
 
+      - name: Install host ROM compiler dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake zlib1g-dev libzip-dev
+
       - name: Install Android build dependencies
-        run: '"$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install "platforms;android-34" "build-tools;34.0.0" "ndk;25.2.9519653"'
+        run: |
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install \
+            "platforms;android-35" "build-tools;34.0.0" \
+            "ndk;28.2.13676358" "cmake;3.22.1"
 
       - name: Cache debug keystore
         uses: actions/cache@v4
         with:
-          path: debug.keystore
-          key: debug-keystore-v1
+          path: ~/.android/debug.keystore
+          key: source-debug-keystore-v1
 
-      - name: Generate debug keystore
+      - name: Build source APK and generated boot ROM
+        run: ./gradlew -p native/android :app:assembleDebug --no-daemon --stacktrace --max-workers=2
+
+      - name: Verify APK signature and native payload
         run: |
-          if [ ! -f debug.keystore ]; then
-            keytool -genkey -v \
-              -keystore debug.keystore \
-              -alias androiddebugkey \
-              -keyalg RSA \
-              -keysize 2048 \
-              -validity 10000 \
-              -dname "CN=Android Debug,O=Android,C=US" \
-              -storepass android \
-              -keypass android
+          apk=native/android/app/build/outputs/apk/debug/app-debug.apk
+          "$ANDROID_HOME/build-tools/34.0.0/apksigner" verify --verbose "$apk"
+          unzip -l "$apk" | tee build-apk-contents.txt
+          grep -q 'lib/armeabi-v7a/libjbedsource_jni.so' build-apk-contents.txt
+          grep -q 'lib/armeabi-v7a/libjbedruntime.so' build-apk-contents.txt
+          if grep -q 'libjbedvm.so' build-apk-contents.txt; then
+            echo 'Source APK must not depend on the original VM binary' >&2
+            exit 1
           fi
 
-      - name: Build with Gradle
-        run: ./gradlew :app:assembleRelease --no-daemon --parallel
-
-      - name: Sign APK
-        run: |
-          "$ANDROID_HOME/build-tools/34.0.0/apksigner" sign \
-            --ks debug.keystore \
-            --ks-pass pass:android \
-            --key-pass pass:android \
-            --out app/build/outputs/apk/release/app-release.apk \
-            app/build/outputs/apk/release/app-release-unsigned.apk
-          "$ANDROID_HOME/build-tools/34.0.0/apksigner" verify app/build/outputs/apk/release/app-release.apk
-
-      - name: Upload APK
+      - name: Upload source APK
         uses: actions/upload-artifact@v4
         with:
-          name: app-release
-          path: app/build/outputs/apk/release/app-release.apk
+          name: jbed-source-debug-arm32
+          path: native/android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
+
+      - name: Upload native build diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: source-build-diagnostics
+          include-hidden-files: true
+          path: |
+            native/android/app/.cxx/**/CMakeFiles/CMakeError.log
+            native/android/app/.cxx/**/CMakeFiles/CMakeOutput.log
+            native/android/app/.cxx/**/CMakeFiles/CMakeConfigureLog.yaml
+            native/android/app/.cxx/**/build_command.txt
+            native/android/app/build/reports/
+          if-no-files-found: ignore
