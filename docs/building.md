@@ -29,6 +29,15 @@ Output: `native/android/app/build/outputs/apk/debug/app-debug.apk`. Run
 matrix/vertex-array operations; success returns 42. This is a ROM method runner.
 An alternate generated image can be selected with `-PjbedBootImage=PATH`.
 
+ROM preverification uses a temporary access facade because the original Jbed
+compiler permits privileged cross-package access inside its ROM. The adapter
+exposes members only to ProGuard, then restores every declaration's original
+access flags and removes metadata-only constructor facades before `jbedrom`.
+`testRomPreverify` and `verifyRomRoundtrip` check this; warnings are not disabled.
+`checkRomBindings` reports all missing implementations before image generation.
+The startup subset currently needs 33 additional source bindings, so the
+source APK pipeline is not yet green even though preverification succeeds.
+
 ## GitHub Actions
 
 The **Build source APK** workflow runs on pushes, pull requests and manual

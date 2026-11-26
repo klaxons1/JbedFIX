@@ -27,7 +27,7 @@ import org.objectweb.asm.tree.TypeInsnNode;
 
 /** Keeps ROM layouts and bytecode reachable by a program and native callbacks. */
 public final class BootSubset {
-    private static final class MissingMethod {
+    static final class MissingMethod {
         final String name, descriptor;
         final int flags;
         MissingMethod(String name, String descriptor, int flags) {
@@ -37,7 +37,7 @@ public final class BootSubset {
         }
     }
 
-    private static final class UnavailableMethods extends Attribute {
+    static final class UnavailableMethods extends Attribute {
         final ArrayList<MissingMethod> methods = new ArrayList<>();
         UnavailableMethods() { super("JbedUnavailableMethods"); }
 

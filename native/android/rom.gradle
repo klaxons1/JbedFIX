@@ -17,7 +17,7 @@ dependencies {
 }
 
 def compileRomTool = tasks.register('compileRomTool', JavaCompile) {
-    source new File(nativeRoot, 'rom/tools/BootSubset.java')
+    source fileTree(new File(nativeRoot, 'rom/tools')) { include '*.java' }
     classpath = configurations.romTools
     destinationDirectory = generatedRom.map { it.dir('tools') }
     sourceCompatibility = '11'
@@ -43,17 +43,65 @@ def subsetRom = tasks.register('subsetRom', JavaExec) {
         args fileTree(compileRomProbe.get().destinationDirectory).matching { include '**/*.class' }.files.sort()
     }
 }
+def compileRomToolTests = tasks.register('compileRomToolTests', JavaCompile) {
+    dependsOn compileRomTool
+    source fileTree(new File(nativeRoot, 'rom/tests')) { include '*.java' }
+    classpath = configurations.romTools + files(compileRomTool.flatMap { it.destinationDirectory })
+    destinationDirectory = generatedRom.map { it.dir('tool-tests') }
+    sourceCompatibility = '11'
+    targetCompatibility = '11'
+}
+def testRomPreverify = tasks.register('testRomPreverify', JavaExec) {
+    dependsOn compileRomToolTests
+    classpath = configurations.romTools + files(compileRomTool.flatMap { it.destinationDirectory },
+        compileRomToolTests.flatMap { it.destinationDirectory })
+    mainClass = 'RomPreverifyTest'
+}
+def prepareRomPreverification = tasks.register('prepareRomPreverification', JavaExec) {
+    dependsOn subsetRom, testRomPreverify
+    classpath = configurations.romTools + files(compileRomTool.flatMap { it.destinationDirectory })
+    mainClass = 'RomPreverify'
+    inputs.file(generatedRom.map { it.file('input.jar') })
+    outputs.file(generatedRom.map { it.file('preverify-input.jar') })
+    doFirst {
+        args 'prepare', generatedRom.get().file('input.jar').asFile,
+            generatedRom.get().file('preverify-input.jar').asFile
+    }
+}
 def preverifyRom = tasks.register('preverifyRom', JavaExec) {
-    dependsOn subsetRom
+    dependsOn prepareRomPreverification
     classpath = configurations.romPreverifier
     mainClass = 'proguard.ProGuard'
-    inputs.file(generatedRom.map { it.file('input.jar') })
-    outputs.file(generatedRom.map { it.file('preverified.jar') })
+    inputs.file(generatedRom.map { it.file('preverify-input.jar') })
+    outputs.file(generatedRom.map { it.file('preverify-output.jar') })
     args '-target', '1.5', '-microedition', '-dontoptimize', '-dontobfuscate', '-dontshrink',
         '-keepattributes', '*', '-forceprocessing'
     doFirst {
-        args '-injars', generatedRom.get().file('input.jar').asFile,
-            '-outjars', generatedRom.get().file('preverified.jar').asFile
+        args '-injars', generatedRom.get().file('preverify-input.jar').asFile,
+            '-outjars', generatedRom.get().file('preverify-output.jar').asFile
+    }
+}
+def restoreRomAccess = tasks.register('restoreRomAccess', JavaExec) {
+    dependsOn preverifyRom
+    classpath = configurations.romTools + files(compileRomTool.flatMap { it.destinationDirectory })
+    mainClass = 'RomPreverify'
+    inputs.file(generatedRom.map { it.file('preverify-output.jar') })
+    outputs.file(generatedRom.map { it.file('preverified.jar') })
+    doFirst {
+        args 'restore', generatedRom.get().file('preverify-output.jar').asFile,
+            generatedRom.get().file('preverified.jar').asFile
+    }
+}
+def verifyRomRoundtrip = tasks.register('verifyRomRoundtrip', JavaExec) {
+    dependsOn restoreRomAccess
+    classpath = configurations.romTools + files(compileRomTool.flatMap { it.destinationDirectory },
+        compileRomToolTests.flatMap { it.destinationDirectory })
+    mainClass = 'RomPreverifyTest'
+    inputs.files(generatedRom.map { it.file('input.jar') },
+        generatedRom.map { it.file('preverified.jar') })
+    doFirst {
+        args generatedRom.get().file('input.jar').asFile,
+            generatedRom.get().file('preverified.jar').asFile
     }
 }
 def configureRomCompiler = tasks.register('configureRomCompiler', Exec) {
@@ -71,8 +119,14 @@ def buildRomCompiler = tasks.register('buildRomCompiler', Exec) {
     outputs.file(hostCompiler)
     commandLine 'cmake', '--build', hostBuild.get().asFile, '--target', 'jbedrom', '--parallel'
 }
+def checkRomBindings = tasks.register('checkRomBindings', Exec) {
+    dependsOn verifyRomRoundtrip, buildRomCompiler
+    inputs.files(generatedRom.map { it.file('preverified.jar') }, nativeBindings, hostCompiler)
+    commandLine hostCompiler.get(), '--check-bindings', '--bindings', nativeBindings,
+        generatedRom.get().file('preverified.jar').asFile
+}
 tasks.register('generateBootImage', Exec) {
-    dependsOn preverifyRom, buildRomCompiler
+    dependsOn checkRomBindings
     inputs.files(generatedRom.map { it.file('preverified.jar') }, nativeBindings,
         runtimeProperties, hostCompiler)
     outputs.file(generatedRom.map { it.file('boot.c') })
