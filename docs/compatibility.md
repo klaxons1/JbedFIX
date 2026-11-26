@@ -32,10 +32,6 @@ native ARM32 rows use no Android native bridge.
 
 ## Runtime boundary
 
-`JbedService` loads the VM and `libjbedcompat`. Initialization retains a global
-reference to the Java engine, and initialization, execution and finalization
-belong to the same `JbedThread`.
-
 Jbed's Java threads run on separate heap stacks. ART expects Java upcalls on
 the attached Android thread's stack, so invoking JNI directly from a Jbed
 stack can produce a false `StackOverflowError`. The VM receives a private JNI
@@ -44,64 +40,6 @@ Android's actual `JNIEnv` and function table stay intact. Graphics operations
 use the same boundary for complete Java/Bitmap operations and receive the
 real Android environment. Under native-bridge translation, the bridge's own
 stack transition is retained.
-
-Media players release Android resources on close. Preparation, completion
-and error callbacks run on the VM thread and check the registered player
-before touching its native context, discarding callbacks for closed or
-replaced players. Addresses with the ARM32 sign bit set remain valid player
-identifiers. Asynchronous preparation failure wakes the waiting MIDlet with
-a media exception; later playback failures deliver the MMAPI error event.
-The [media lifecycle MIDlet](building.md#media-lifecycle-midlet) exercises
-these paths.
-
-The compatibility library applies small, byte-checked repairs to this exact
-VM image during loading:
-
-| Repair | Behavior |
-|---|---|
-| File roots | Parses the Java root serialization with unsigned lengths and copies its data into VM-owned allocations, fixing the original release of an interior JNI array pointer |
-| Media metadata | Preserves the original JNI byte-array pointer for release on success and allocation failure, and reads the metadata pair count as unsigned |
-| Generated-code cache | Redirects `OPL_os_intern_flushCache` to instruction-cache synchronization for the emitted range |
-| Heap allocation failure | Changes the `OPL_os_getHeapBlock` check to recognize `MAP_FAILED` |
-| Compiled suites | Records static ROM references in relocation chains and rebases them when loading |
-| Native dummy stack | Restores its regular stack limit to zero after a reserved GC stack scope, allowing the next native entry to refresh its bounds while retaining stack assertions |
-| Scheduler logging | Disables construction of scheduler trace strings during class initialization |
-
-## Installation, graphics and input
-
-Installation follows the original AMS event and native installer pipeline,
-including verification, native compilation and suite registration. Content
-URIs are copied into app-readable storage before that pipeline starts. The
-former Java-only suite-registration fallback has been removed.
-
-`JbedView` obtains a window through `ANativeWindow_fromSurface`. It maps the
-VM's shared RGB565 framebuffer and copies rows using the producer and window
-strides. Presentation uses `ANativeWindow_unlockAndPost`; view initialization
-uses no private Surface or Canvas fields.
-
-The Skia adapter implements the imported font metrics, measurement and text
-drawing operations with Android Paint/Canvas. It caches fonts and text masks
-and blends text into the native RGB565 target. The PNG adapter preserves the
-legacy structure prefix used directly by Jbed, decodes through BitmapFactory,
-and supplies straight RGBA8 rows. Bitmap access and decoding stay on the
-Android thread stack.
-
-On-screen controls send key-down, repeat and key-up events through the same
-path as physical keys. The direction pad, numeric keypad and softkeys support
-held keys; controls release keys when hidden or detached. Fixed virtual
-resolutions are applied before the MIDlet RUN event, and the game area is
-scaled with its aspect ratio preserved. Pointer coordinates follow that
-scale. Controls and resolution preferences are saved for subsequent launches.
-
-The toolbar's Menu button and Android Back open the application menu. Back
-first dismisses the Android keyboard when it is open. Exit game sends the
-native AMS destroy request and returns to the selector after completion;
-the UI thread stays responsive while the MIDlet exits.
-
-The former scheduler-quantum experiments, process-wide JNI-table replacement,
-signal/crash handlers, Android monitor patches and diagnostic switch files
-have been removed. Diagnostics use Android's log buffer; see
-[log collection](building.md#device-testing-and-logs).
 
 ## Remaining constraints
 

@@ -4,7 +4,7 @@ Capture a short, useful Jbed Android log on Windows PowerShell.
 Examples:
   .\tools\collect-jbed-log.ps1
   .\tools\collect-jbed-log.ps1 -Seconds 20
-  .\tools\collect-jbed-log.ps1 -Adb C:\adb\adb.exe -Seconds 15
+  .\tools\collect-jbed-log.ps1 -Adb adb -Seconds 15
 #>
 
 param(

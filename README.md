@@ -1,56 +1,73 @@
-# JbedFIX
+# Jbed recovered native source
 
-JbedFIX runs Java ME applications with a recovered Esmertec Jbed runtime on
-Android. It combines the original 2011 ARM32 VM and precompiled Java class
-library with a reconstructed Android application and native compatibility
-adapters. Jbed's own installer verifies JARs and compiles their classes into
-Thumb machine code.
+This export contains the current manually reconstructed Jbed native source and
+its supporting Android code and tools. It is a working-tree snapshot from
+24 November 2026, including the ongoing runtime migration and uncommitted changes.
 
-The display bridge presents the VM's framebuffer through `ANativeWindow`.
-Android Paint/Canvas supplies text, and BitmapFactory supplies the legacy PNG
-adapter. On-screen direction keys, a numeric keypad and selectable virtual
-screen sizes make phone games usable on touchscreens.
+The C, migrated C++, headers and ARM assembly are preserved together because
+the recovered implementation spans all four. This is a source reference snapshot;
+the migration is unfinished and the complete tree need not build as a unit.
 
-## Build and use
+## Current source
 
-Install the dependencies in the [build guide](docs/building.md), then run:
+| Directory | Contents |
+|---|---|
+| `native/compiler/` | Class-file reader, verifier, bytecode lowering, Thumb code generation, compiled-image formats, reflection tables and host compiler/ROM tools |
+| `native/compiler/vm/` | Recovered memory, garbage collection, stack maps, exceptions, monitors, scheduling, type and string operations |
+| `native/runtime/` | ARM32 execution and assembly bridge, native bindings, boot image loading, class initialization, reflection, arrays, fields, roots, scheduling, isolates, bundles and runtime integration |
+| `native/platform/` | VM and OS services, AMS, MIDP display/graphics, media, PIM, DRM, push messaging, files, sockets, compression and image codecs |
+| `native/platform/android/` | Reconstructed Android JNI and platform integration |
+| `native/platform/jpeg6b/` | Included JPEG decoder dependency and its original README/license terms |
+| `native/swerve/` | M3G scene objects, loading, animation, math, software rendering, raw API and system support; includes the C-to-C++ migration |
+| `native/swerve/java/midp/src/share/native/` | Jbed KNI adapters for the M3G Java interface |
+| `native/compat/` | Compatibility libraries and JNI/stack bridges for running the original ARM32 VM |
+| `native/android/` | Separate Android runner for the source runtime, JNI entry points, graphics bridge and diagnostic probe |
+| `native/rom/` | Recovered Java runtime JAR, runtime properties and Java boot-subset tooling used as ROM-generation inputs |
+| `app/` | Reconstructed Android application, resources and Gradle setup for the original-VM compatibility path |
+| `tools/` | ROM inspection, JVM bytecode recovery, native-symbol extraction, IDA analysis and device-log tools |
+| `tests/`, `native/compiler/tests/`, `native/compat/tests/` | Existing recovery checks and probes |
+| `docs/` | Compiler, native analysis, build, compatibility and Swerve rendering documentation |
+
+The handwritten `native/compiler/tests/rom_format_check.c` was also recovered
+from the workspace build directory. It checks ROM footer serialization and
+relocation; it is not wired into CMake.
+
+## Build tools and inputs
+
+CMake files, the Gradle wrapper, Android Gradle projects and existing test helpers
+are included. Commands below are relative to the extracted directory. Install
+SDKs and dependencies separately, exposing them through standard environment
+variables and the build tools' normal search paths.
+
+The host compiler and ROM builder require CMake, a C compiler, zlib and libzip:
 
 ```sh
-./gradlew :app:assembleDebug
+cmake -S native/compiler -B build/compiler -DJBED_BUILD_HOST_COMPILER=ON
+cmake --build build/compiler --target jbedc jbedrom
 ```
 
-The APK is `app/build/outputs/apk/debug/app-debug.apk`. It requires ARM32 app
-execution, either natively or through a compatible Android native bridge.
-The package currently targets API 22 to load the original VM's text
-relocations. Read the [tested configurations and platform
-constraints](docs/compatibility.md) before choosing a device.
+The broader native project also uses C++20 and libpng. Its Android configuration
+can fetch the pinned libpng source through CMake. The standalone Android source
+runner uses JDK 17, Android SDK 35, NDK 28.2.13676358 and CMake 3.22.1:
 
-Open a MIDlet JAR with JbedFIX, complete the native installation, and select
-the installed application. In a running game, tap **Menu** or press Android
-**Back**. Choose **Resume**, **Controls**, **Screen size**, or **Exit game**.
-**Exit game** asks the MIDlet to stop and returns to the application list
-after its native exit completes. **Controls** selects the direction pad,
-numeric keypad or hidden keypad; the Menu button remains available.
-The default virtual screen is 240 × 320; smaller presets suit older phones.
-The game area preserves the selected aspect ratio, and touch coordinates are
-mapped back into the virtual screen. Some games cache their dimensions at
-startup, so exit and launch the game again after changing its screen size.
+```sh
+./gradlew -p native/android :app:assembleDebug
+```
 
-## Documentation
+`native/android/rom.gradle` describes generation of the boot image from the
+included `native/rom/runtime.jar`, `native/runtime/native.bindings`, runtime
+properties and Java probe. Generated boot byte arrays are omitted; the generator
+and its inputs are retained. See `docs/building.md` for the existing build flow.
 
-- [Building](docs/building.md): toolchain, APK output, tests and inspection tools.
-- [Compatibility](docs/compatibility.md): verified behavior, runtime adapters and remaining constraints.
-- [Compiler](docs/compiler.md): native installation, Thumb emission and executable memory.
-- [Native analysis](docs/native-analysis.md): binary components, ROM metadata and IDA analysis.
-- [Research inputs](research/README.md): original disassembly and comparison packages.
+The original VM binary, annotated IDA databases, comparison APKs, original
+Android smali, downloaded build dependencies, compiled outputs, caches and logs
+are omitted. The original-VM application and binary-comparison tools expect
+`app/src/main/jniLibs/armeabi/libjbedvm.so` to be supplied separately. IDA analysis
+scripts additionally need the annotated database described in
+`research/README.md`. Documentation about those inputs and prior observations
+is retained for context.
 
-## Repository layout
-
-| Path | Contents |
-|---|---|
-| `app/src/main/` | Android sources, resources, assets and the original VM in `jniLibs/armeabi/` |
-| `native/compat/` | Native adapters, JNI stack bridge and PNG contract tests |
-| `tools/` | Static ROM/symbol inspection and device log collection |
-| `research/` | Original smali and research notes; local binary inputs and IDA databases are ignored |
-| `docs/` | Maintained documentation |
-| `app/build/`, `build/`, `logs/` | Ignored generated output |
+Machine-specific host paths have been removed from the export. Relative project
+paths, environment-variable references and Android runtime filesystem paths
+remain where they describe actual program behavior. IDA tooling is referred to
+as the IDA CLI. Copyright and license notices in included sources are retained.

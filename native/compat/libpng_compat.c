@@ -19,15 +19,22 @@
 #include <stdatomic.h>
 #endif
 
+enum {
+    LEGACY_PNG_IO_PTR_OFFSET = 276,
+    PNG_CHUNK_HEADER_BYTES = 8,
+    PNG_CHUNK_CRC_BYTES = 4,
+    PNG_IHDR_BYTES = 13,
+    PNG_COLOR_TYPE_RGB_ALPHA = 6
+};
+
 typedef struct legacy_png legacy_png;
 typedef void (*png_read_callback)(legacy_png *, unsigned char *, size_t);
 typedef void (*png_error_callback)(legacy_png *, const char *);
 
 struct legacy_png {
-    union {
-        jmp_buf jump;
-        unsigned char bytes[276 + sizeof(void *)];
-    } prefix;
+    jmp_buf jump;
+    unsigned char reserved[LEGACY_PNG_IO_PTR_OFFSET - sizeof(jmp_buf)];
+    unsigned char io_ptr[sizeof(void *)];
     png_read_callback read;
     png_error_callback error;
     size_t remaining;
@@ -44,8 +51,8 @@ typedef struct {
     uint32_t height;
 } legacy_png_info;
 
-_Static_assert(sizeof(jmp_buf) <= 276, "Jbed's libpng prefix must fit jmp_buf");
-_Static_assert(offsetof(legacy_png, prefix) == 0, "Jbed calls setjmp(png)");
+_Static_assert(offsetof(legacy_png, io_ptr) == LEGACY_PNG_IO_PTR_OFFSET,
+               "Jbed's PNG callback reads this field directly");
 
 static const unsigned char png_signature[8] = {137, 80, 78, 71, 13, 10, 26, 10};
 
@@ -55,7 +62,7 @@ void png_error(legacy_png *png, const char *message) {
 #ifndef JBED_PNG_HOST_TEST
     __android_log_print(ANDROID_LOG_WARN, "JbedPNG", "%s", message);
 #endif
-    longjmp(png->prefix.jump, 1);
+    longjmp(png->jump, 1);
 }
 
 int png_sig_cmp(const unsigned char *signature, size_t start, size_t count) {
@@ -102,9 +109,15 @@ void png_set_read_fn(legacy_png *png, void *context, png_read_callback read) {
     if (!context || !read) png_error(png, "Missing PNG input");
     memcpy(bounds, context, sizeof(bounds));
     if (bounds[1] < bounds[0]) png_error(png, "Invalid PNG input range");
-    memcpy(png->prefix.bytes + 276, &context, sizeof(context));
+    memcpy(png->io_ptr, &context, sizeof(context));
     png->remaining = bounds[1] - bounds[0];
     png->read = read;
+}
+
+void *png_get_io_ptr(legacy_png *png) {
+    void *context = NULL;
+    if (png) memcpy(&context, png->io_ptr, sizeof(context));
+    return context;
 }
 
 static void read_bytes(legacy_png *png, size_t count) {
@@ -256,20 +269,20 @@ static int decode_png(legacy_png *png) {
 
 void png_read_info(legacy_png *png, legacy_png_info *info) {
     if (!info || png->encoded_size || png->pixels) png_error(png, "Invalid PNG read state");
-    read_bytes(png, 8);
-    if (png_sig_cmp(png->encoded, 0, 8)) png_error(png, "Invalid PNG signature");
+    read_bytes(png, sizeof(png_signature));
+    if (png_sig_cmp(png->encoded, 0, sizeof(png_signature))) png_error(png, "Invalid PNG signature");
     int first = 1;
     for (;;) {
-        read_bytes(png, 8);
-        const unsigned char *header = png->encoded + png->encoded_size - 8;
+        read_bytes(png, PNG_CHUNK_HEADER_BYTES);
+        const unsigned char *header = png->encoded + png->encoded_size - PNG_CHUNK_HEADER_BYTES;
         uint32_t length = big_endian_u32(header);
         int ihdr = memcmp(header + 4, "IHDR", 4) == 0;
         int iend = memcmp(header + 4, "IEND", 4) == 0;
-        if (length > INT_MAX - 4 || (first && (!ihdr || length != 13)) ||
+        if (length > INT_MAX - PNG_CHUNK_CRC_BYTES || (first && (!ihdr || length != PNG_IHDR_BYTES)) ||
             (!first && ihdr) || (iend && length != 0)) png_error(png, "Invalid PNG chunk");
-        read_bytes(png, (size_t)length + 4);
+        read_bytes(png, (size_t)length + PNG_CHUNK_CRC_BYTES);
         if (first) {
-            const unsigned char *dimensions = png->encoded + 16;
+            const unsigned char *dimensions = png->encoded + sizeof(png_signature) + PNG_CHUNK_HEADER_BYTES;
             png->width = big_endian_u32(dimensions);
             png->height = big_endian_u32(dimensions + 4);
             if (!valid_dimensions(png->width, png->height)) png_error(png, "Oversized PNG image");
@@ -293,7 +306,7 @@ unsigned int png_get_IHDR(legacy_png *png, legacy_png_info *info,
     if (width) *width = info->width;
     if (height) *height = info->height;
     if (depth) *depth = 8;
-    if (color) *color = 6;
+    if (color) *color = PNG_COLOR_TYPE_RGB_ALPHA;
     if (interlace) *interlace = 0;
     if (compression) *compression = 0;
     if (filter) *filter = 0;

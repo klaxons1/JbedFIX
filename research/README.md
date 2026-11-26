@@ -1,5 +1,8 @@
 # Research inputs
 
+This source export retains these notes as context. The original smali, binary
+reference inputs and annotated IDA database described below are not included.
+
 This directory holds the original Android smali and research notes in Git.
 Binary references and the annotated IDA database are kept locally here and
 ignored by Git. The Android build consumes the tracked original VM from
@@ -15,8 +18,7 @@ ignored by Git. The Android build consumes the tracked original VM from
 
 The local files are absent from a fresh clone. Preserve the annotated database
 when moving the research workspace: creating a new database from the VM does
-not restore its manual annotations. Lasting findings are recorded in `docs/`.
-Whole-library decompiler exports and obsolete APK signature metadata are omitted.
+not restore its manual annotations.
 
 ## Build identity
 
@@ -42,12 +44,3 @@ this project's compatibility libraries or local installer implementation.
 The [Malavida package](https://www.malavida.com/en/soft/jbed/android/) is also
 revision 194731 but contains no native `.so` library. Neither inspected
 download supplies a newer Android VM.
-
-## Inspecting and extending the research
-
-Use the [static tool commands](../docs/building.md#static-inspection) and
-the [ROM layout notes](../docs/native-analysis.md). Compare reconstructed Java
-against the matching smali before repairing decompiler artifacts. Start with
-static inspection of newly acquired packages. Keep new lasting findings in
-the relevant guide and IDA annotations rather than adding session logs or
-duplicated symbol inventories.

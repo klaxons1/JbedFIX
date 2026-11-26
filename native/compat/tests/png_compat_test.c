@@ -70,6 +70,7 @@ int main(void) {
     assert(png && info);
     if (setjmp(*(jmp_buf *)png)) assert(!"valid PNG rejected");
     png_set_read_fn(png, context, legacy_read);
+    assert(png_get_io_ptr(png) == context);
     png_read_info(png, info);
     assert(decoder_calls == 1 && png->remaining == 4);
     assert(context[0] == with_trailer + sizeof(fixture));

@@ -1,0 +1,43 @@
+plugins {
+    id 'com.android.application'
+}
+
+def bootImage = providers.gradleProperty('jbedBootImage')
+apply from: rootProject.file('rom.gradle')
+
+android {
+    namespace 'org.jbed.source'
+    compileSdk 35
+    ndkVersion '28.2.13676358'
+
+    defaultConfig {
+        applicationId 'org.jbed.source'
+        minSdk 23
+        targetSdk 35
+        versionCode 1
+        versionName '0.1'
+        ndk { abiFilters 'armeabi-v7a' }
+        externalNativeBuild {
+            cmake {
+                arguments '-DANDROID_STL=c++_static',
+                    "-DJBED_BOOT_IMAGE=${bootImage.isPresent() ? rootProject.file(bootImage.get()).absolutePath : layout.buildDirectory.file('generated/rom/boot.c').get().asFile.absolutePath}",
+                    "-DJBED_ANDROID_HEAP_BYTES=${providers.gradleProperty('jbedHeapBytes').getOrElse('8388608')}",
+                    "-DJBED_ANDROID_INITIALIZE=${providers.gradleProperty('jbedInitialize').getOrElse('true')}"
+                targets 'jbedsource_jni'
+            }
+        }
+    }
+
+    externalNativeBuild {
+        cmake {
+            path file('../CMakeLists.txt')
+            version providers.gradleProperty('cmakeVersion').getOrElse('3.22.1')
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+        }
+    }
+}

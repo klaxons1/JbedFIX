@@ -1,7 +1,7 @@
 # Native VM analysis
 
 The local, Git-ignored IDA database is `research/jbed/libjbedvm.so.i64`, created from the original
-`app/src/main/jniLibs/armeabi/libjbedvm.so` using `idagent`. It contains corrected code/data
+`app/src/main/jniLibs/armeabi/libjbedvm.so` using the IDA CLI. It contains corrected code/data
 boundaries, ARM mode repairs, subsystem comments, and more than 9,600 method labels recovered from ROM metadata. Existing
 exported names are preserved. The image identity and comparison packages are
 described in [research inputs](../research/README.md).
@@ -124,41 +124,11 @@ the helpers `gif_decode_lzw_scanlines` and `gif_decode_image_descriptor`.
 
 ## ROM metadata and method ownership
 
-The image has five bucketed name/record tables:
-
-| Table | Address | Buckets |
-|---|---:|---:|
-| Package prefixes | `0x26256c` | 32 |
-| Simple class names | `0x262c8c` | 256 |
-| Signatures and typed records | `0x266850` | 512 |
-| Member names | `0x269814` | 2,048 |
-| Field/constants names | `0x2813e8` | 2,048 |
-
-The header's low four bits specify the bucket-count exponent, and the next
-four bits supply the initial entry shift. When header byte 2 is nonzero,
-the runtime increases that shift by one and adds a base of `1 << old_shift`.
-Name IDs are `(bucket << runtime_shift) + one_based_ordinal + base`.
-Lengths use base-128 groups with the high bit set on the final byte; `0x80 |
-length` describes only the one-byte case. The extractor's `runtime_slot`
-resolves these IDs. `zero_base_slot` preserves its older unadjusted value.
-The signature table also contains binary records, so an ASCII name scan is
-not a full signature decoder.
-
 `tools/extract_jbed_aot.py` resolves the ROM class index at `0x25f548`:
 1,005 class-index records, including 70 array descriptors, and 10,678 method
 records. Of these, 9,728 have unique, non-overlapping code spans within
 `0xab428–0x1b938a`; 246 have addresses with no recorded size, and 704 have
 neither.
-
-Class-index buckets contain a count followed by 12-byte records: package ID,
-simple-name ID, array dimensions, an additional halfword, and a descriptor
-pointer. A class descriptor has method and field counts at offsets 52 and 54,
-followed by 16-byte method records at offset 56. Each method record contains
-flags, name/signature IDs, a code pointer at offset 8, and a length in the high
-halfword at offset 12. `ACC_CODERANGES` (`0x80000`) selects a different range
-encoding, which occurs in none of this image's method records. Relevant
-runtime readers are `0x13421e`, `0x134314`, `0x134504`, `0x12ec66`,
-`0x12f028` and `0x12f0c8`.
 
 Recorded method spans total **1,062,104 bytes**, including inline literals;
 their classified instructions total **987,798 bytes**. The native/library
@@ -171,24 +141,12 @@ python3 tools/extract_jbed_aot.py app/src/main/jniLibs/armeabi/libjbedvm.so --co
 ```
 
 To recalculate the instruction/component table from the saved IDA analysis,
-run this read-only script from the repository root:
-
-```sh
-idagent --db research/jbed/libjbedvm.so.i64 --direct -f tools/measure_jbed_code.py
-```
+open `research/jbed/libjbedvm.so.i64` through the IDA CLI and execute
+`tools/measure_jbed_code.py` with the export root as the working directory.
 
 `tools/measure_jbed_code.py` preserves the package grouping and native-region
 boundaries used above. It reads the database's corrected instruction flags;
 use the annotated database, since a fresh import misclassifies embedded data.
-
-Trailing exception tables contain 16-byte records of try-start, try-end,
-handler and catch-class pointers, followed by a zero word. A tagged pointer
-inside the method identifies the table: clear its low two bits to recover the
-data address. Validated records keep the try range and handler inside the
-owning method; their catch-class pointers resolve to ROM descriptors. The
-runtime reader is `ArchBase.handleException` at `0xe0468`. For example,
-`Scheduler.notifyKillMIDlet` ends at `0xfeb34`, where its catch table starts;
-the table ends at the next method, `0xfeb48`.
 
 ## Reverse-engineering difficulty
 
@@ -201,17 +159,6 @@ obfuscation was found in the inspected regions. Descriptive exports, Java ROM
 names, diagnostic strings, relocations, unwind records and Swerve C++ RTTI
 remain. The inspected initializer is ordinary setup; `JNI_OnLoad` obtains JNI
 1.4 and registers 35 methods across 13 Android bridge classes.
-
-The main RE difficulty is reconstructing the proprietary compiled-Java ROM,
-object layouts, compiler output, stack maps and VM calling conventions.
-Ordinary JNI and M3G accessors decompile readily; low-level VM register/stack
-handling needs assembly review. For example, `Jbed_iterate` at `0x0e7628`
-saves VM registers in a way that produces misleading uninitialized locals
-under default decompiler types. Generated Hex-Rays C is not recoverable source
-merely by fixing syntax. Repairing Android platform boundaries can preserve
-the existing ARM runtime; rebuilding or porting the entire VM is a much larger
-project.
-
 
 See [compiler analysis](compiler.md) for instruction emission and compilation
 timing, and [compatibility](compatibility.md) for the Android repair path.

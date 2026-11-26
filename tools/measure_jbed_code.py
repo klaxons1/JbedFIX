@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Report instruction sizes from the annotated IDA database for the bundled VM.
 
-Run from the repository root:
-idagent --db research/jbed/libjbedvm.so.i64 --direct -f tools/measure_jbed_code.py
+Use the IDA CLI to open research/jbed/libjbedvm.so.i64 and execute this
+script with the export root as the working directory.
 
 Reads the current IDA code/data classifications and ROM method ownership.
 The saved database supplies the code/data and ARM/Thumb corrections. Each

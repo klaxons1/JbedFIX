@@ -35,6 +35,42 @@ TABLES = (
 
 ROM_CLASS_INDEX = 0x25F548
 
+# Unlike signatures, packed field records store just the low 16 bits of a
+# bundle type. Full-width accessors, their native loads/stores and the Android
+# 170767 field table identify these collisions in the bundled Android ROM.
+_BUNDLE_FIELD_IDS = {
+    "com/jbed/ams/Manager": {"displaySizeInfos": 0x10463},
+    "com/jbed/midp/ImageCache": {"fImageFactory": 0x1013f},
+    "com/jbed/midp/lcdui/DefaultPhoneSystem": {"fEventLoop": 0x10145},
+    "com/jbed/midp/lcdui/ewt/Display": {"fEventLoop": 0x10145},
+    "com/jbed/midp/lcdui/lookandfeel/peer/DefaultLookAndFeel": {
+        "fDisplayPeer": 0x10177, "fActionMapper": 0x10158, "fDeviceCapabilities": 0x10143,
+    },
+    "com/jbed/midp/lcdui/theme/ThemeLoader": {"fConnector": 0x10189},
+    "com/jbed/midp/lcdui/toolkit/ewt/FormLayout": {"fLayoutPolicy": 0x101ed},
+    "com/jbed/midp/lcdui/toolkit/ewt/PopupInputHandler": {"fPopupPeer": 0x1017e},
+    "com/jbed/midp/lcdui/toolkit/peer/StandardDisplayablePeer": {"fIndicatorListener": 0x10159},
+    "com/jbed/midp/lcdui/toolkit/peer/StandardDisplayPeer": {
+        "fPhoneSystem": 0x10148, "fIndicatorListener": 0x10159,
+    },
+    "com/jbed/runtime/Isolate": {"exceptionHandler": 0x1003b},
+    "com/jbed/tina/media/clip/ParsingMidiClip": {"_metaListener": 0x101bd},
+    "com/jbed/tina/media/clip/ParsingWavClip": {"_metaListener": 0x101bd},
+    "java/lang/System": {"propertySource": 0x10054},
+    "javax/microedition/io/ProtocolRegistry": {"pmonitor": 0x1013e},
+    "javax/microedition/lcdui/Display": {
+        "fProtocolMonitor": 0x1013e, "fEventLoop": 0x10145, "fDeviceCapabilities": 0x10143,
+        "fLookAndFeel": 0x1015a, "fIndicatorListener": 0x10159, "fModelStrategies": 0x1016d,
+    },
+    "javax/microedition/lcdui/Form": {"fCustomItemListener": 0x10160, "fLayoutPolicy": 0x101ed},
+}
+
+PRIMITIVES = {
+    4: ("boolean", "Z"), 5: ("char", "C"), 6: ("float", "F"),
+    7: ("double", "D"), 8: ("byte", "B"), 9: ("short", "S"),
+    10: ("int", "I"), 11: ("long", "J"),
+}
+
 COMPILER_NAMES = re.compile(
     r"(?:compiler|coder|code|class|jar|zip|parse|verify|compile|precomp|fixup|"
     r"stackmap|codemap|method|field|installstep|prepareclass|translatemethod)",
@@ -162,8 +198,80 @@ class Image:
             return None, b""
         return len(payload), payload
 
+    def table_payloads(self, name: str, base: int, end: int) -> dict[int, bytes]:
+        """Include binary records, which the printable-name view omits."""
+        info = self.table_info(name, base, end)
+        result = {}
+        for bucket in info["buckets"]:
+            cursor = bucket["offset"]
+            ordinal = 1
+            while cursor < end and self.data[cursor] != 0:
+                cursor, payload = self._read_record(cursor, end)
+                slot = ((bucket["bucket"] << info["runtime_entry_shift"])
+                        + ordinal + info["runtime_slot_base"])
+                result[slot] = payload
+                ordinal += 1
+        return result
+
+    @staticmethod
+    def signature_types(signature_id: int, records: dict[int, bytes],
+                        short_types: dict[int, int]) -> tuple[list[int], int]:
+        """Decode SignatureEncoder's argument types followed by its return type.
+
+        Evidence: openSignature 0x1477b4, getNextSignatureType 0x147818,
+        addClassId 0x1471a4 and getBuiltSignatureId 0x1474a0. IDs 0xf000+
+        inline three nibbles. Other IDs address binary reflection-table records.
+        A void return (13) terminates immediately; 14 terminates a nonvoid result.
+        Class IDs escaped by 15 mix nibble order with big-endian payload bytes.
+        """
+        inline = signature_id & 0xF000 == 0xF000
+        data = b"" if inline else records[signature_id]
+        cursor = 0
+        types = []
+        limit = 3 if inline else len(data) * 2
+        while cursor < limit:
+            if inline:
+                token = (signature_id >> (cursor * 4)) & 0xF
+                cursor += 1
+            else:
+                byte, high = divmod(cursor, 2)
+                token = (data[byte] >> (high * 4)) & 0xF
+                if token != 15:
+                    cursor += 1
+                else:
+                    control = (data[byte + 1] & 0xF) if high else data[byte] >> 4
+                    if control < 8:
+                        token = control << 8
+                        token |= ((data[byte + 1] & 0xF0) | (data[byte + 2] & 0xF)
+                                  if high else data[byte + 1])
+                        cursor += 4
+                    else:
+                        remaining = control & 7
+                        cursor += remaining + 3
+                        if high:
+                            token = data[byte + 1] >> 4
+                            next_byte = byte + 2
+                        else:
+                            token = 0
+                            next_byte = byte + 1
+                            remaining += 1
+                        while remaining > 1:
+                            token = (token << 8) | data[next_byte]
+                            next_byte += 1
+                            remaining -= 2
+                        if remaining:
+                            token = (token << 4) | (data[next_byte] & 0xF)
+            if token == 13:
+                return types, 0
+            if token == 14:
+                break
+            types.append(short_types.get(token, token))
+        if not types:
+            raise ValueError(f"signature 0x{signature_id:x} has no return type")
+        return types[:-1], types[-1]
+
     def rom_classes(self) -> list[dict]:
-        """Decode class names and method spans from this image's ROM index.
+        """Decode class layouts, fields, signatures and compiled method spans.
 
         Layout evidence: sub_13421E/sub_134314/sub_134504 decode the class
         index; sub_12EC66 and sub_12F0C8 decode method records; sub_12F028
@@ -171,7 +279,7 @@ class Image:
         nonzero address but zero size is retained without inventing its extent.
         """
         names = {}
-        for table_name in ("packages", "classes", "member_names"):
+        for table_name in ("packages", "classes", "member_names", "field_names"):
             definition = next(table for table in TABLES if table[0] == table_name)
             names[table_name] = {
                 entry.runtime_slot: entry.value
@@ -237,6 +345,7 @@ class Image:
                         "record_address": method_record,
                         "flags": flags,
                         "signature_id": name_signature >> 16,
+                        "virtual_slot": struct.unpack_from("<h", self.data, method_record + 12)[0],
                     })
                 classes.append({
                     "package": package,
@@ -246,11 +355,74 @@ class Image:
                     "record_address": record,
                     "array_dimensions": dimensions,
                     "class_id": self.u32(descriptor + 16),
+                    "superclass_address": self.u32(descriptor + 20),
+                    "instance_size": self.u32(descriptor + 28),
                     "field_count": field_count,
                     "methods": methods,
+                    "fields": [],
                 })
+                # Field.getField 0x12c218 and getFieldAddress 0x12c2b8.
+                for field_index in range(field_count):
+                    field_record = descriptor + 56 + (method_count + field_index) * 16
+                    flags, name_type, low, high = struct.unpack_from("<4I", self.data, field_record)
+                    field_name = names["field_names"].get(name_type & 0xFFFF)
+                    if field_name is None:
+                        raise ValueError(f"unknown field name at 0x{field_record:x}")
+                    storage = ("constant" if flags & 0x1000000 else
+                               "isolate_static" if flags & 8 and flags & 0x10000 else
+                               "static" if flags & 8 else "instance")
+                    packed_type = name_type >> 16
+                    type_id = _BUNDLE_FIELD_IDS.get(full_name, {}).get(field_name, packed_type)
+                    if type_id & 0xffff != packed_type:
+                        raise ValueError(f"unexpected packed field type at 0x{field_record:x}")
+                    field = {
+                        "name": field_name, "record_address": field_record,
+                        "flags": flags, "type_id": type_id, "storage": storage,
+                    }
+                    if storage == "constant":
+                        field["constant_bits"] = low | (high << 32)
+                    else:
+                        field["offset"] = low
+                    classes[-1]["fields"].append(field)
         if len(classes) != expected_count:
             raise ValueError(f"class index has {len(classes)} entries, expected {expected_count}")
+        by_address = {entry["descriptor_address"]: entry for entry in classes}
+        type_names = {type_id: name for type_id, (name, _) in PRIMITIVES.items()}
+        type_descriptors = {type_id: descriptor for type_id, (_, descriptor) in PRIMITIVES.items()}
+        type_names[0], type_descriptors[0] = "void", "V"
+        for entry in classes:
+            dimensions = entry["array_dimensions"]
+            name = entry["full_name"]
+            primitive = re.fullmatch(r"<primitive:(\d+)>", name)
+            if primitive:
+                base_name, base_descriptor = PRIMITIVES[int(primitive[1])]
+            else:
+                base_name, base_descriptor = name, "L" + name + ";"
+            type_names[entry["class_id"]] = base_name + "[]" * dimensions
+            type_descriptors[entry["class_id"]] = "[" * dimensions + base_descriptor
+        by_name = {name: type_id for type_id, name in type_names.items()}
+        # The five compact reference aliases are initialized at 0x147a6c.
+        short_types = {code: by_name[name] for code, name in {
+            0: "java/lang/Object", 1: "java/lang/String", 2: "int[]",
+            3: "byte[]", 12: "char[]",
+        }.items()}
+        signatures = self.table_payloads(*next(table for table in TABLES if table[0] == "signatures"))
+        for entry in classes:
+            parent = by_address.get(entry["superclass_address"])
+            entry["superclass"] = type_names[parent["class_id"]] if parent else None
+            for field in entry["fields"]:
+                field["type"] = type_names.get(field["type_id"], f"<class:0x{field['type_id']:x}>")
+                field["descriptor"] = type_descriptors.get(field["type_id"])
+            for method in entry["methods"]:
+                arguments, result = self.signature_types(method["signature_id"], signatures, short_types)
+                method["argument_type_ids"] = arguments
+                method["return_type_id"] = result
+                method["argument_types"] = [type_names.get(t, f"<class:0x{t:x}>") for t in arguments]
+                method["return_type"] = type_names.get(result, f"<class:0x{result:x}>")
+                method["descriptor"] = (
+                    "(" + "".join(type_descriptors[t] for t in arguments) + ")" + type_descriptors[result]
+                    if all(t in type_descriptors for t in arguments + [result]) else None
+                )
         return classes
 
     def report(self) -> dict:
@@ -347,8 +519,32 @@ def main() -> int:
     parser.add_argument("--json", action="store_true", help="emit machine-readable JSON")
     parser.add_argument("--components", action="store_true",
                         help="report ROM method-span bytes by package, including inline data")
+    parser.add_argument("--class", dest="class_names", action="append", default=[], metavar="NAME",
+                        help="show layouts and method descriptors for class-name substrings (repeatable)")
     args = parser.parse_args()
     image = Image(args.image)
+    if args.class_names:
+        classes = [entry for entry in image.rom_classes()
+                   if any(name in entry["full_name"] for name in args.class_names)]
+        if args.json:
+            print(json.dumps(classes, indent=2))
+        else:
+            for entry in classes:
+                name = entry["full_name"] + "[]" * entry["array_dimensions"]
+                print(f"\n{name} extends {entry['superclass']} "
+                      f"(id=0x{entry['class_id']:x}, descriptor=0x{entry['descriptor_address']:x}, "
+                      f"instance size=0x{entry['instance_size']:x})")
+                for field in entry["fields"]:
+                    value = field.get("constant_bits", field.get("offset"))
+                    print(f"  {field['storage']:14} 0x{value:08x}  {field['type']} {field['name']}")
+                for method in entry["methods"]:
+                    static = "static " if method["flags"] & 8 else ""
+                    slot = (f" [virtual slot {method['virtual_slot']}]"
+                            if method["virtual_slot"] >= 0 else "")
+                    signature = method["descriptor"] or (
+                        "(" + ", ".join(method["argument_types"]) + ") -> " + method["return_type"])
+                    print(f"  0x{method['code_address']:08x}  {static}{method['name']}{signature}{slot}")
+        return 0
     if args.components:
         components = component_sizes(image.rom_classes())
         if args.json:

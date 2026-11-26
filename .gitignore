@@ -23,6 +23,8 @@ local.properties
 # Device captures and Python caches.
 /logs/
 /research/test-apps/
+/research/jbed/recovered*.jar
+/research/jbed/decompiled-rom/
 __pycache__/
 *.py[cod]
 .DS_Store
@@ -37,7 +39,6 @@ __pycache__/
 *.til
 *.idb.bak
 *.i64.bak
-.*.idagent/
 
 # Whole-library decompiler exports are regenerated from the binaries.
 *.so.c

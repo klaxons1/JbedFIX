@@ -1,0 +1,89 @@
+def nativeRoot = rootProject.file('..')
+def runtimeJar = new File(nativeRoot, 'rom/runtime.jar')
+def nativeBindings = new File(nativeRoot, 'runtime/native.bindings')
+def runtimeProperties = new File(nativeRoot, 'rom/runtime.properties')
+def generatedRom = layout.buildDirectory.dir('generated/rom')
+def hostBuild = layout.buildDirectory.dir('rom-host')
+def hostCompiler = hostBuild.map { it.file('jbedrom').asFile }
+
+configurations {
+    romTools
+    romPreverifier
+}
+dependencies {
+    romTools 'org.ow2.asm:asm:9.6'
+    romTools 'org.ow2.asm:asm-tree:9.6'
+    romPreverifier 'net.sf.proguard:proguard-base:6.2.2'
+}
+
+def compileRomTool = tasks.register('compileRomTool', JavaCompile) {
+    source new File(nativeRoot, 'rom/tools/BootSubset.java')
+    classpath = configurations.romTools
+    destinationDirectory = generatedRom.map { it.dir('tools') }
+    sourceCompatibility = '11'
+    targetCompatibility = '11'
+}
+def compileRomProbe = tasks.register('compileRomProbe', JavaCompile) {
+    source rootProject.file('probe')
+    classpath = files()
+    options.bootstrapClasspath = files(runtimeJar)
+    destinationDirectory = generatedRom.map { it.dir('probe') }
+    sourceCompatibility = '8'
+    targetCompatibility = '8'
+}
+def subsetRom = tasks.register('subsetRom', JavaExec) {
+    dependsOn compileRomTool, compileRomProbe
+    classpath = configurations.romTools + files(compileRomTool.flatMap { it.destinationDirectory })
+    mainClass = 'BootSubset'
+    inputs.files(runtimeJar, nativeBindings, compileRomProbe.map { it.outputs.files })
+    outputs.file(generatedRom.map { it.file('input.jar') })
+    doFirst {
+        args runtimeJar, nativeBindings, generatedRom.get().file('input.jar').asFile
+        args '--startup'
+        args fileTree(compileRomProbe.get().destinationDirectory).matching { include '**/*.class' }.files.sort()
+    }
+}
+def preverifyRom = tasks.register('preverifyRom', JavaExec) {
+    dependsOn subsetRom
+    classpath = configurations.romPreverifier
+    mainClass = 'proguard.ProGuard'
+    inputs.file(generatedRom.map { it.file('input.jar') })
+    outputs.file(generatedRom.map { it.file('preverified.jar') })
+    args '-target', '1.5', '-microedition', '-dontoptimize', '-dontobfuscate', '-dontshrink',
+        '-keepattributes', '*', '-forceprocessing'
+    doFirst {
+        args '-injars', generatedRom.get().file('input.jar').asFile,
+            '-outjars', generatedRom.get().file('preverified.jar').asFile
+    }
+}
+def configureRomCompiler = tasks.register('configureRomCompiler', Exec) {
+    inputs.file(new File(nativeRoot, 'compiler/CMakeLists.txt'))
+    outputs.file(hostBuild.map { it.file('CMakeCache.txt') })
+    commandLine 'cmake', '-S', new File(nativeRoot, 'compiler'), '-B', hostBuild.get().asFile,
+        '-DJBED_BUILD_HOST_COMPILER=ON', '-DCMAKE_BUILD_TYPE=Release'
+}
+def buildRomCompiler = tasks.register('buildRomCompiler', Exec) {
+    dependsOn configureRomCompiler
+    inputs.files(fileTree(new File(nativeRoot, 'compiler')) {
+        include '**/*.c', '**/*.h', '**/CMakeLists.txt'
+        exclude 'tests/**'
+    })
+    outputs.file(hostCompiler)
+    commandLine 'cmake', '--build', hostBuild.get().asFile, '--target', 'jbedrom', '--parallel'
+}
+tasks.register('generateBootImage', Exec) {
+    dependsOn preverifyRom, buildRomCompiler
+    inputs.files(generatedRom.map { it.file('preverified.jar') }, nativeBindings,
+        runtimeProperties, hostCompiler)
+    outputs.file(generatedRom.map { it.file('boot.c') })
+    commandLine hostCompiler.get(), '--bindings', nativeBindings, '--properties', runtimeProperties,
+        '--main', 'TransformProbe', generatedRom.get().file('boot.c').asFile,
+        generatedRom.get().file('preverified.jar').asFile
+}
+
+if (!providers.gradleProperty('jbedBootImage').isPresent()) {
+    tasks.configureEach {
+        if (name.startsWith('configureCMake') || name.startsWith('buildCMake'))
+            dependsOn tasks.named('generateBootImage')
+    }
+}

@@ -10,6 +10,16 @@
 #include <stdlib.h>
 #include <string.h>
 
+enum {
+    kUTF16_TextEncoding = 1,
+    kRGB_565_Config = 4
+};
+
+/* Matches the Font constructor and metrics array in JbedGraphics. */
+enum { FONT_SANS_SERIF, FONT_MONOSPACE, FONT_SERIF };
+enum { FONT_TOP, FONT_ASCENT, FONT_DESCENT, FONT_BOTTOM, FONT_LEADING, FONT_METRIC_COUNT };
+enum { FONT_STYLE_COUNT = 4, FONT_STYLE_MASK = FONT_STYLE_COUNT - 1 };
+
 typedef struct {
     int family, style;
     float size, skew;
@@ -19,7 +29,7 @@ typedef struct {
 typedef struct NativeFont {
     FontKey key;
     jobject object;
-    float metrics[5];
+    float metrics[FONT_METRIC_COUNT];
     struct NativeFont *next;
 } NativeFont;
 
@@ -147,7 +157,7 @@ static NativeFont *get_font(Paint *paint, JNIEnv *env) {
             font->object = (*env)->NewGlobalRef(env, object);
             jfloatArray metrics = (*env)->GetObjectField(env, object, font_metrics);
             if (metrics) {
-                (*env)->GetFloatArrayRegion(env, metrics, 0, 5, font->metrics);
+                (*env)->GetFloatArrayRegion(env, metrics, 0, FONT_METRIC_COUNT, font->metrics);
                 (*env)->DeleteLocalRef(env, metrics);
             }
             if (clear_exception(env) || !font->object || !metrics) {
@@ -168,7 +178,7 @@ done:
 }
 
 static jstring make_text(JNIEnv *env, const Paint *paint, const void *text, uint32_t length) {
-    if (paint->encoding == 1)
+    if (paint->encoding == kUTF16_TextEncoding)
         return (*env)->NewString(env, text, (jsize)(length / sizeof(jchar)));
     /* The VM selects UTF-16 when creating every target font. */
     return NULL;
@@ -186,10 +196,10 @@ void sk_paint_set_text_size(void *self, float size) { Paint *p = self; p->key.si
 void *sk_paint_set_typeface(void *self, void *typeface) asm("_ZN7SkPaint11setTypefaceEP10SkTypeface");
 void *sk_paint_set_typeface(void *self, void *typeface) {
     Paint *p = self;
-    void *old = (void *)(uintptr_t)(1 + p->key.family * 4 + p->key.style);
+    void *old = (void *)(uintptr_t)(1 + p->key.family * FONT_STYLE_COUNT + p->key.style);
     uintptr_t value = typeface ? (uintptr_t)typeface - 1 : 0;
-    p->key.family = value / 4;
-    p->key.style = value % 4;
+    p->key.family = value / FONT_STYLE_COUNT;
+    p->key.style = value % FONT_STYLE_COUNT;
     p->font = NULL;
     return old;
 }
@@ -256,17 +266,18 @@ float sk_paint_get_metrics(const void *self, void *metrics, float scale) {
     }
     NativeFont *font = request.font;
     if (!font) {
-        if (metrics) memset(metrics, 0, sizeof(float) * 5);
+        if (metrics) memset(metrics, 0, sizeof(float) * FONT_METRIC_COUNT);
         return 0.0f;
     }
     if (metrics) memcpy(metrics, font->metrics, sizeof(font->metrics));
-    return font->metrics[2] - font->metrics[1] + font->metrics[4];
+    return font->metrics[FONT_DESCENT] - font->metrics[FONT_ASCENT] + font->metrics[FONT_LEADING];
 }
 
 void *sk_typeface_create(const char *name, int style) asm("_ZN10SkTypeface14CreateFromNameEPKcNS_5StyleE");
 void *sk_typeface_create(const char *name, int style) {
-    int family = name && !strcmp(name, "monospace") ? 1 : name && !strcmp(name, "serif") ? 2 : 0;
-    return (void *)(uintptr_t)(1 + family * 4 + (style & 3));
+    int family = name && !strcmp(name, "monospace") ? FONT_MONOSPACE
+               : name && !strcmp(name, "serif") ? FONT_SERIF : FONT_SANS_SERIF;
+    return (void *)(uintptr_t)(1 + family * FONT_STYLE_COUNT + (style & FONT_STYLE_MASK));
 }
 
 void sk_bitmap_ctor(void *self) asm("_ZN8SkBitmapC1Ev");
@@ -374,7 +385,7 @@ done:
 
 void sk_canvas_draw_text(void *self, const void *text, uint32_t length, float x, float y, const void *paint_arg) {
     Canvas *canvas = self;
-    if (!text || !length || !canvas->bitmap.pixels || canvas->bitmap.config != 4 ||
+    if (!text || !length || !canvas->bitmap.pixels || canvas->bitmap.config != kRGB_565_Config ||
             canvas->right <= canvas->left || canvas->bottom <= canvas->top) return;
     JNIEnv *env = get_env();
     if (!env) return;
