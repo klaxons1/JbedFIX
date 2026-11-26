@@ -1,0 +1,29 @@
+// Surface task failures through the checks API as well as downloadable logs.
+// Useful when a client can reach api.github.com but not Actions log storage.
+if (System.getenv('GITHUB_ACTIONS') == 'true') {
+    def output = new java.util.concurrent.ConcurrentHashMap<String, StringBuffer>()
+    gradle.taskGraph.whenReady { graph ->
+        graph.allTasks.each { task ->
+            def tail = new StringBuffer()
+            output[task.path] = tail
+            def listener = { CharSequence text ->
+                synchronized (tail) {
+                    tail.append(text)
+                    if (tail.length() > 12000) tail.delete(0, tail.length() - 12000)
+                }
+            } as org.gradle.api.logging.StandardOutputListener
+            task.logging.addStandardOutputListener(listener)
+            task.logging.addStandardErrorListener(listener)
+        }
+    }
+    gradle.taskGraph.afterTask { task, state ->
+        if (state.failure) {
+            def detail = new StringBuilder()
+            for (Throwable cause = state.failure; cause != null; cause = cause.cause)
+                detail.append(cause.toString()).append('\n')
+            detail.append(output[task.path] ?: '')
+            def escaped = detail.toString().replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
+            System.err.println("::error title=Gradle task ${task.path}::${escaped}")
+        }
+    }
+}
