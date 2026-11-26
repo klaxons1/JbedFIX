@@ -63,9 +63,23 @@ struct JbedInstance {
     JbedError error;
     bool boot_started, initialized, exited;
     int32_t exit_code;
+    JbedInstanceDiagnostic diagnostic;
+    void *diagnostic_context;
+    bool iteration_reported;
     void *native_roots[1024];
     uint32_t native_arguments[257];
 };
+
+void jbed_instance_set_diagnostic(JbedInstance *instance, JbedInstanceDiagnostic callback, void *context)
+{
+    instance->diagnostic = callback;
+    instance->diagnostic_context = context;
+}
+
+static void diagnose(JbedInstance *instance, const char *phase)
+{
+    if (instance->diagnostic) instance->diagnostic(instance->diagnostic_context, phase);
+}
 
 static void *allocate(void *context, size_t size)
 {
@@ -150,6 +164,7 @@ static _Noreturn void raise_error(void *context, const JbedError *error)
 {
     JbedInstance *instance = context;
     instance->error = *error;
+    diagnose(instance, error->message ? error->message : "Native VM exception");
     for (ExceptionBoundary *boundary = exception_boundaries; boundary; boundary = boundary->previous)
         if (boundary->owner == instance)
             longjmp(boundary->jump, 1);
@@ -159,8 +174,8 @@ static _Noreturn void raise_error(void *context, const JbedError *error)
 
 static _Noreturn void halt(void *context, int32_t code, const char *message)
 {
-    (void)context;
     (void)code;
+    diagnose(context, message ? message : "Unrecoverable VM failure");
     fprintf(stderr, "Jbed fatal error: %s\n", message ? message : "Unrecoverable VM failure");
     exit(1);
 }
@@ -419,27 +434,34 @@ static void start_isolate(void *context)
     const JbedBootImage *image = instance->boot.image;
     char *error = request->bootstrap.error;
     size_t error_size = request->bootstrap.error_size;
+    diagnose(instance, "startup: global statics and image configuration");
     Main_notifyStateChange(0, false, JBED_VM_DOWN, JBED_VM_IDLE, 0);
     jbed_vm_switch_statics(vm, 0);
     vm->isolate_id = -1;
     jbed_vm_bind_global_roots(vm, image);
     image_configuration(instance);
+    diagnose(instance, "startup: initialize scheduler timer");
     jbed_vm_scheduler_initialize_timer(vm);
-    if (!jbed_vm_base_bootstrap(vm, image->sync_slots, error, error_size) ||
-        !jbed_vm_collector_bootstrap(vm, error, error_size))
-        return;
+    diagnose(instance, "startup: base bootstrap");
+    if (!jbed_vm_base_bootstrap(vm, image->sync_slots, error, error_size)) return;
+    diagnose(instance, "startup: collector bootstrap");
+    if (!jbed_vm_collector_bootstrap(vm, error, error_size)) return;
     JbedAddress root_slot = jbed_vm_static_field_slot(vm, "com/jbed/runtime/Main", "rootIsolate");
     if (!root_slot) jbed_vm_fatal(vm, "Source image has no Main.rootIsolate");
+    diagnose(instance, "startup: allocate and register root isolate");
     JbedAddress root = jbed_vm_isolate_start_root(vm, image, *request->arguments);
     if (!root) return;
     jbed_vm_put_word(vm->heap.memory, root_slot, root);
+    diagnose(instance, "startup: start scheduler timer");
     jbed_vm_scheduler_start_timer(vm);
     Main_notifyStateChange(0, true, JBED_VM_DOWN, JBED_VM_IDLE, 0);
+    diagnose(instance, "startup: first isolate activation / Isolate.initIsolate");
     if (!jbed_vm_isolate_activate_first(vm, root, image->sync_slots,
             instance->boot.memory.address + image->intern_table,
             instance->support + SUPPORT_CHARACTERS, error, error_size))
         return;
     root = jbed_vm_word(vm->heap.memory, root_slot);
+    diagnose(instance, "startup: root isolate initialized");
     request->id = (int32_t)jbed_vm_word(vm->heap.memory, root + JBED_ISOLATE_ID);
     instance->initialized = true;
 }
@@ -583,6 +605,7 @@ bool jbed_instance_start_main(JbedInstance *instance, const char *owner, int arg
     vm->heap.temporary_roots = &argv;
     MainArguments arguments = {vm, argc, utf8_argv, &argv};
     JbedError caught;
+    diagnose(instance, "main: create String[] arguments");
     bool ready = protected_call(instance, make_main_arguments, &arguments, &caught);
     if (ready) ready = jbed_instance_start(instance, argv.value, root_id, error, error_size);
     else if (error && error_size)
@@ -611,21 +634,27 @@ static void iterate_isolate(void *context)
     vm->heap.current_isolate = root.value;
     vm->isolate_id = isolate->id;
     uint64_t result;
+    bool report = !instance->iteration_reported;
+    if (report) diagnose(instance, "iterate: activate root isolate");
     if (!isolate->active && !jbed_vm_invoke(vm, iteration->activate, &root.value, 1, &result))
         goto finished;
+    if (report) diagnose(instance, "iterate: configure current thread stack");
     JbedAddress current = jbed_vm_word(vm->heap.memory, vm->monitors.image.current_slot);
     JbedAddress dummy = vm->collector.stacks.vm_dummy;
     jbed_vm_put_word(vm->heap.memory, current + SCHEDULED_FIELD(stackBase),
         jbed_vm_word(vm->heap.memory, dummy + SCHEDULED_FIELD(stackBase)));
     jbed_vm_put_word(vm->heap.memory, current + SCHEDULED_FIELD(stackLimit),
         jbed_vm_word(vm->heap.memory, dummy + SCHEDULED_FIELD(stackLimit)));
+    if (report) diagnose(instance, "iterate: enter scheduler / managed main");
     iteration->delay = jbed_vm_scheduler_iterate(vm, iteration->slice < 20 ? 20 : iteration->slice);
+    if (report) diagnose(instance, "iterate: scheduler returned; update time");
     JbedAddress time_slot = jbed_vm_static_field_slot(vm, "com/jbed/runtime/SuperScheduler", "time");
     uint64_t micros = jbed_vm_word(vm->heap.memory, vm->monitors.image.time_slot) |
         (uint64_t)jbed_vm_word(vm->heap.memory, vm->monitors.image.time_slot + 4) << 32;
     uint64_t millis = micros / 1000;
     jbed_vm_put_word(vm->heap.memory, time_slot, (uint32_t)millis);
     jbed_vm_put_word(vm->heap.memory, time_slot + 4, (uint32_t)(millis >> 32));
+    if (report) diagnose(instance, "iterate: deactivate root isolate");
     if (jbed_vm_invoke(vm, iteration->deactivate, &root.value, 1, &result) && (uint32_t)result) {
         JbedAddress exit_slot = jbed_vm_static_field_slot(vm, "com/jbed/runtime/Main", "exitCode");
         instance->exit_code = (int32_t)jbed_vm_word(vm->heap.memory, exit_slot);
@@ -633,6 +662,8 @@ static void iterate_isolate(void *context)
         iteration->delay = -3;
     }
 finished:
+    if (report) diagnose(instance, "iterate: first slice finished");
+    instance->iteration_reported = true;
     vm->heap.temporary_roots = root.previous;
 }
 

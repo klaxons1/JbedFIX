@@ -1,6 +1,10 @@
 #include <jni.h>
 #include <android/log.h>
 #include <inttypes.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -15,6 +19,61 @@ enum { MANAGED_STACK_BYTES = 256 * 1024 };
 static JbedInstance *instance;
 static const JbedBootMethod *program;
 static char program_status[512];
+
+static int diagnostic_fd = -1;
+
+/* Deliberately not a signal handler: preserve Android's native crash reporter.
+ * Flush ordinary-code checkpoints before entering unverified startup paths. */
+static void diagnostic_phase(void *context, const char *phase)
+{
+    (void)context;
+    __android_log_print(ANDROID_LOG_INFO, "JbedSource", "%s", phase);
+    if (diagnostic_fd < 0) return;
+    char line[1024];
+    int size = snprintf(line, sizeof line, "[pid %ld] %s\n", (long)getpid(), phase);
+    size_t remaining = size < 0 ? 0 : (size_t)size < sizeof line ? (size_t)size : sizeof line - 1;
+    const char *cursor = line;
+    while (remaining) {
+        ssize_t written = write(diagnostic_fd, cursor, remaining);
+        if (written < 0 && errno == EINTR) continue;
+        if (written <= 0) break;
+        cursor += written;
+        remaining -= (size_t)written;
+    }
+    (void)fsync(diagnostic_fd);
+}
+
+JNIEXPORT jboolean JNICALL Java_org_jbed_source_MainActivity_nativeConfigureDiagnostics(
+    JNIEnv *env, jclass type, jstring path)
+{
+    (void)type;
+    if (diagnostic_fd >= 0) return JNI_TRUE;
+    const char *name = (*env)->GetStringUTFChars(env, path, NULL);
+    if (!name) return JNI_FALSE;
+    diagnostic_fd = open(name, O_WRONLY | O_CREAT | O_APPEND | O_CLOEXEC, 0600);
+    (*env)->ReleaseStringUTFChars(env, path, name);
+    return diagnostic_fd >= 0 ? JNI_TRUE : JNI_FALSE;
+}
+
+static void diagnostic_begin(const JbedBootMethod *method)
+{
+    struct stat info;
+    if (diagnostic_fd >= 0 && !fstat(diagnostic_fd, &info) && info.st_size > 256 * 1024)
+        (void)ftruncate(diagnostic_fd, 0);
+    char phase[512];
+    snprintf(phase, sizeof phase, "BEGIN %s.%s%s", method->owner, method->name, method->descriptor);
+    diagnostic_phase(NULL, phase);
+}
+
+static void diagnostic_instance(void)
+{
+    jbed_instance_set_diagnostic(instance, diagnostic_phase, NULL);
+    const JbedLoadedBoot *boot = jbed_instance_image(instance);
+    char phase[256];
+    snprintf(phase, sizeof phase, "image base=0x%08" PRIx32 " bytes=%zu; writable offset=0x%08" PRIx32,
+        boot->memory.address, boot->image->size, boot->executable_size);
+    diagnostic_phase(NULL, phase);
+}
 
 static const char *throwable_name(JbedAddress object)
 {
@@ -138,11 +197,15 @@ JNIEXPORT jstring JNICALL Java_org_jbed_source_MainActivity_nativeRun(JNIEnv *en
     if (count != argument_words(method->descriptor))
         return (*env)->NewStringUTF(env, "Argument count does not match the method descriptor");
     char message[512];
+    diagnostic_begin(method);
     if (!instance) {
+        diagnostic_phase(NULL, "direct call: create VM instance");
         instance = jbed_instance_create(&jbed_boot_image, JBED_ANDROID_HEAP_BYTES,
                                        MANAGED_STACK_BYTES, message, sizeof message);
         if (!instance)
             return (*env)->NewStringUTF(env, message);
+        diagnostic_instance();
+        diagnostic_phase(NULL, "direct call: initialize VM services");
         if (JBED_ANDROID_INITIALIZE && !jbed_instance_initialize(instance, message, sizeof message)) {
             jbed_instance_destroy(instance);
             instance = NULL;
@@ -160,6 +223,7 @@ JNIEXPORT jstring JNICALL Java_org_jbed_source_MainActivity_nativeRun(JNIEnv *en
     }
     uint64_t result = 0;
     JbedAddress throwable = 0;
+    diagnostic_phase(NULL, "direct call: invoke managed method");
     bool success = jbed_instance_call(instance, method->owner, method->name, method->descriptor,
                                      words, (size_t)count, &result, &throwable);
     free(words);
@@ -196,7 +260,7 @@ JNIEXPORT jstring JNICALL Java_org_jbed_source_MainActivity_nativeRun(JNIEnv *en
         snprintf(message, sizeof message, "%s.%s%s\nResult: %s",
             method->owner, method->name, method->descriptor, value);
     }
-    __android_log_print(ANDROID_LOG_INFO, "JbedSource", "%s", message);
+    diagnostic_phase(NULL, message);
     return (*env)->NewStringUTF(env, message);
 }
 
@@ -230,13 +294,20 @@ JNIEXPORT jstring JNICALL Java_org_jbed_source_MainActivity_nativeStartMain(JNIE
     }
     bool started = false;
     if (!problem && !(*env)->ExceptionCheck(env)) {
+        diagnostic_begin(method);
+        diagnostic_phase(NULL, "main: destroy previous VM instance");
         jbed_instance_destroy(instance);
+        instance = NULL;
         program = NULL;
+        diagnostic_phase(NULL, "main: create fresh VM instance");
         instance = jbed_instance_create(&jbed_boot_image, JBED_ANDROID_HEAP_BYTES,
                                        MANAGED_STACK_BYTES, program_status, sizeof program_status);
-        if (instance)
+        if (instance) {
+            diagnostic_instance();
             started = jbed_instance_start_main(instance, method->owner, count,
                 (const char *const *)argv, NULL, program_status, sizeof program_status);
+        }
+        diagnostic_phase(NULL, started ? "main: startup returned successfully" : program_status);
         if (started) program = method;
         else {
             jbed_instance_destroy(instance);
@@ -265,7 +336,8 @@ JNIEXPORT jint JNICALL Java_org_jbed_source_MainActivity_nativeIterate(JNIEnv *e
                  program->owner, status);
     }
     if (delay == -3 || delay == INT32_MIN) {
-        __android_log_print(ANDROID_LOG_INFO, "JbedSource", "%s", program_status);
+        diagnostic_phase(NULL, program_status);
+        diagnostic_phase(NULL, "main: destroy finished VM instance");
         jbed_instance_destroy(instance);
         instance = NULL;
         program = NULL;

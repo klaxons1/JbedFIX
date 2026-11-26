@@ -6,6 +6,11 @@
 typedef struct JbedInstance JbedInstance;
 struct JbedVm;
 
+/* Optional, synchronous startup diagnostics. Called only from ordinary native
+ * code, never a signal handler. The callback must not reenter the VM. */
+typedef void (*JbedInstanceDiagnostic)(void *context, const char *phase);
+void jbed_instance_set_diagnostic(JbedInstance *, JbedInstanceDiagnostic, void *context);
+
 JbedInstance *jbed_instance_create(const JbedBootImage *, uint32_t heap_bytes,
                                    uint32_t stack_bytes, char *error, size_t error_size);
 bool jbed_instance_initialize(JbedInstance *, char *error, size_t error_size);

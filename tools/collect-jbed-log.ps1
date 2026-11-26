@@ -5,15 +5,18 @@ Examples:
   .\tools\collect-jbed-log.ps1
   .\tools\collect-jbed-log.ps1 -Seconds 20
   .\tools\collect-jbed-log.ps1 -Adb adb -Seconds 15
+  .\tools\collect-jbed-log.ps1 -SourceMain -Seconds 20
 #>
 
 param(
     [string]$Adb = "adb",
     [int]$Seconds = 15,
-    [string]$PackageName = "com.esmertec.android.jbed"
+    [string]$PackageName = "com.esmertec.android.jbed",
+    [switch]$SourceMain
 )
 
 $ErrorActionPreference = "Stop"
+if ($SourceMain) { $PackageName = "org.jbed.source" }
 if ($Seconds -lt 3) { throw "Seconds must be at least 3." }
 
 $timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
@@ -38,7 +41,12 @@ $process = Start-Process -FilePath $Adb `
 try {
     Start-Sleep -Milliseconds 500
     Write-Host "Launching $PackageName and recording for $Seconds seconds..."
-    & $Adb shell monkey -p $PackageName 1 | Out-Null
+    if ($SourceMain) {
+        # Quote the method descriptor for Android's shell as well as PowerShell.
+        & $Adb shell "am start -n org.jbed.source/.MainActivity --es method 'TransformProbe.main([Ljava/lang/String;)V' --ez run true" | Out-Null
+    } else {
+        & $Adb shell monkey -p $PackageName 1 | Out-Null
+    }
     Start-Sleep -Seconds $Seconds
 }
 finally {
@@ -48,7 +56,7 @@ finally {
     }
 }
 
-$pattern = "jbed-jni-compat|jbed\.native|JbedEngine|JbedMidpManager|jbedservice|JNI DETECTED|JNI ERROR|Fatal signal|SIGSEGV|FATAL EXCEPTION|UnsatisfiedLinkError|Abort message|dlopen failed|android_midp_getString"
+$pattern = "JbedSource|org\.jbed\.source|libjbedruntime|libjbedsource_jni|crash_dump|Jbed fatal|jbed-jni-compat|jbed\.native|JbedEngine|JbedMidpManager|jbedservice|JNI DETECTED|JNI ERROR|Fatal signal|SIGSEGV|FATAL EXCEPTION|UnsatisfiedLinkError|Abort message|dlopen failed|android_midp_getString"
 Select-String -Path $allLog -Pattern $pattern -Context 8,30 |
     Out-File -FilePath $focusLog -Encoding utf8
 

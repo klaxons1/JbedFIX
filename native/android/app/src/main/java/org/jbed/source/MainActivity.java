@@ -30,6 +30,7 @@ public final class MainActivity extends Activity {
     private int requestedMethod;
     private String[] entries;
 
+    private static native boolean nativeConfigureDiagnostics(String path);
     private static native String nativeDescribe();
     private static native String[] nativeMethods();
     private static native int nativeArgumentWords(int method);
@@ -71,6 +72,24 @@ public final class MainActivity extends Activity {
             stop.setEnabled(false);
         });
         body.addView(stop);
+        Button share = new Button(this);
+        share.setText("Share diagnostics");
+        share.setOnClickListener(view -> {
+            share.setEnabled(false);
+            new Thread(() -> {
+                String report = CrashDiagnostics.report(getApplicationContext());
+                runOnUiThread(() -> {
+                    share.setEnabled(true);
+                    if (isDestroyed()) return;
+                    Intent send = new Intent(Intent.ACTION_SEND);
+                    send.setType("text/plain");
+                    send.putExtra(Intent.EXTRA_SUBJECT, "Jbed source startup crash");
+                    send.putExtra(Intent.EXTRA_TEXT, report);
+                    startActivity(Intent.createChooser(send, "Share diagnostics (review before sending)"));
+                });
+            }, "JbedDiagnostics").start();
+        });
+        body.addView(share);
         output = new TextView(this);
         output.setTextIsSelectable(true);
         ScrollView scroll = new ScrollView(this);
@@ -80,7 +99,11 @@ public final class MainActivity extends Activity {
 
         try {
             System.loadLibrary("jbedsource_jni");
-            output.setText(nativeDescribe());
+            boolean diagnostics = nativeConfigureDiagnostics(CrashDiagnostics.checkpointFile(this).getAbsolutePath());
+            output.setText(nativeDescribe() + "\n\nPrevious native checkpoints:\n" +
+                CrashDiagnostics.checkpoints(this, 3000) +
+                "\n\nAfter a crash, reopen the app and tap Share diagnostics." +
+                (diagnostics ? "" : "\nWarning: cannot open the checkpoint file."));
             entries = nativeMethods();
             ArrayAdapter<String> adapter = new ArrayAdapter<>(this,
                 android.R.layout.simple_spinner_item, entries);
