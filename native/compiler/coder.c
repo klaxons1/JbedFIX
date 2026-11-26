@@ -243,7 +243,7 @@ uint32_t jbed_coder_get_label(JbedCoder *c, unsigned index)
 }
 unsigned jbed_coder_label_index(const JbedCoder *c, uint32_t pc)
 {
-    const uint16_t *words = c->method->stack_maps.words;
+    const uint32_t *words = c->method->stack_maps.words;
     unsigned low = 0, high = words[0] - 1;
     do {
         unsigned middle = (low + high) >> 1;
@@ -1282,7 +1282,7 @@ static void generate_body(void *argument)
     unsigned next_label = 0;
     bool fallthrough = true;
     while ((size_t)c->bc_pos < c->code_length) {
-        if (next_label < (unsigned)c->label_count && maps->words[next_label + 1] == c->bc_pos) {
+        if (next_label < (unsigned)c->label_count && maps->words[next_label + 1] == (uint32_t)c->bc_pos) {
             unsigned vector = (unsigned)c->label_count + 2 * next_label + 1;
             jbed_coder_get_local_map(c, maps, maps->words[vector], method->max_locals);
             jbed_coder_get_stack_map(c, maps, maps->words[vector + 1]);

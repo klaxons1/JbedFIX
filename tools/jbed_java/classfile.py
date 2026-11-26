@@ -1575,9 +1575,35 @@ class _MethodCompiler:
         cfg = self.body.cfg
         if cfg.entry not in cfg.blocks:
             raise UnsupportedBytecode("missing entry block")
-        order = [cfg.entry] + [
-            label for label in sorted(cfg.blocks) if label != cfg.entry
-        ]
+        # Negative labels are edge conversions inserted by the Thumb lifter,
+        # not native addresses. Sorting them at the start turns forward NEW
+        # flows into backwards branches (illegal in the CLDC verifier).
+        # Emit each conversion immediately before its destination instead.
+        before = {}
+        for label, block in cfg.blocks.items():
+            if label < 0 and label != cfg.entry:
+                if not isinstance(block.terminator, Jump):
+                    raise UnsupportedBytecode("synthetic edge must have one destination")
+                before.setdefault(block.terminator.target, []).append(label)
+        order, emitted, visiting = [cfg.entry], {cfg.entry}, set()
+
+        def place(label):
+            if label in emitted:
+                return
+            if label in visiting:
+                raise UnsupportedBytecode("cyclic synthetic edge conversions")
+            visiting.add(label)
+            for conversion in sorted(before.get(label, ())):
+                place(conversion)
+            visiting.remove(label)
+            emitted.add(label)
+            order.append(label)
+
+        for label in sorted(cfg.blocks):
+            if label >= 0:
+                place(label)
+        if len(emitted) != len(cfg.blocks):
+            raise UnsupportedBytecode("unanchored synthetic edge conversion")
         for index, label in enumerate(order):
             following = order[index + 1] if index + 1 < len(order) else None
             self.asm.mark(label)

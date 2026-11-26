@@ -25,7 +25,7 @@ sys.path.insert(0, str(ROOT))
 from tools.jbed_java.classfile import (ClassFileBuilder, Code, LiftedBody, emit_classfile,
     emit_method_code)
 from tools.jbed_java.model import MethodSpec, RomImage, UnsupportedJava
-from tools.jbed_java.structure import Block, Branch, LiftedCFG, Return, Switch
+from tools.jbed_java.structure import Block, Branch, LiftedCFG, Return, Switch, Jump
 from tools.jbed_java.thumb import ThumbLifter, lift_method
 from unicorn import Uc, UC_ARCH_ARM, UC_HOOK_CODE, UC_MODE_THUMB
 from unicorn.arm_const import (UC_ARM_REG_LR, UC_ARM_REG_PC, UC_ARM_REG_R0,
@@ -196,7 +196,11 @@ DRIVER = r"""
 class BytecodeRecoveryTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.image = RomImage(ROOT / "app/src/main/jniLibs/armeabi/libjbedvm.so")
+        path = ROOT / "docs/originaljbed/libjbedvm.so"
+        if not path.exists():
+            path = ROOT / "app/src/main/jniLibs/armeabi/libjbedvm.so"
+        cls.image_path = path
+        cls.image = RomImage(path)
 
     def test_vm_intrinsics_do_not_become_recursive_or_empty_java_bodies(self):
         lifter = ThumbLifter(self.image.data, self.image.methods_by_address,
@@ -212,7 +216,7 @@ class BytecodeRecoveryTest(unittest.TestCase):
             outputs = []
             for seed in ("0", "7"):
                 jar = Path(work) / (seed + ".jar")
-                subprocess.run([sys.executable, ROOT / "tools/recover_jbed_bytecode.py",
+                subprocess.run([sys.executable, ROOT / "tools/recover_jbed_bytecode.py", self.image_path,
                                 "--class", "com/jbed/ams/Installer", "--method", "installStepRms",
                                 "-j", "1", "-o", jar],
                                check=True, stdout=subprocess.DEVNULL, env=dict(os.environ, PYTHONHASHSEED=seed))
@@ -321,6 +325,20 @@ class BytecodeRecoveryTest(unittest.TestCase):
             listing = subprocess.check_output(["javap", "-p", "-c", str(path)], text=True)
         compares = re.findall(r"^\s*\d+: (lcmp|[fd]cmp[lg])$", listing, re.MULTILINE)
         self.assertCountEqual(compares, ("lcmp", "fcmpl", "fcmpg", "dcmpl", "dcmpg"))
+
+    def test_synthetic_conversion_is_emitted_before_its_destination(self):
+        method = MethodSpec("java/lang/Math", "convert", "()I", 0x1000, 0x22, True, 9)
+        cfg = LiftedCFG(0x1000, {
+            0x1000: Block(0x1000, (), Jump(0x1010)),
+            0x1010: Block(0x1010, ("i0 = 1;",), Jump(-2)),
+            -2: Block(-2, ("i0 = 2;",), Jump(0x1020)),
+            0x1020: Block(0x1020, (), Return("i0")),
+        }, {"i0": "int"})
+        code = emit_method_code(self.image, method, cfg, ClassFileBuilder("Calc").pool).bytecode
+        # No branch at all is needed: entry, native source, conversion, target.
+        # Previously sorting the negative label first added a backwards edge,
+        # which is illegal when an uninitialized NEW flows through the edge.
+        self.assertEqual(code, bytes((0x04, 0x36, 0, 0x05, 0x36, 0, 0x15, 0, 0xac)))
 
     def test_short_and_distant_branches_over_a_tableswitch(self):
         method = MethodSpec("java/lang/Math", "dispatch", "(I)I", 0x1000, 8, True, 9)

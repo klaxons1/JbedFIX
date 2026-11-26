@@ -1,6 +1,8 @@
 #include "rom_reflection.h"
 #include "execution.h"
 #include "compiler.h"
+#include "guest_call.h"
+#include "memory.h"
 #include "metadata_init.h"
 #include "../compiler/method_ranges.h"
 #include "../compiler/vm/vm_words.h"
@@ -976,4 +978,131 @@ void ClassAccess_initClassAccess(void)
     jbed_vm_put_word(vm->heap.memory, class_access_slot(vm, "dynamicBundleId"), 1);
     initialize_class_iterator(vm);
     ClassAccess_loadBundle(0);
+}
+
+/* A real host/guest writer bridge. The Java receiver is rooted, not cast to
+ * JbedWriter. Every callback resolves current-image virtual dispatch. */
+typedef struct ReflectionGeneration {
+    JbedWriter writer;
+    JbedVm *vm;
+    JbedVmHeapRoot receiver;
+    JbedReflectionTable table;
+    JbedReflectionBucket *owned;
+    uint32_t bucket_count;
+    JbedAddress result;
+} ReflectionGeneration;
+
+static uint64_t reflection_writer_call(ReflectionGeneration *g, const char *name,
+    const char *descriptor, uint32_t address, uint32_t value, bool extra)
+{
+    uint32_t args[] = {g->receiver.value, address, value, false};
+    return jbed_vm_guest_call(g->vm, JBED_GUEST_VIRTUAL, NULL, name, descriptor, args, extra ? 4 : 3);
+}
+static JbedAddress reflection_allocate(JbedWriter *w, JbedCodeOwner *owner, uint32_t size)
+{
+    (void)owner;
+    return (JbedAddress)reflection_writer_call((ReflectionGeneration *)w, "allocate", "(Ljava/lang/Object;I)I", 0, size, false);
+}
+static void reflection_put_word(JbedWriter *w, JbedAddress address, uint32_t value)
+{
+    reflection_writer_call((ReflectionGeneration *)w, "writeInt", "(II)V", address, value, false);
+}
+static void reflection_put_byte(JbedWriter *w, JbedAddress address, uint8_t value)
+{
+    reflection_writer_call((ReflectionGeneration *)w, "writeByte", "(II)V", address, value, false);
+}
+static void reflection_put_reloc(JbedWriter *w, JbedAddress address, JbedAddress value, bool unused)
+{
+    (void)unused;
+    reflection_writer_call((ReflectionGeneration *)w, "writeReloc", "(IIZ)V", address, value, true);
+}
+static void reflection_write_block(JbedWriter *w, JbedAddress address, const uint8_t *bytes, uint32_t length)
+{
+    ReflectionGeneration *g = (ReflectionGeneration *)w;
+    Memory_nextAllocateLocked();
+    JbRef array = jbed_vm_allocate_array(g->vm, g->vm->primitive_array_classes[JBED_TYPE_BYTE], (int32_t)length, false);
+    JbedVmHeapRoot root = {array, array, g->vm->heap.temporary_roots};
+    g->vm->heap.temporary_roots = &root;
+    memcpy(jbed_vm_at(g->vm->heap.memory, array + ARRAY_DATA), bytes, length);
+    uint32_t args[] = {g->receiver.value, address, length, array + ARRAY_DATA};
+    jbed_vm_guest_call(g->vm, JBED_GUEST_VIRTUAL, NULL, "writeBlock", "(III)V", args, 4);
+    g->vm->heap.temporary_roots = root.previous;
+}
+static const JbedWriterOps reflection_writer_ops = {.allocate = reflection_allocate,
+    .put_word = reflection_put_word, .put_byte = reflection_put_byte,
+    .put_reloc = reflection_put_reloc, .write_block = reflection_write_block};
+
+static void reflection_generate_body(void *context)
+{
+    ReflectionGeneration *g = context;
+    g->result = jbed_reflection_generate(&g->table, &g->writer);
+}
+
+JbedAddress ReflectionTable_genDynamicTable(JbRef object, JbRef writer)
+{
+    JbedVm *vm = active();
+    if (!object || !writer) jbed_vm_raise(vm, JBED_ERROR_NULL_POINTER, NULL);
+    ReflectionGeneration g = {.vm = vm, .writer = {.ops = &reflection_writer_ops},
+        .receiver = {writer, writer, vm->heap.temporary_roots}};
+    JbedReflectionTable *shared = shared_table(vm, object);
+    if (shared) g.table = *shared;
+    else {
+        resident_view(vm, object, &g.table);
+        JbRef buckets = jbed_vm_word(vm->heap.memory, object + TABLE_DYNAMIC_BUCKETS);
+        g.table.encoded_bytes = jbed_vm_word(vm->heap.memory, object + TABLE_DYNAMIC_BYTES);
+        if (buckets) {
+            g.bucket_count = g.table.dynamic.bucket_mask + 1;
+            g.owned = calloc(g.bucket_count, sizeof(*g.owned));
+            if (!g.owned) jbed_vm_raise(vm, JBED_ERROR_OUT_OF_MEMORY, NULL);
+            for (uint32_t i = 0; i < g.bucket_count; ++i) {
+                if (i >= jbed_vm_word(vm->heap.memory, buckets + ARRAY_LENGTH)) {
+                    for (uint32_t j = 0; j < i; ++j) free(g.owned[j].bytes);
+                    free(g.owned);
+                    jbed_vm_raise(vm, JBED_ERROR_ARRAY_INDEX, NULL);
+                }
+                JbRef array = jbed_vm_word(vm->heap.memory, buckets + ARRAY_DATA + 4 * i);
+                if (!array) continue;
+                uint32_t length = jbed_vm_word(vm->heap.memory, array + ARRAY_LENGTH);
+                g.owned[i] = (JbedReflectionBucket){malloc(length ? length : 1), length};
+                if (!g.owned[i].bytes) {
+                    for (uint32_t j = 0; j < i; ++j) free(g.owned[j].bytes);
+                    free(g.owned);
+                    jbed_vm_raise(vm, JBED_ERROR_OUT_OF_MEMORY, NULL);
+                }
+                memcpy(g.owned[i].bytes, jbed_vm_at(vm->heap.memory, array + ARRAY_DATA), length);
+            }
+            g.table.buckets = g.owned;
+        }
+    }
+    vm->heap.temporary_roots = &g.receiver;
+    JbedError caught;
+    bool success = vm->services.protected_call(vm->services.context, reflection_generate_body, &g, &caught);
+    vm->heap.temporary_roots = g.receiver.previous;
+    for (uint32_t i = 0; i < g.bucket_count; ++i) free(g.owned[i].bytes);
+    free(g.owned);
+    if (!success) jbed_raise(&vm->services, &caught);
+    return g.result;
+}
+
+/* Method.getMethod(Class,int), 0x12ee7c. */
+JbRef Method_getMethodByIndex(JbRef owner, int32_t index)
+{
+    JbedVm *vm = active();
+    if (!owner) jbed_vm_raise(vm, JBED_ERROR_NULL_POINTER, NULL);
+    if (index >= jbed_vm_half(vm->heap.memory, owner + CLASS_METHOD_COUNT)) return 0;
+    if ((jbed_vm_word(vm->heap.memory, owner + 4) & 3) == 3) {
+        JbedVmHeapRoot root = {owner, owner, vm->heap.temporary_roots};
+        vm->heap.temporary_roots = &root;
+        JbRef method = jbed_vm_allocate_object(vm, jbed_vm_find_class(vm, "com/jbed/reflect/Method"), false);
+        owner = root.value;
+        Method_init(method, owner, jbed_vm_at(vm->heap.memory, owner + CLASS_MEMBERS + 16u * (uint32_t)index));
+        vm->heap.temporary_roots = root.previous;
+        return method;
+    }
+    JbRef method = jbed_vm_word(vm->heap.memory, owner + 92);
+    while (index-- > 0) {
+        if (!method) jbed_vm_raise(vm, JBED_ERROR_NULL_POINTER, NULL);
+        method = jbed_vm_word(vm->heap.memory, method + 60);
+    }
+    return method;
 }

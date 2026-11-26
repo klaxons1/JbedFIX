@@ -169,7 +169,7 @@ int main(void)
     uint8_t after_return[] = {0xb1, 0xb1};
     RUN(after_return, VOID_SIG, JBED_ACC_STATIC, 0, 0, none, 10);
     uint8_t branch[] = {3, 0xa7, 0, 3, 0xac};
-    uint16_t map_words[] = {1, 4, 0, 4, 1, 1};
+    uint32_t map_words[] = {1, 4, 0, 4, 1, 1};
     JbedStackMaps maps = {map_words, 6};
     RUN(branch, INT_SIG, JBED_ACC_STATIC, 0, 1, maps, 0);
     map_words[5] = 2;

@@ -31,7 +31,7 @@ static const uint8_t classfile[] = {
 
 typedef struct TestContext {
     unsigned registrations;
-    uint8_t swap[512];
+    uint8_t swap[512 * 1024];
     size_t size, position;
     JbedClass *compile_class, *base;
     const uint32_t *ranges;
@@ -341,7 +341,7 @@ int main(void)
     assert(error.kind == JBED_ERROR_ERROR && !strcmp(error.message, "class format error in C"));
 
     static const uint8_t maps[] = {0, 2, 0, 0, 0, 2, 1, 4, 0, 0, 0, 5, 0, 2, 1, 4, 0, 1, 7, 0, 2};
-    static const uint16_t expected[] = {2, 0, 5, 7, 0, 7, 10, 2, 1, 4, 1, 9};
+    static const uint32_t expected[] = {2, 0, 5, 7, 0, 7, 10, 2, 1, 4, 1, 9};
     JbedMethod method = {.max_locals = 3, .max_stack = 1};
     JbedStackMaps packed;
     assert(jbed_reader_init(&reader, &runtime, maps, sizeof(maps), 0, sizeof(maps), &error));
@@ -353,6 +353,31 @@ int main(void)
     assert(jbed_reader_init(&reader, &runtime, maps, sizeof(maps), 0, sizeof(maps), &error));
     assert(!jbed_reader_maps(&reader, &emitter, &method, &packed, &error));
     assert(error.kind == JBED_ERROR_ERROR && !strcmp(error.message, "class format error in C"));
+
+    /* Wire u2 PCs/counts do not imply u2 offsets in the expanded table.
+     * This reproduces lifted methods with >64K words of distinct maps. */
+    enum { FRAME_COUNT = 80, LOCAL_COUNT = 1024, FRAME_BYTES = 2 + 2 + LOCAL_COUNT + 2 + 1 };
+    size_t large_size = 2 + FRAME_COUNT * FRAME_BYTES;
+    uint8_t *large_maps = calloc(1, large_size);
+    assert(large_maps);
+    large_maps[1] = FRAME_COUNT;
+    for (unsigned i = 0; i < FRAME_COUNT; ++i) {
+        uint8_t *f = large_maps + 2 + i * FRAME_BYTES;
+        f[1] = (uint8_t)i;
+        f[2] = LOCAL_COUNT >> 8; f[3] = LOCAL_COUNT & 255;
+        memset(f + 4, 1, LOCAL_COUNT);
+        f[4 + i] = 2;
+        f[4 + LOCAL_COUNT + 1] = 1;
+        f[4 + LOCAL_COUNT + 2] = 1;
+    }
+    method.max_locals = LOCAL_COUNT;
+    assert(jbed_reader_init(&reader, &runtime, large_maps, large_size, 0, (int32_t)large_size, &error));
+    assert(jbed_reader_maps(&reader, &emitter, &method, &packed, &error));
+    assert(packed.word_count > UINT16_MAX);
+    uint32_t last_locals = packed.words[FRAME_COUNT + 1 + 2 * (FRAME_COUNT - 1)];
+    assert(last_locals > UINT16_MAX && packed.words[last_locals] == LOCAL_COUNT);
+    assert(packed.words[last_locals + FRAME_COUNT] == 2);
+    free(large_maps);
 
     JbedClass base = {.flags = JBED_ACC_PUBLIC, .instance_size = 12, .vtable_size = 1};
     klass.superclass = &base;
@@ -412,6 +437,21 @@ int main(void)
     error = jbed_emitter_error(&emitter, JBED_EMITTER_VERIFY_AT, 0, 0, 0, 120);
     assert(error.kind == JBED_ERROR_NO_CLASS_DEF && error.detail_code == 120);
     assert(!strcmp(error.message, "verify error 120 (used in C.foo()V)"));
+    /* Wide packed-map offsets must also survive Compiler's swap stream. */
+    uint32_t *wide_words = calloc(70000, sizeof *wide_words);
+    assert(wide_words);
+    wide_words[0] = 1; wide_words[1] = 4; wide_words[2] = 69998;
+    wide_words[69998] = 1; wide_words[69999] = 2;
+    JbedStackMaps ordinary_maps = klass.methods->stack_maps;
+    klass.methods->stack_maps = (JbedStackMaps){wide_words, 70000};
+    context.size = context.position = 0;
+    assert(jbed_compiler_swap_class(&driver, &klass, &error));
+    klass.methods->stack_maps = (JbedStackMaps){0};
+    assert(jbed_compiler_restore_class(&driver, &klass, &error));
+    assert(klass.methods->stack_maps.word_count == 70000);
+    assert(!memcmp(klass.methods->stack_maps.words, wide_words, 70000 * sizeof *wide_words));
+    free(wide_words);
+    klass.methods->stack_maps = ordinary_maps;
     descriptor_gc_map(&context, klass.pool);
     puts("Reader/Pool semantic checks passed");
     return 0;

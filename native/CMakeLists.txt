@@ -12,6 +12,12 @@ if(JBED_BUILD_HOST_TESTS)
     target_compile_features(jbed_png_compat_test PRIVATE c_std_11)
     target_compile_options(jbed_png_compat_test PRIVATE -UNDEBUG)
     add_test(NAME png_compat COMMAND jbed_png_compat_test)
+    add_executable(jbed_guest_layout_test runtime/tests/guest_layout_test.c
+        runtime/guest_writer.c runtime/guest_rom.c runtime/guest_blocks.c runtime/guest_queue.c runtime/guest_stackmap.c)
+    target_include_directories(jbed_guest_layout_test PRIVATE runtime)
+    target_link_libraries(jbed_guest_layout_test PRIVATE jbedcompiler)
+    target_compile_options(jbed_guest_layout_test PRIVATE -UNDEBUG -Wall -Wextra -Werror -Wpedantic)
+    add_test(NAME guest_layout COMMAND jbed_guest_layout_test)
 endif()
 add_subdirectory(compiler)
 add_subdirectory(platform)
@@ -28,7 +34,8 @@ if(ANDROID AND ANDROID_ABI STREQUAL "armeabi-v7a")
         runtime/arch.c runtime/compiler.c runtime/signature_encoder.c runtime/isolate.c
         runtime/code_cache.c runtime/field.c runtime/lifecycle.c runtime/class_access.c
         runtime/scheduler.c runtime/java_string.c runtime/sysinfo.c runtime/array.c
-        runtime/bundle.c)
+        runtime/bundle.c runtime/guest_writer.c runtime/guest_rom.c runtime/guest_call.c
+        runtime/guest_blocks.c runtime/deep_copy.c runtime/guest_queue.c runtime/guest_stackmap.c)
     add_library(jbedruntime SHARED ${runtime_sources})
     set_target_properties(jbedplatform PROPERTIES C_VISIBILITY_PRESET hidden
         CXX_VISIBILITY_PRESET hidden VISIBILITY_INLINES_HIDDEN YES)

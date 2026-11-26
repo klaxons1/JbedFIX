@@ -1,6 +1,7 @@
 def nativeRoot = rootProject.file('..')
 def runtimeJar = new File(nativeRoot, 'rom/runtime.jar')
 def nativeBindings = new File(nativeRoot, 'runtime/native.bindings')
+def managedCallbacks = new File(nativeRoot, 'runtime/managed.callbacks')
 def runtimeProperties = new File(nativeRoot, 'rom/runtime.properties')
 def generatedRom = layout.buildDirectory.dir('generated/rom')
 def hostBuild = layout.buildDirectory.dir('rom-host')
@@ -35,11 +36,11 @@ def subsetRom = tasks.register('subsetRom', JavaExec) {
     dependsOn compileRomTool, compileRomProbe
     classpath = configurations.romTools + files(compileRomTool.flatMap { it.destinationDirectory })
     mainClass = 'BootSubset'
-    inputs.files(runtimeJar, nativeBindings, compileRomProbe.map { it.outputs.files })
+    inputs.files(runtimeJar, nativeBindings, managedCallbacks, compileRomProbe.map { it.outputs.files })
     outputs.file(generatedRom.map { it.file('input.jar') })
     doFirst {
         args runtimeJar, nativeBindings, generatedRom.get().file('input.jar').asFile
-        args '--startup'
+        args '--startup', '--callbacks', managedCallbacks
         args fileTree(compileRomProbe.get().destinationDirectory).matching { include '**/*.class' }.files.sort()
     }
 }

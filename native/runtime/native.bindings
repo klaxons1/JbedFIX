@@ -834,3 +834,44 @@ com/jbed/runtime/SignalQueue getAsyncRef ()I SignalQueue_getAsyncRef jbni
 com/jbed/runtime/SuperScheduler asyncSignalIsolate (IZ)V SuperScheduler_asyncSignalIsolate jbni
 com/jbed/runtime/Isolate run ()V Isolate_run jbni
 com/jbed/runtime/Isolate switchTo ()I Isolate_switchTo jbni
+
+# Guest-layout address operations recovered from the original ARM ROM.
+com/jbed/runtime/Isolate getContext ()Lcom/jbed/runtime/IsolateContext; Isolate_getContext jbni
+com/jbed/runtime/RomObjects getInitFlagsBase ()I RomObjects_getInitFlagsBase jbni
+com/jbed/runtime/RomObjects getPrimStaticsBase ()I RomObjects_getPrimStaticsBase jbni
+com/jbed/runtime/RomObjects getPtrStaticsBase ()I RomObjects_getPtrStaticsBase jbni
+com/jbed/tbcc/CodeBlockWriter readInt (I)I CodeBlockWriter_readInt jbni
+com/jbed/tbcc/CodeBlockWriter readShort (I)I CodeBlockWriter_readShort jbni
+com/jbed/tbcc/CodeBlockWriter writeBlock (III)V CodeBlockWriter_writeBlock jbni
+com/jbed/tbcc/CodeBlockWriter writeByte (II)V CodeBlockWriter_writeByte jbni
+com/jbed/tbcc/CodeBlockWriter writeInt (II)V CodeBlockWriter_writeInt jbni
+com/jbed/tbcc/CodeBlockWriter writeShort (II)V CodeBlockWriter_writeShort jbni
+com/jbed/tbcc/Writer writeByte (II)V Writer_writeByte jbni
+com/jbed/tbcc/Writer writeInt (II)V Writer_writeInt jbni
+com/jbed/tbcc/Writer writeShort (II)V Writer_writeShort jbni
+
+# Remaining recovered guest ROM startup operations.
+com/jbed/reflect/ReflectionTable genDynamicTable (Lcom/jbed/tbcc/Writer;)I ReflectionTable_genDynamicTable jbni
+com/jbed/runtime/Base deepCopy (Ljava/lang/Object;Lcom/jbed/runtime/Isolate;)Ljava/lang/Object; Base_deepCopy jbni
+com/jbed/runtime/GlobalCallHandler tryAddEntry (Lcom/jbed/runtime/Isolate;Lcom/jbed/util/CallContext;[Lcom/jbed/util/CallContext;)I GlobalCallHandler_tryAddEntry jbni
+com/jbed/runtime/HeapCodeBlocks getArrayForBlock (I)[B HeapCodeBlocks_getArrayForBlock jbni
+com/jbed/runtime/HeapCodeBlocks getCodeBlocks (I[II)Z HeapCodeBlocks_getCodeBlocks jbni
+com/jbed/runtime/HeapCodeBlocks writeBlock (I[BII)V HeapCodeBlocks_writeBlock jbni
+com/jbed/runtime/Isolate deliverEvent (II)V Isolate_deliverEvent jbni
+com/jbed/runtime/Isolate startTransition (II)I Isolate_startTransition jbni
+com/jbed/runtime/RomObjects genObjectHeader (ILjava/lang/Object;ZZ)V RomObjects_genObjectHeader jbni
+com/jbed/runtime/RomObjects prepareCommon (Lcom/jbed/tbcc/CodeBlock;)V RomObjects_prepareCommon jbni
+com/jbed/runtime/RomObjects writeClassObj (ILjava/lang/Class;)V RomObjects_writeClassObj jbni
+com/jbed/runtime/RomObjects writeCodeAdr (II)V RomObjects_writeCodeAdr jbni
+com/jbed/tbcc/CodeBlock readBlock (I[BII)V CodeBlock_readBlock jbni
+com/jbed/tbcc/DirectCodeBlockWriter readInt (I)I DirectCodeBlockWriter_readInt jbni
+com/jbed/tbcc/DirectCodeBlockWriter readShort (I)I DirectCodeBlockWriter_readShort jbni
+com/jbed/tbcc/DirectCodeBlockWriter relocateAdr (I)I DirectCodeBlockWriter_relocateAdr jbni
+com/jbed/tbcc/DirectCodeBlockWriter writeByte (II)V DirectCodeBlockWriter_writeByte jbni
+com/jbed/tbcc/DirectCodeBlockWriter writeInt (II)V DirectCodeBlockWriter_writeInt jbni
+com/jbed/tbcc/DirectCodeBlockWriter writeShort (II)V DirectCodeBlockWriter_writeShort jbni
+com/jbed/tbcc/Writer allocIntern (Ljava/lang/Object;IZ)I Writer_allocIntern jbni
+com/jbed/tbcc/Writer finishBlock ()V Writer_finishBlock jbni
+com/jbed/runtime/Isolate extendStatics (I[I)V Isolate_extendStatics jbni
+com/jbed/reflect/Method getMethod (Ljava/lang/Class;I)Lcom/jbed/reflect/Method; Method_getMethodByIndex jbni
+com/jbed/runtime/StackMapBlock init (I)V StackMapBlock_init jbni

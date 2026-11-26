@@ -158,7 +158,9 @@ typedef struct JbedClassAccess JbedClassAccess;
  * Offset zero denotes an empty vector. Object tokens are CP index + 7;
  * uninitialized-object tokens are allocation PC + 0x8000. */
 typedef struct JbedStackMaps {
-    uint16_t *words;
+    /* Semantic offsets can exceed 65535 even though wire entries are u2.
+     * Lifted register-bank methods have large, distinct local vectors. */
+    uint32_t *words;
     size_t word_count;
 } JbedStackMaps;
 

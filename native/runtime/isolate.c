@@ -509,3 +509,31 @@ void jbed_vm_isolate_extend_statics(JbedVm *vm, uint32_t bytes,
     isolate_object(vm, root.value)->ptrRanges = ranges;
     vm->heap.temporary_roots = root.previous;
 }
+
+/* Isolate.extendStatics, 0xdc39c. Unlike the host compiler service, Java's
+ * method replaces (rather than merges) its pointer-range array. */
+void Isolate_extendStatics(int32_t bytes, JbRef ranges)
+{
+    JbedVm *vm = jbed_vm_current();
+    JbedVmHeapRoot object = {vm->heap.current_isolate, vm->heap.current_isolate, vm->heap.temporary_roots};
+    JbedVmHeapRoot pointers = {ranges, ranges, &object};
+    vm->heap.temporary_roots = &pointers;
+    JbedAddress old = isolate_object(vm, object.value)->statics;
+    uint32_t length = jbed_vm_word(vm->heap.memory, old + ARRAY_LENGTH);
+    if (bytes > (int32_t)length) {
+        JbedAddress replacement = pinned_array(vm, vm->primitive_array_classes[JBED_TYPE_BYTE], bytes);
+        JbedRomIsolate *isolate = isolate_object(vm, object.value);
+        old = isolate->statics;
+        memcpy(jbed_vm_at(vm->heap.memory, replacement + ARRAY_DATA),
+               jbed_vm_at(vm->heap.memory, old + ARRAY_DATA), length);
+        isolate->statics = replacement;
+        jbed_vm_compiler_rebase_statics(vm, old + ARRAY_DATA, replacement + ARRAY_DATA);
+        jbed_vm_scheduler_rebase_statics(vm, old + ARRAY_DATA, replacement + ARRAY_DATA);
+        for (JbedArm32Activation *a = vm->arm ? vm->arm->activations : NULL; a; a = a->previous)
+            if (a->caller_frame && a->caller_frame->r[9] == old + ARRAY_DATA)
+                a->caller_frame->r[9] = replacement + ARRAY_DATA;
+        jbed_vm_switch_statics(vm, replacement + ARRAY_DATA);
+    }
+    isolate_object(vm, object.value)->ptrRanges = pointers.value;
+    vm->heap.temporary_roots = object.previous;
+}

@@ -27,6 +27,7 @@ void ReflectionTable_referenceDynamicTable(JbRef table, const uint8_t *image);
 uint64_t ClassAccess_getClassParams(JbRef access, JbRef string, const uint8_t *address,
                                      int32_t length, bool create);
 void Field_init(JbRef field, JbRef owner, const uint8_t *record);
+JbRef Method_getMethodByIndex(JbRef owner, int32_t index);
 void Method_init(JbRef method, JbRef owner, const uint8_t *record);
 int32_t Method_getOffset(uint32_t address, uint32_t flags, uint32_t size,
                          uint32_t pc, const uint32_t *ranges);
@@ -40,4 +41,5 @@ JbRef ClassRefTable_getNextClass(JbRef table, JbRef previous);
 JbRef ClassRefTable_lookupClass(JbRef table, int32_t hash, int32_t package,
                                int32_t base, int32_t dimensions, bool include_hidden);
 
+JbedAddress ReflectionTable_genDynamicTable(JbRef, JbRef);
 #endif

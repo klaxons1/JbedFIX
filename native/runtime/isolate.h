@@ -37,4 +37,5 @@ void jbed_vm_isolate_extend_statics(JbedVm *, uint32_t bytes,
 void Isolate_run(JbedAddress isolate);
 JbedAddress Isolate_switchTo(JbedAddress isolate);
 
+void Isolate_extendStatics(int32_t, JbRef);
 #endif

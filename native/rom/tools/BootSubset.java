@@ -271,6 +271,18 @@ public final class BootSubset {
                 subset.bindings.add(key(words[0], words[1], words[2]));
         }
         for (int i = 3; i < arguments.length; ++i) {
+            if (arguments[i].equals("--callbacks")) {
+                if (++i == arguments.length) throw new IllegalArgumentException("--callbacks requires a manifest");
+                for (String line : Files.readAllLines(Path.of(arguments[i]))) {
+                    String[] callback = line.trim().split("\\s+");
+                    if (callback[0].isEmpty() || callback[0].startsWith("#")) continue;
+                    if (callback.length != 4 || (!callback[0].equals("virtual") &&
+                            !callback[0].equals("direct") && !callback[0].equals("static")))
+                        throw new IllegalArgumentException("Invalid managed callback: " + line);
+                    subset.root(callback[1], callback[2], callback[3], callback[0].equals("virtual"));
+                }
+                continue;
+            }
             if (arguments[i].equals("--startup")) {
                 subset.startup();
                 continue;

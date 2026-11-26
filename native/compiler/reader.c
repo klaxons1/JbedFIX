@@ -136,7 +136,7 @@ static void map_capacity(JbedReader *reader, JbedRuntime *runtime, size_t needed
     size_t capacity = reader->map_capacity * 2;
     if (capacity < needed)
         capacity = needed;
-    uint16_t *words = jbed_alloc(runtime, capacity * sizeof(*words));
+    uint32_t *words = jbed_alloc(runtime, capacity * sizeof(*words));
     memcpy(words, reader->map.words, reader->map_capacity * sizeof(*words));
     reader->map.words = words;
     reader->map_capacity = capacity;
@@ -153,7 +153,7 @@ static bool read_type_list(JbedReader *reader, JbedRuntime *runtime, size_t slot
         return true;
     }
     map_capacity(reader, runtime, *cursor + count + 1);
-    uint16_t *words = reader->map.words;
+    uint32_t *words = reader->map.words;
     words[*cursor] = count;
     for (size_t i = 0; i < count; ++i) {
         uint16_t tag = jbed_reader_read(reader);
@@ -172,11 +172,11 @@ static bool read_type_list(JbedReader *reader, JbedRuntime *runtime, size_t slot
     for (size_t previous = first; previous < *cursor; previous += words[previous] + 1) {
         if (words[previous] == count &&
             !memcmp(words + previous + 1, words + *cursor + 1, count * sizeof(*words))) {
-            words[slot] = (uint16_t)previous;
+            words[slot] = (uint32_t)previous;
             return true;
         }
     }
-    words[slot] = (uint16_t)*cursor;
+    words[slot] = (uint32_t)*cursor;
     *cursor += count + 1;
     return true;
 }
@@ -190,7 +190,7 @@ bool jbed_reader_maps(JbedReader *reader, JbedEmitter *emitter, const JbedMethod
     reader->emitter = emitter;
     uint16_t count = jbed_reader_u2(reader);
     reader->map_capacity = (size_t)count * 8 + 1;
-    reader->map.words = jbed_alloc(runtime, reader->map_capacity * sizeof(uint16_t));
+    reader->map.words = jbed_alloc(runtime, reader->map_capacity * sizeof(*reader->map.words));
     reader->map.words[0] = count;
     size_t first = (size_t)count * 3 + 1, cursor = first;
     for (size_t i = 0; i < count; ++i) {

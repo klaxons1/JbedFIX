@@ -320,10 +320,15 @@ bool jbed_compiler_swap_class(JbedCompiler *c, JbedClass *klass, JbedError *erro
                     !write32(io, h->handler_pc, error) || !write32(io, h->catch_index, error))
                     goto caught;
             }
-            if (!write16(io, (uint32_t)m->stack_maps.word_count, error))
+            /* Preserve the original compact swap encoding for ordinary maps.
+             * 0xffff escapes to wide semantic offsets for lifted methods. */
+            bool wide_maps = m->stack_maps.word_count >= UINT16_MAX;
+            if (!write16(io, wide_maps ? UINT16_MAX : (uint32_t)m->stack_maps.word_count, error) ||
+                (wide_maps && !write32(io, (uint32_t)m->stack_maps.word_count, error)))
                 goto caught;
             for (size_t i = 0; i < m->stack_maps.word_count; ++i)
-                if (!write16(io, m->stack_maps.words[i], error))
+                if (!(wide_maps ? write32(io, m->stack_maps.words[i], error)
+                                : write16(io, m->stack_maps.words[i], error)))
                     goto caught;
         }
         klass->swap_offset = start;
@@ -390,15 +395,23 @@ bool jbed_compiler_restore_class(JbedCompiler *c, JbedClass *klass, JbedError *e
         }
         if (!read16(io, &count, error))
             goto caught;
-        if (count) {
+        bool wide_maps = count == UINT16_MAX;
+        uint32_t map_count = count;
+        if (wide_maps && !read32(io, &map_count, error)) goto caught;
+        if (map_count) {
             m->stack_maps.words = c->services.allocate(c->services.context,
-                                                       count * sizeof *m->stack_maps.words, error);
-            if (!m->stack_maps.words)
-                return false;
-            m->stack_maps.word_count = count;
-            for (size_t i = 0; i < count; ++i)
-                if (!read16(io, &m->stack_maps.words[i], error))
-                    goto caught;
+                (size_t)map_count * sizeof *m->stack_maps.words, error);
+            if (!m->stack_maps.words) return false;
+            m->stack_maps.word_count = map_count;
+            for (size_t i = 0; i < map_count; ++i) {
+                if (wide_maps) {
+                    if (!read32(io, &m->stack_maps.words[i], error)) goto caught;
+                } else {
+                    uint16_t word;
+                    if (!read16(io, &word, error)) goto caught;
+                    m->stack_maps.words[i] = word;
+                }
+            }
         }
     }
     return true;

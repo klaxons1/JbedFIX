@@ -347,7 +347,7 @@ static int32_t cell_at(JbedVerifier *v, int32_t pc)
     return signed_word((high << 16) | ushort_at(v, add_int(pc, 2)));
 }
 
-static uint16_t map_word(JbedVerifier *v, size_t index)
+static uint32_t map_word(JbedVerifier *v, size_t index)
 {
     if (index >= v->method->stack_maps.word_count)
         index_error(v);
@@ -355,7 +355,7 @@ static uint16_t map_word(JbedVerifier *v, size_t index)
 }
 
 /* match, 0x181134. Maps count logical values; local/operand arrays count words. */
-static size_t match_vector(JbedVerifier *v, JbedVerifyType *slots, size_t capacity, uint16_t offset,
+static size_t match_vector(JbedVerifier *v, JbedVerifyType *slots, size_t capacity, uint32_t offset,
                            unsigned mode, unsigned reason)
 {
     if (!offset)
@@ -407,12 +407,12 @@ static void match_map(JbedVerifier *v, int32_t pc, unsigned mode, unsigned reaso
     int count = map_word(v, 0), lo = 0, hi = count - 1;
     while (lo < hi) {
         int mid = (lo + hi) / 2;
-        if (pc <= map_word(v, mid + 1))
+        if (pc <= (int32_t)map_word(v, mid + 1))
             hi = mid;
         else
             lo = mid + 1;
     }
-    if (lo == count || pc != map_word(v, lo + 1)) {
+    if (lo == count || pc != (int32_t)map_word(v, lo + 1)) {
         if (mode & MAP_REQUIRED)
             verify_error(v, reason);
         return;

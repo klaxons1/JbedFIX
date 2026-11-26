@@ -10,6 +10,13 @@ import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.ClassNode;
 import org.objectweb.asm.tree.FieldNode;
 import org.objectweb.asm.tree.MethodNode;
+import org.objectweb.asm.tree.LabelNode;
+import org.objectweb.asm.tree.FrameNode;
+import org.objectweb.asm.tree.InsnNode;
+import org.objectweb.asm.tree.VarInsnNode;
+import org.objectweb.asm.tree.IincInsnNode;
+import org.objectweb.asm.tree.MethodInsnNode;
+import org.objectweb.asm.tree.TryCatchBlockNode;
 
 public final class RomPreverifyTest {
     private static void check(boolean condition, String message) {
@@ -55,6 +62,48 @@ public final class RomPreverifyTest {
         return declarations;
     }
 
+    private static void deadFrameLocals() {
+        MethodNode method = new MethodNode(Opcodes.ACC_STATIC, "frames", "()V", null, null);
+        method.maxLocals = 6;
+        LabelNode start = new LabelNode(), end = new LabelNode(), handler = new LabelNode();
+        method.instructions.add(start);
+        FrameNode frame = new FrameNode(Opcodes.F_NEW, 5,
+            new Object[]{"java/lang/Object", Opcodes.LONG, "java/lang/Object", Opcodes.INTEGER, Opcodes.INTEGER}, 0, null);
+        method.instructions.add(frame);
+        method.instructions.add(new VarInsnNode(Opcodes.LLOAD, 1));
+        method.instructions.add(new InsnNode(Opcodes.POP2));
+        method.instructions.add(new InsnNode(Opcodes.ICONST_0));
+        method.instructions.add(new VarInsnNode(Opcodes.ISTORE, 4));
+        method.instructions.add(new VarInsnNode(Opcodes.ILOAD, 4));
+        method.instructions.add(new InsnNode(Opcodes.POP));
+        method.instructions.add(new IincInsnNode(5, 1));
+        method.instructions.add(new MethodInsnNode(Opcodes.INVOKESTATIC, "fixture/Helper", "noop", "()V", false));
+        method.instructions.add(end);
+        method.instructions.add(new InsnNode(Opcodes.RETURN));
+        method.instructions.add(handler);
+        method.instructions.add(new VarInsnNode(Opcodes.ASTORE, 0));
+        method.instructions.add(new VarInsnNode(Opcodes.ALOAD, 3));
+        method.instructions.add(new InsnNode(Opcodes.POP));
+        method.instructions.add(new InsnNode(Opcodes.RETURN));
+        method.tryCatchBlocks.add(new TryCatchBlockNode(start, end, handler, "java/lang/Throwable"));
+        Object[] instructions = method.instructions.toArray();
+        RomPreverify.pruneDeadFrameLocals(method);
+        check(frame.local.equals(java.util.Arrays.asList(Opcodes.TOP, Opcodes.LONG,
+            "java/lang/Object", Opcodes.TOP, Opcodes.INTEGER)),
+            "liveness lost wide/IINC/exception-only locals or retained dead aliases");
+        check(java.util.Arrays.equals(instructions, method.instructions.toArray()), "liveness rewrote instructions");
+
+        MethodNode wide = new MethodNode();
+        wide.maxLocals = 3;
+        FrameNode wideFrame = new FrameNode(Opcodes.F_NEW, 2, new Object[]{Opcodes.LONG, Opcodes.INTEGER}, 0, null);
+        wide.instructions.add(wideFrame);
+        wide.instructions.add(new VarInsnNode(Opcodes.ILOAD, 2));
+        wide.instructions.add(new InsnNode(Opcodes.IRETURN));
+        RomPreverify.pruneDeadFrameLocals(wide);
+        check(wideFrame.local.equals(java.util.Arrays.asList(Opcodes.TOP, Opcodes.TOP, Opcodes.INTEGER)),
+            "dropping wide local shifted later slots");
+    }
+
     public static void main(String[] arguments) throws Exception {
         if (arguments.length == 2) {
             check(declarations(arguments[0]).equals(declarations(arguments[1])),
@@ -62,6 +111,7 @@ public final class RomPreverifyTest {
             System.out.println("All ROM class, field and method access flags restored");
             return;
         }
+        deadFrameLocals();
         check(arguments.length == 0, "Expected zero arguments or original/restored jars");
         ClassNode type = new ClassNode();
         type.version = Opcodes.V1_5;

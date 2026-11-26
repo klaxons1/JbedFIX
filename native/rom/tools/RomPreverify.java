@@ -14,6 +14,14 @@ import org.objectweb.asm.Label;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.tree.ClassNode;
+import org.objectweb.asm.tree.AbstractInsnNode;
+import org.objectweb.asm.tree.FrameNode;
+import org.objectweb.asm.tree.VarInsnNode;
+import org.objectweb.asm.tree.IincInsnNode;
+import org.objectweb.asm.tree.JumpInsnNode;
+import org.objectweb.asm.tree.TableSwitchInsnNode;
+import org.objectweb.asm.tree.LookupSwitchInsnNode;
+import org.objectweb.asm.tree.TryCatchBlockNode;
 import org.objectweb.asm.tree.FieldNode;
 import org.objectweb.asm.tree.InsnNode;
 import org.objectweb.asm.tree.MethodNode;
@@ -113,11 +121,85 @@ public final class RomPreverify {
         }
     }
 
+    /** Forget dead register-bank aliases in generated frames. In particular,
+     * ProGuard can retain an initialized constructor alias in a handler that
+     * is also reached before initialization. TOP is valid only if no path
+     * reads the slot before overwriting it; include exception continuations. */
+    static void pruneDeadFrameLocals(MethodNode method) {
+        AbstractInsnNode[] code = method.instructions.toArray();
+        int n = code.length;
+        if (n == 0) return;
+        java.util.IdentityHashMap<AbstractInsnNode, Integer> index = new java.util.IdentityHashMap<>();
+        for (int i = 0; i < n; ++i) index.put(code[i], i);
+        java.util.BitSet[] live = new java.util.BitSet[n];
+        List<List<Integer>> normal = new ArrayList<>(), exceptional = new ArrayList<>();
+        for (int i = 0; i < n; ++i) {
+            live[i] = new java.util.BitSet(method.maxLocals);
+            List<Integer> next = new ArrayList<>(), handlers = new ArrayList<>();
+            normal.add(next); exceptional.add(handlers);
+            AbstractInsnNode instruction = code[i];
+            int op = instruction.getOpcode();
+            if (instruction instanceof JumpInsnNode) {
+                if (op == Opcodes.JSR) throw new IllegalArgumentException("Unexpected JSR in recovered ROM");
+                next.add(index.get(((JumpInsnNode)instruction).label));
+                if (op != Opcodes.GOTO && i + 1 < n) next.add(i + 1);
+            } else if (instruction instanceof TableSwitchInsnNode) {
+                TableSwitchInsnNode table = (TableSwitchInsnNode)instruction;
+                next.add(index.get(table.dflt));
+                for (var label : table.labels) next.add(index.get(label));
+            } else if (instruction instanceof LookupSwitchInsnNode) {
+                LookupSwitchInsnNode table = (LookupSwitchInsnNode)instruction;
+                next.add(index.get(table.dflt));
+                for (var label : table.labels) next.add(index.get(label));
+            } else if (op != Opcodes.ATHROW && (op < Opcodes.IRETURN || op > Opcodes.RETURN) && i + 1 < n) next.add(i + 1);
+            if (op >= 0 && method.tryCatchBlocks != null) for (TryCatchBlockNode handler : method.tryCatchBlocks)
+                if (i >= index.get(handler.start) && i < index.get(handler.end)) handlers.add(index.get(handler.handler));
+        }
+        boolean changed;
+        do {
+            changed = false;
+            for (int i = n - 1; i >= 0; --i) {
+                java.util.BitSet value = new java.util.BitSet(method.maxLocals);
+                for (int successor : normal.get(i)) value.or(live[successor]);
+                AbstractInsnNode instruction = code[i];
+                int op = instruction.getOpcode();
+                if (instruction instanceof VarInsnNode) {
+                    int slot = ((VarInsnNode)instruction).var;
+                    boolean wide = op == Opcodes.LLOAD || op == Opcodes.DLOAD || op == Opcodes.LSTORE || op == Opcodes.DSTORE;
+                    if (op >= Opcodes.ISTORE && op <= Opcodes.ASTORE) value.clear(slot, slot + (wide ? 2 : 1));
+                    else if (op >= Opcodes.ILOAD && op <= Opcodes.ALOAD) value.set(slot, slot + (wide ? 2 : 1));
+                    else throw new IllegalArgumentException("Unexpected local opcode " + op);
+                } else if (instruction instanceof IincInsnNode) value.set(((IincInsnNode)instruction).var);
+                // Exception edges see locals before the instruction's store.
+                for (int successor : exceptional.get(i)) value.or(live[successor]);
+                if (!value.equals(live[i])) { live[i] = value; changed = true; }
+            }
+        } while (changed);
+        for (int i = 0; i < n; ++i) if (code[i] instanceof FrameNode) {
+            FrameNode frame = (FrameNode)code[i];
+            if (frame.type != Opcodes.F_NEW && frame.type != Opcodes.F_FULL)
+                throw new IllegalArgumentException("Expected expanded CLDC frames");
+            List<Object> locals = new ArrayList<>();
+            int slot = 0;
+            if (frame.local != null) for (Object type : frame.local) {
+                boolean wide = type.equals(Opcodes.LONG) || type.equals(Opcodes.DOUBLE);
+                if (live[i].get(slot) || (wide && live[i].get(slot + 1))) locals.add(type);
+                else { locals.add(Opcodes.TOP); if (wide) locals.add(Opcodes.TOP); }
+                slot += wide ? 2 : 1;
+            }
+            while (!locals.isEmpty() && locals.get(locals.size() - 1).equals(Opcodes.TOP)) locals.remove(locals.size() - 1);
+            frame.local = locals;
+        }
+    }
+
     static void restore(ClassNode type) {
         type.access = restore(type.attrs);
         for (FieldNode field : type.fields) field.access = restore(field.attrs);
         type.methods.removeIf(RomPreverify::temporary);
-        for (MethodNode method : type.methods) method.access = restore(method.attrs);
+        for (MethodNode method : type.methods) {
+            method.access = restore(method.attrs);
+            pruneDeadFrameLocals(method);
+        }
     }
 
     public static void main(String[] arguments) throws IOException {
@@ -136,7 +218,7 @@ public final class RomPreverify {
                 if (entry.getName().endsWith(".class")) {
                     ClassNode type = new ClassNode();
                     new ClassReader(bytes).accept(type, new Attribute[]{new SavedAccess(0),
-                        new Temporary(), new BootSubset.UnavailableMethods()}, 0);
+                        new Temporary(), new BootSubset.UnavailableMethods()}, ClassReader.EXPAND_FRAMES);
                     if (prepare) prepare(type); else restore(type);
                     ClassWriter writer = new ClassWriter(0);
                     type.accept(writer);
